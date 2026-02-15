@@ -1,0 +1,403 @@
+---
+/**
+ * Slideshow Component
+ *
+ * Fullscreen image viewer for series posts.
+ * Displays images with navigation controls and keyboard support.
+ */
+---
+
+<div id="slideshow" class="slideshow" role="dialog" aria-modal="true" hidden>
+  <div class="slideshow__backdrop"></div>
+
+  <button
+    id="slideshow-close"
+    class="slideshow__close"
+    aria-label="Close slideshow"
+  >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  </button>
+
+  <button
+    id="slideshow-prev"
+    class="slideshow__nav slideshow__nav--prev"
+    aria-label="Previous image"
+  >
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  </button>
+
+  <button
+    id="slideshow-next"
+    class="slideshow__nav slideshow__nav--next"
+    aria-label="Next image"
+  >
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </button>
+
+  <div class="slideshow__image-wrap">
+    <img id="slideshow-image" class="slideshow__image" alt="" />
+  </div>
+
+  <div class="slideshow__footer">
+    <div id="slideshow-caption" class="slideshow__caption"></div>
+    <div class="slideshow__counter">
+      <span id="slideshow-current">1</span> / <span id="slideshow-total">1</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slideshow {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+  }
+
+  .slideshow--open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .slideshow__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+  }
+
+  .slideshow__close {
+    position: absolute;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .slideshow__close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .slideshow__nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .slideshow__nav:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .slideshow__nav:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .slideshow__nav--prev {
+    left: var(--space-xl);
+  }
+
+  .slideshow__nav--next {
+    right: var(--space-xl);
+  }
+
+  .slideshow__image-wrap {
+    position: relative;
+    z-index: 5;
+    max-width: 90vw;
+    max-height: 85vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slideshow__image {
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+    transition: opacity var(--transition-fast);
+  }
+
+  .slideshow__image--loading {
+    opacity: 0.5;
+  }
+
+  .slideshow__footer {
+    position: absolute;
+    bottom: var(--space-xl);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    max-width: 80%;
+  }
+
+  .slideshow__caption {
+    font-size: var(--text-xs);
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.04em;
+    text-align: center;
+    display: none;
+  }
+
+  .slideshow__caption:not(:empty) {
+    display: block;
+  }
+
+  .slideshow__counter {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    .slideshow__nav {
+      width: 48px;
+      height: 48px;
+    }
+
+    .slideshow__nav--prev {
+      left: var(--space-md);
+    }
+
+    .slideshow__nav--next {
+      right: var(--space-md);
+    }
+
+    .slideshow__close {
+      top: var(--space-md);
+      right: var(--space-md);
+    }
+
+    .slideshow__footer {
+      bottom: var(--space-lg);
+    }
+  }
+</style>
+
+<script>
+  let state = {
+    images: [],
+    currentIndex: 0,
+    isOpen: false,
+  };
+
+  let previousFocus = null;
+
+  function initSlideshow() {
+    const overlay = document.getElementById('slideshow');
+    const closeBtn = document.getElementById('slideshow-close');
+    const prevBtn = document.getElementById('slideshow-prev');
+    const nextBtn = document.getElementById('slideshow-next');
+
+    if (!overlay) return;
+
+    closeBtn?.addEventListener('click', closeSlideshow);
+    prevBtn?.addEventListener('click', previousImage);
+    nextBtn?.addEventListener('click', nextImage);
+
+    // Click backdrop to close
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.classList.contains('slideshow__backdrop')) {
+        closeSlideshow();
+      }
+    });
+  }
+
+  function openSlideshow(images, startIndex = 0) {
+    if (!images || images.length === 0) return;
+
+    state.images = images;
+    state.currentIndex = startIndex;
+    state.isOpen = true;
+
+    const overlay = document.getElementById('slideshow');
+    if (!overlay) return;
+
+    // Store previous focus
+    previousFocus = document.activeElement;
+
+    // Show overlay
+    overlay.removeAttribute('hidden');
+    requestAnimationFrame(() => {
+      overlay.classList.add('slideshow--open');
+    });
+
+    // Load first image
+    updateImage(startIndex);
+
+    // Focus close button
+    document.getElementById('slideshow-close')?.focus();
+
+    // Add keyboard listener
+    document.addEventListener('keydown', handleKeydown);
+  }
+
+  function closeSlideshow() {
+    const overlay = document.getElementById('slideshow');
+    if (!overlay) return;
+
+    state.isOpen = false;
+
+    overlay.classList.remove('slideshow--open');
+
+    setTimeout(() => {
+      overlay.setAttribute('hidden', '');
+    }, 200);
+
+    // Remove keyboard listener
+    document.removeEventListener('keydown', handleKeydown);
+
+    // Return focus
+    if (previousFocus) {
+      previousFocus.focus();
+      previousFocus = null;
+    }
+  }
+
+  function updateImage(index) {
+    if (index < 0 || index >= state.images.length) return;
+
+    state.currentIndex = index;
+    const image = state.images[index];
+
+    const imgElement = document.getElementById('slideshow-image');
+    const captionElement = document.getElementById('slideshow-caption');
+    const currentCounter = document.getElementById('slideshow-current');
+    const totalCounter = document.getElementById('slideshow-total');
+    const prevBtn = document.getElementById('slideshow-prev');
+    const nextBtn = document.getElementById('slideshow-next');
+
+    if (!imgElement) return;
+
+    // Show loading state
+    imgElement.classList.add('slideshow__image--loading');
+
+    // Update image
+    imgElement.src = image.src;
+    imgElement.alt = image.alt;
+
+    // Update caption
+    if (captionElement) {
+      captionElement.textContent = image.caption || '';
+    }
+
+    // Update counter
+    if (currentCounter) currentCounter.textContent = index + 1;
+    if (totalCounter) totalCounter.textContent = state.images.length;
+
+    // Update button states
+    if (prevBtn) prevBtn.disabled = index === 0;
+    if (nextBtn) nextBtn.disabled = index === state.images.length - 1;
+
+    // Remove loading state when image loads
+    imgElement.onload = () => {
+      imgElement.classList.remove('slideshow__image--loading');
+      preloadAdjacentImages();
+    };
+  }
+
+  function previousImage() {
+    if (state.currentIndex > 0) {
+      updateImage(state.currentIndex - 1);
+    }
+  }
+
+  function nextImage() {
+    if (state.currentIndex < state.images.length - 1) {
+      updateImage(state.currentIndex + 1);
+    }
+  }
+
+  function preloadAdjacentImages() {
+    const next = state.images[state.currentIndex + 1];
+    const prev = state.images[state.currentIndex - 1];
+
+    if (next) {
+      const img = new Image();
+      img.src = next.src;
+    }
+    if (prev) {
+      const img = new Image();
+      img.src = prev.src;
+    }
+  }
+
+  function handleKeydown(e) {
+    if (!state.isOpen) return;
+
+    switch(e.key) {
+      case 'Escape':
+        closeSlideshow();
+        break;
+      case 'ArrowLeft':
+        previousImage();
+        break;
+      case 'ArrowRight':
+        nextImage();
+        break;
+    }
+  }
+
+  // Make openSlideshow globally available
+  window.openSlideshow = openSlideshow;
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', initSlideshow);
+
+  // Re-initialize after View Transitions
+  document.addEventListener('astro:after-swap', initSlideshow);
+
+  // Cleanup on navigation
+  document.addEventListener('astro:before-swap', () => {
+    if (state.isOpen) {
+      closeSlideshow();
+    }
+  });
+</script>

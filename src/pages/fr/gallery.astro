@@ -1,0 +1,41 @@
+---
+import Base from '@layouts/Base.astro';
+import PostCard from '@components/PostCard.astro';
+import FilterBar from '@components/FilterBar.astro';
+import { getCollection } from 'astro:content';
+import { getLocaleFromUrl, t } from '@utils/i18n';
+
+const locale = getLocaleFromUrl(Astro.url);
+const posts = (await getCollection('posts', ({ data }) => {
+  return !data.draft && !data.private;
+})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const allTags = [...new Set(posts.flatMap(p => p.data.tags))].sort();
+---
+
+<Base title={t('nav.gallery', locale)}>
+  <section class="gallery container">
+    <header class="gallery__header">
+      <h1 class="gallery__title">{t('nav.gallery', locale)}</h1>
+    </header>
+    <FilterBar tags={allTags} />
+    <div class="gallery__grid" id="gallery-grid">
+      {posts.map((post, i) => (
+        <PostCard post={post} index={i} variant="square" />
+      ))}
+    </div>
+    {posts.length === 0 && (
+      <p class="gallery__empty">{t('gallery.noResults', locale)}</p>
+    )}
+  </section>
+</Base>
+
+<style>
+  .gallery { padding-top: var(--space-3xl); }
+  .gallery__header { margin-bottom: var(--space-xl); }
+  .gallery__title { font-family: var(--font-body); font-size: var(--text-sm); font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-muted); }
+  .gallery__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-sm); }
+  @media (min-width: 640px) { .gallery__grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 1024px) { .gallery__grid { grid-template-columns: repeat(4, 1fr); gap: var(--space-md); } }
+  @media (min-width: 1440px) { .gallery__grid { grid-template-columns: repeat(5, 1fr); } }
+  .gallery__empty { text-align: center; color: var(--color-text-muted); padding: var(--space-4xl) 0; }
+</style>

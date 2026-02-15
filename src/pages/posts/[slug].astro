@@ -1,0 +1,533 @@
+---
+/**
+ * Individual Post Page
+ * 
+ * Dynamic route: /posts/[slug]
+ * Displays the full post with hero image, content, and series images.
+ */
+import Base from '@layouts/Base.astro';
+import Slideshow from '@components/Slideshow.astro';
+import { getCollection, render } from 'astro:content';
+import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
+import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
+
+// Generate static paths for all posts at build time
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+
+  // Extract glow colors for posts that don't have them
+  const postsWithColors = await Promise.all(
+    posts.map(async (post) => {
+      // Use existing glowColor from frontmatter if present
+      if (post.data.glowColor) {
+        return post;
+      }
+
+      // Otherwise extract at build time
+      const imagePath = post.data.coverImage.src;
+      const glowColor = await extractDominantColor(imagePath);
+
+      return {
+        ...post,
+        data: {
+          ...post.data,
+          glowColor,
+        },
+      };
+    })
+  );
+
+  return postsWithColors.map(post => ({
+    params: { slug: post.slug || post.id.replace(/\.md$/, '') },
+    props: { post },
+  }));
+}
+
+const locale = getLocaleFromUrl(Astro.url);
+const { post } = Astro.props;
+const { title, coverImage, images, tags, date, postType, description, glowColor } = post.data;
+
+// Fallback to cool blue-gray if no color extracted
+const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+
+// Derive accent color from glow for dynamic theming
+const accent = deriveAccentFromGlow(glow.r, glow.g, glow.b);
+
+const { Content } = await render(post);
+
+const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+// Gallery navigation - always render, show/hide with JavaScript
+---
+
+<Base
+  title={localized(title, locale)}
+  description={localized(description, locale)}
+  ogImage={coverImage.src}
+  accentHue={accent.hue}
+  accentSaturation={accent.saturation}
+  accentLightness={accent.lightness}
+>
+  <article
+    class="post"
+    style={{
+      '--glow-r': glow.r,
+      '--glow-g': glow.g,
+      '--glow-b': glow.b,
+    }}
+  >
+    <!-- Hero image - full viewport -->
+    <div class="post__hero">
+      <img
+        src={coverImage.src}
+        alt={localized(coverImage.alt, locale)}
+        class="post__hero-image"
+      />
+    </div>
+
+    <!-- Gallery navigation (always rendered, shown/hidden by JavaScript) -->
+    <button id="gallery-nav-close" class="gallery-nav gallery-nav--close" aria-label="Close" style="display: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <button id="gallery-nav-prev" class="gallery-nav gallery-nav--prev" aria-label="Previous post" style="display: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <button id="gallery-nav-next" class="gallery-nav gallery-nav--next" aria-label="Next post" style="display: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
+    <div class="gallery-nav-counter" style="display: none;">
+      <span id="gallery-nav-current">1</span> / <span id="gallery-nav-total">1</span>
+    </div>
+
+    <!-- Post content -->
+    <div class="post__content container container--narrow">
+      <!-- Back link (updated by JavaScript if in gallery mode) -->
+      <a href={localePath('/feed', locale)} class="post__back" id="post-back-link">
+        {t('misc.backToFeed', locale)}
+      </a>
+
+      <!-- Title and meta -->
+      <header class="post__header animate-in">
+        <h1 class="post__title">{localized(title, locale)}</h1>
+        <div class="post__meta">
+          <time datetime={date.toISOString()}>{formattedDate}</time>
+          {postType === 'series' && (
+            <span class="post__badge">{t('post.series', locale)}</span>
+          )}
+        </div>
+        <div class="post__tags">
+          {tags.map(tag => (
+            <a href={`${localePath('/gallery', locale)}?tag=${encodeURIComponent(tag)}`} class="tag">{tag}</a>
+          ))}
+        </div>
+      </header>
+
+      <!-- Markdown body content -->
+      <div class="post__body prose">
+        <Content />
+      </div>
+
+      <!-- Additional images for series posts -->
+      {images && images.length > 0 && (
+        <div class="post__series">
+          {images.map((img, i) => (
+            <figure class="post__series-item animate-in" style={`animation-delay: ${i * 100}ms`}>
+              <img
+                src={img.src}
+                alt={localized(img.alt, locale)}
+                loading="lazy"
+                decoding="async"
+                class="post__series-image"
+                data-slideshow-src={img.src}
+                data-slideshow-alt={localized(img.alt, locale)}
+                data-slideshow-caption={[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
+                data-slideshow-index={i}
+                style="cursor: pointer;"
+              />
+              {img.settings && (
+                <figcaption class="post__series-caption">
+                  {[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      )}
+    </div>
+  </article>
+
+  <Slideshow />
+
+  <script>
+    // Series slideshow initialization
+    function initSeriesSlideshow() {
+      const seriesImages = document.querySelectorAll('.post__series-image');
+
+      seriesImages.forEach((img) => {
+        img.addEventListener('click', () => {
+          const allImages = Array.from(document.querySelectorAll('.post__series-image')).map(el => ({
+            src: el.dataset.slideshowSrc,
+            alt: el.dataset.slideshowAlt,
+            caption: el.dataset.slideshowCaption
+          }));
+          const index = parseInt(img.dataset.slideshowIndex);
+
+          if (window.openSlideshow) {
+            window.openSlideshow(allImages, index);
+          } else {
+            console.error('openSlideshow function not found');
+          }
+        });
+      });
+    }
+
+    // Initialize on load
+    initSeriesSlideshow();
+
+    // Re-initialize after View Transitions
+    document.addEventListener('astro:after-swap', initSeriesSlideshow);
+
+    // Gallery navigation initialization
+    function initGalleryNav() {
+      const context = JSON.parse(sessionStorage.getItem('galleryContext') || '{}');
+      const currentSlug = window.location.pathname.split('/').pop();
+      const currentIndex = context.slugs?.indexOf(currentSlug) ?? -1;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const isGalleryMode = urlParams.get('gallery') === 'true';
+
+      console.log('🎬 Gallery navigation init:', {
+        isGalleryMode,
+        currentSlug,
+        currentIndex,
+        totalSlugs: context.slugs?.length,
+        queryParams: window.location.search
+      });
+
+      if (isGalleryMode && currentIndex >= 0 && context.slugs && context.slugs.length > 1) {
+        const closeBtn = document.getElementById('gallery-nav-close');
+        const prevBtn = document.getElementById('gallery-nav-prev');
+        const nextBtn = document.getElementById('gallery-nav-next');
+        const counter = document.querySelector('.gallery-nav-counter');
+        const backLink = document.getElementById('post-back-link');
+
+        // Show navigation
+        closeBtn.style.display = 'flex';
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
+        counter.style.display = 'block';
+
+        // Update back link to point to gallery
+        const locale = document.documentElement.lang;
+        const galleryPath = locale === 'fr' ? '/fr/gallery' : '/gallery';
+        if (backLink) {
+          backLink.href = galleryPath;
+          backLink.textContent = locale === 'fr' ? '← Retour à la galerie' : '← Back to gallery';
+        }
+
+        // Close button handler
+        closeBtn.onclick = () => {
+          window.location.href = galleryPath;
+        };
+
+        // Update counter
+        document.getElementById('gallery-nav-current').textContent = currentIndex + 1;
+        document.getElementById('gallery-nav-total').textContent = context.slugs.length;
+
+        // Set up navigation
+        const basePath = locale === 'fr' ? '/fr/posts' : '/posts';
+
+        if (currentIndex > 0) {
+          const prevSlug = context.slugs[currentIndex - 1];
+          prevBtn.onclick = () => {
+            window.location.href = `${basePath}/${prevSlug}?gallery=true&pos=${currentIndex - 1}&total=${context.slugs.length}`;
+          };
+          prevBtn.disabled = false;
+          prevBtn.style.opacity = '1';
+        } else {
+          prevBtn.disabled = true;
+          prevBtn.style.opacity = '0.3';
+        }
+
+        if (currentIndex < context.slugs.length - 1) {
+          const nextSlug = context.slugs[currentIndex + 1];
+          nextBtn.onclick = () => {
+            window.location.href = `${basePath}/${nextSlug}?gallery=true&pos=${currentIndex + 1}&total=${context.slugs.length}`;
+          };
+          nextBtn.disabled = false;
+          nextBtn.style.opacity = '1';
+        } else {
+          nextBtn.disabled = true;
+          nextBtn.style.opacity = '0.3';
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowLeft' && !prevBtn.disabled) prevBtn.click();
+          if (e.key === 'ArrowRight' && !nextBtn.disabled) nextBtn.click();
+          if (e.key === 'Escape') {
+            window.location.href = galleryPath;
+          }
+        });
+      } else {
+        // Hide navigation if not in gallery mode
+        const closeBtn = document.getElementById('gallery-nav-close');
+        const prevBtn = document.getElementById('gallery-nav-prev');
+        const nextBtn = document.getElementById('gallery-nav-next');
+        const counter = document.querySelector('.gallery-nav-counter');
+        if (closeBtn) closeBtn.style.display = 'none';
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (counter) counter.style.display = 'none';
+      }
+    }
+
+    // Initialize on load
+    initGalleryNav();
+
+    // Re-initialize after View Transitions
+    document.addEventListener('astro:after-swap', initGalleryNav);
+  </script>
+</Base>
+
+<style>
+  /* Full viewport hero */
+  .post__hero {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - var(--header-height));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn var(--transition-gallery) forwards;
+  }
+
+  .post__hero-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  /* Article with page-wide glow */
+  .post {
+    position: relative;
+    overflow: visible;
+  }
+
+  /* Page-wide ambient glow - matches homepage carousel style */
+  .post::before {
+    content: '';
+    position: fixed;
+    inset: -250px;
+    background: radial-gradient(
+      ellipse 120% 100% at center,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.15) 10%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 20%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.09) 30%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.03) 60%,
+      transparent 80%
+    );
+    z-index: -1;
+    pointer-events: none;
+    filter: blur(60px);
+    mix-blend-mode: screen;
+  }
+
+  /* Content starts right after viewport */
+  .post__content {
+    position: relative;
+    z-index: 2; /* Ensure content sits above hero glow */
+    padding-top: var(--space-3xl);
+    padding-bottom: var(--space-3xl);
+    background: transparent;
+  }
+
+  /* Back link */
+  .post__back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+    margin-bottom: var(--space-2xl);
+    transition: color var(--transition-fast);
+  }
+
+  .post__back::before {
+    content: '←';
+    font-size: 1.2em;
+  }
+
+  .post__back:hover {
+    color: var(--color-accent);
+  }
+
+  /* Header */
+  .post__header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .post__title {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-md);
+  }
+
+  .post__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-md);
+  }
+
+  .post__badge {
+    padding: 2px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 2px;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-subtle);
+  }
+
+  .post__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  /* Prose (rendered Markdown) */
+  .prose {
+    font-size: var(--text-lg);
+    line-height: 1.75;
+    color: var(--color-text-muted);
+  }
+
+  .prose :global(p) {
+    margin-bottom: var(--space-lg);
+  }
+
+  .prose :global(strong) {
+    color: var(--color-text);
+  }
+
+  .prose :global(a) {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Series images */
+  .post__series {
+    margin-top: var(--space-3xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xl);
+  }
+
+  .post__series-item {
+    margin: 0;
+  }
+
+  .post__series-image {
+    width: 100%;
+    border-radius: var(--border-radius);
+  }
+
+  .post__series-caption {
+    margin-top: var(--space-sm);
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  @media (min-width: 1024px) {
+    .post__title {
+      font-size: var(--text-5xl);
+    }
+  }
+
+  /* Gallery navigation */
+  .gallery-nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .gallery-nav:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .gallery-nav:disabled {
+    cursor: not-allowed;
+  }
+
+  .gallery-nav--close {
+    top: var(--space-lg);
+    right: var(--space-lg);
+    transform: none;
+  }
+
+  .gallery-nav--prev {
+    left: var(--space-lg);
+  }
+
+  .gallery-nav--next {
+    right: var(--space-lg);
+  }
+
+  .gallery-nav-counter {
+    position: fixed;
+    bottom: var(--space-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  @media (max-width: 768px) {
+    .gallery-nav--prev {
+      left: var(--space-md);
+    }
+
+    .gallery-nav--next {
+      right: var(--space-md);
+    }
+  }
+</style>

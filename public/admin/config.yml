@@ -1,0 +1,121 @@
+# =============================================================================
+# Decap CMS Configuration
+# =============================================================================
+# This config tells Decap CMS how to connect to your repo and what content
+# types are available. The fields here mirror the Astro content collection
+# schema in src/content.config.ts.
+#
+# SETUP REQUIRED:
+# 1. Replace 'your-github-username/your-repo-name' with your actual repo
+# 2. Configure authentication (see options below)
+# =============================================================================
+
+# --- Backend ---
+# Option A: GitHub with Netlify Git Gateway (easiest if you have a Netlify account)
+# backend:
+#   name: git-gateway
+#   branch: main
+
+# Option B: GitHub direct (requires OAuth app setup)
+backend:
+  name: github
+  repo: GabMercier/photo
+  branch: main
+
+# --- Local development ---
+# Uncomment to use local backend during development (run: npx decap-server)
+local_backend: true
+
+# --- Media ---
+media_folder: "public/images/uploads"
+public_folder: "/images/uploads"
+
+# --- Locale ---
+locale: "en"
+
+# --- Content Collections ---
+collections:
+  - name: "posts"
+    label: "Posts"
+    label_singular: "Post"
+    folder: "src/content/posts"
+    create: true
+    slug: "{{slug}}"
+    extension: "md"
+    identifier_field: "title.en"
+    summary: "{{title.en}} — {{date}}"
+    
+    # Sort by date, newest first
+    sortable_fields: ["date", "title.en"]
+    view_filters:
+      - label: "Featured"
+        field: "featured"
+        pattern: true
+      - label: "Private"
+        field: "private"
+        pattern: true
+      - label: "Series"
+        field: "postType"
+        pattern: "series"
+    fields:
+      # --- Title (bilingual) ---
+      - label: "Title (English)"
+        name: "title"
+        widget: "object"
+        fields:
+          - { label: "English", name: "en", widget: "string" }
+          - { label: "Français", name: "fr", widget: "string" }
+
+      # --- Description (bilingual, optional) ---
+      - label: "Description"
+        name: "description"
+        widget: "object"
+        required: false
+        fields:
+          - { label: "English", name: "en", widget: "string", required: false }
+          - { label: "Français", name: "fr", widget: "string", required: false }
+
+      # --- Date ---
+      - { label: "Date", name: "date", widget: "datetime", date_format: "YYYY-MM-DD", time_format: false }
+
+      # --- Status ---
+      - { label: "Draft", name: "draft", widget: "boolean", default: false }
+      - { label: "Private", name: "private", widget: "boolean", default: false, hint: "Protected by Cloudflare Access" }
+
+      # --- Cover Image ---
+      - label: "Cover Image"
+        name: "coverImage"
+        widget: "object"
+        fields:
+          - { label: "Image", name: "src", widget: "image" }
+          - label: "Alt Text"
+            name: "alt"
+            widget: "object"
+            fields:
+              - { label: "English", name: "en", widget: "string" }
+              - { label: "Français", name: "fr", widget: "string" }
+
+      # --- Additional Images (for series) ---
+      - label: "Additional Images"
+        name: "images"
+        widget: "list"
+        required: false
+        fields:
+          - { label: "Image", name: "src", widget: "image" }
+          - label: "Alt Text"
+            name: "alt"
+            widget: "object"
+            fields:
+              - { label: "English", name: "en", widget: "string" }
+              - { label: "Français", name: "fr", widget: "string" }
+          - { label: "Camera", name: "camera", widget: "string", required: false }
+          - { label: "Lens", name: "lens", widget: "string", required: false }
+          - { label: "Settings", name: "settings", widget: "string", required: false, hint: "e.g., f/2.8 · 1/500s · ISO 100" }
+
+      # --- Classification ---
+      - { label: "Tags", name: "tags", widget: "list", default: [] }
+      - { label: "Post Type", name: "postType", widget: "select", options: ["single", "series"], default: "single" }
+      - { label: "Featured", name: "featured", widget: "boolean", default: false }
+
+      # --- Body ---
+      - { label: "Body", name: "body", widget: "markdown" }

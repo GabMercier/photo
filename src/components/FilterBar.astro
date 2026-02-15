@@ -1,0 +1,253 @@
+---
+/**
+ * FilterBar Component
+ * 
+ * Displays tag pills and a search input for filtering posts.
+ * This is a client-side interactive component — filtering happens
+ * in the browser by showing/hiding PostCard elements based on
+ * their data-tags attribute.
+ * 
+ * No framework needed — vanilla JS keeps the bundle tiny.
+ */
+import { getLocaleFromUrl, t } from '@utils/i18n';
+
+interface Props {
+  /** All unique tags across posts */
+  tags: string[];
+}
+
+const locale = getLocaleFromUrl(Astro.url);
+const { tags } = Astro.props;
+---
+
+<div class="filter-bar" id="filter-bar">
+  <!-- Search input -->
+  <div class="filter-bar__search-wrap">
+    <svg class="filter-bar__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input
+      type="text"
+      class="filter-bar__search"
+      id="gallery-search"
+      placeholder={t('gallery.search', locale)}
+      autocomplete="off"
+    />
+  </div>
+
+  <!-- Tag pills -->
+  <div class="filter-bar__tags" id="filter-tags">
+    <button class="tag tag--active" data-filter="all">
+      {t('gallery.all', locale)}
+    </button>
+    {tags.map(tag => (
+      <button class="tag" data-filter={tag}>
+        {tag}
+      </button>
+    ))}
+  </div>
+
+  <!-- Active filter count -->
+  <div class="filter-bar__count" id="filter-count" aria-live="polite">
+    <!-- Populated by JS -->
+  </div>
+</div>
+
+<script>
+  /**
+   * Gallery Filter Logic
+   * 
+   * Filters .post-card elements by:
+   * 1. Active tag (from tag pills)
+   * 2. Search text (matched against tags and title)
+   * 
+   * Uses CSS classes for show/hide to enable smooth transitions.
+   */
+  function initFilters() {
+    const filterBar = document.getElementById('filter-bar');
+    const searchInput = document.getElementById('gallery-search') as HTMLInputElement;
+    const filterTagsContainer = document.getElementById('filter-tags');
+    const countDisplay = document.getElementById('filter-count');
+
+    if (!filterBar || !searchInput || !filterTagsContainer || !countDisplay) return;
+
+    const tagButtons = filterTagsContainer.querySelectorAll<HTMLButtonElement>('.tag');
+    let activeTag = 'all';
+
+    // Check URL for pre-selected tag filter
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTag = urlParams.get('tag');
+    if (urlTag) {
+      const decodedTag = decodeURIComponent(urlTag);
+      // Find matching tag button
+      const matchingBtn = Array.from(tagButtons).find(btn => btn.dataset.filter === decodedTag);
+      if (matchingBtn) {
+        activeTag = decodedTag;
+        tagButtons.forEach(b => b.classList.remove('tag--active'));
+        matchingBtn.classList.add('tag--active');
+      }
+    }
+
+    /**
+     * Apply current filters to all post cards.
+     * Cards are shown/hidden via CSS classes for smooth transitions.
+     */
+    function applyFilters() {
+      const searchText = searchInput.value.toLowerCase().trim();
+      const cards = document.querySelectorAll<HTMLElement>('.post-card');
+      let visibleCount = 0;
+
+      cards.forEach(card => {
+        const cardTags = (card.dataset.tags || '').toLowerCase();
+        const cardTitle = card.querySelector('.post-card__title')?.textContent?.toLowerCase() || '';
+
+        // Check tag filter
+        const matchesTag = activeTag === 'all' || cardTags.includes(activeTag);
+
+        // Check search filter (searches tags and title)
+        const matchesSearch = !searchText ||
+          cardTags.includes(searchText) ||
+          cardTitle.includes(searchText);
+
+        const isVisible = matchesTag && matchesSearch;
+
+        if (isVisible) {
+          card.classList.remove('post-card--hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('post-card--hidden');
+        }
+      });
+
+      // Update count display
+      const totalCards = cards.length;
+      countDisplay.textContent = `${visibleCount} / ${totalCards}`;
+
+      // Update gallery navigation context
+      updateGalleryLinks();
+    }
+
+    /**
+     * Update gallery card links with navigation context.
+     * Stores visible post slugs in sessionStorage for gallery navigation.
+     */
+    function updateGalleryLinks() {
+      const visibleCards = document.querySelectorAll<HTMLElement>('.post-card:not(.post-card--hidden)');
+      const slugs = Array.from(visibleCards).map(card => {
+        const link = card.querySelector<HTMLAnchorElement>('.post-card__link');
+        return link?.pathname.split('/').pop() || '';
+      }).filter(Boolean);
+
+      // Store current filter context in sessionStorage
+      sessionStorage.setItem('galleryContext', JSON.stringify({
+        slugs: slugs,
+        tag: activeTag,
+        search: searchInput.value
+      }));
+
+      // Update all visible card links to include gallery context
+      visibleCards.forEach((card, index) => {
+        const link = card.querySelector<HTMLAnchorElement>('.post-card__link');
+        if (link) {
+          const baseUrl = link.pathname;
+          link.href = `${baseUrl}?gallery=true&pos=${index}&total=${slugs.length}`;
+        }
+      });
+    }
+
+    // Tag button click handler
+    tagButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Update active state
+        tagButtons.forEach(b => b.classList.remove('tag--active'));
+        btn.classList.add('tag--active');
+        activeTag = btn.dataset.filter || 'all';
+        applyFilters();
+      });
+    });
+
+    // Search input handler (debounced)
+    let searchTimeout: ReturnType<typeof setTimeout>;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 200);
+    });
+
+    // Initial count
+    applyFilters();
+  }
+
+  // Initialize on page load
+  initFilters();
+
+  // Re-initialize after Astro View Transitions
+  document.addEventListener('astro:after-swap', initFilters);
+</script>
+
+<style>
+  .filter-bar {
+    margin-bottom: var(--space-2xl);
+  }
+
+  /* Search */
+  .filter-bar__search-wrap {
+    position: relative;
+    margin-bottom: var(--space-lg);
+  }
+
+  .filter-bar__search-icon {
+    position: absolute;
+    left: var(--space-md);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-subtle);
+    pointer-events: none;
+  }
+
+  .filter-bar__search {
+    width: 100%;
+    max-width: 400px;
+    padding: var(--space-sm) var(--space-lg);
+    padding-left: calc(var(--space-md) + 16px + var(--space-sm));
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    outline: none;
+    transition:
+      border-color var(--transition-fast),
+      background-color var(--transition-fast);
+  }
+
+  .filter-bar__search::placeholder {
+    color: var(--color-text-subtle);
+  }
+
+  .filter-bar__search:focus {
+    border-color: var(--color-accent);
+    background-color: var(--color-bg-elevated);
+  }
+
+  /* Tags */
+  .filter-bar__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+  }
+
+  /* Count */
+  .filter-bar__count {
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  /* Hidden state for filtered cards (applied via JS) */
+  :global(.post-card--hidden) {
+    display: none !important;
+  }
+</style>

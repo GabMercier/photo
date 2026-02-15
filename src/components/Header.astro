@@ -1,0 +1,430 @@
+---
+/**
+ * Header Component
+ * 
+ * Minimal, fixed navigation bar.
+ * - Logo/site name on the left
+ * - Nav links + language switcher + theme switcher on the right
+ * - Hamburger menu on mobile
+ * - Hides on scroll down, shows on scroll up (via JS)
+ */
+import { getLocaleFromUrl, t, localePath, alternateLocalePath } from '@utils/i18n';
+
+const locale = getLocaleFromUrl(Astro.url);
+const currentPath = Astro.url.pathname;
+
+// Navigation links
+const navLinks = [
+  { key: 'nav.feed', path: '/feed' },
+  { key: 'nav.gallery', path: '/gallery' },
+  { key: 'nav.about', path: '/about' },
+];
+
+/**
+ * Check if a nav link is the current page.
+ * Handles both /feed and /fr/feed cases.
+ */
+function isActive(linkPath: string): boolean {
+  const localized = localePath(linkPath, locale);
+  return currentPath === localized || currentPath === localized + '/';
+}
+---
+
+<header class="header" id="site-header">
+  <div class="header__inner container">
+    <!-- Logo / Site name -->
+    <a href={localePath('/', locale)} class="header__logo" aria-label="Home">
+      <span class="logo-lens" aria-hidden="true"></span>
+    </a>
+
+    <!-- Desktop navigation -->
+    <nav class="header__nav" aria-label="Main navigation">
+      {navLinks.map(link => (
+        <a
+          href={localePath(link.path, locale)}
+          class:list={['header__link', { 'header__link--active': isActive(link.path) }]}
+        >
+          {t(link.key, locale)}
+        </a>
+      ))}
+
+      <!-- Language switcher -->
+      <a href={alternateLocalePath(Astro.url)} class="header__lang" aria-label="Switch language">
+        {t('lang.switch', locale)}
+      </a>
+    </nav>
+
+    <!-- Mobile hamburger -->
+    <button
+      class="header__hamburger"
+      id="mobile-menu-toggle"
+      aria-label="Toggle menu"
+      aria-expanded="false"
+    >
+      <span class="header__hamburger-line"></span>
+      <span class="header__hamburger-line"></span>
+    </button>
+  </div>
+
+  <!-- Mobile menu overlay -->
+  <div class="header__mobile-menu" id="mobile-menu" aria-hidden="true">
+    <nav class="header__mobile-nav">
+      {navLinks.map(link => (
+        <a
+          href={localePath(link.path, locale)}
+          class:list={['header__mobile-link', { 'header__mobile-link--active': isActive(link.path) }]}
+        >
+          {t(link.key, locale)}
+        </a>
+      ))}
+      <div class="header__mobile-controls">
+        <a href={alternateLocalePath(Astro.url)} class="header__lang">
+          {t('lang.switch', locale)}
+        </a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<!-- Client-side scripts for mobile menu and scroll behavior -->
+<script>
+  /**
+   * Mobile menu toggle
+   */
+  function initMobileMenu() {
+    const toggle = document.getElementById('mobile-menu-toggle');
+    const menu = document.getElementById('mobile-menu');
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener('click', () => {
+      const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!isOpen));
+      menu.setAttribute('aria-hidden', String(isOpen));
+      menu.classList.toggle('header__mobile-menu--open');
+      toggle.classList.toggle('header__hamburger--open');
+
+      // Prevent body scroll when menu is open
+      document.body.style.overflow = isOpen ? '' : 'hidden';
+    });
+
+    // Close menu on link click
+    menu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        toggle.setAttribute('aria-expanded', 'false');
+        menu.setAttribute('aria-hidden', 'true');
+        menu.classList.remove('header__mobile-menu--open');
+        toggle.classList.remove('header__hamburger--open');
+        document.body.style.overflow = '';
+      });
+    });
+  }
+
+  // Initialize on first load
+  initMobileMenu();
+
+  // Re-initialize after Astro View Transitions swap
+  document.addEventListener('astro:after-swap', () => {
+    initMobileMenu();
+  });
+</script>
+
+<style>
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--header-height);
+    z-index: var(--z-header);
+    background-color: transparent; /* Transparent to show carousel gradient */
+    backdrop-filter: blur(12px); /* Frosted glass effect */
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: none; /* Remove border for seamless gradient effect */
+  }
+
+  .header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  /* Logo - transparent glass lens effect */
+  .header__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    padding: var(--space-xs);
+  }
+
+  .logo-lens {
+    --lens-size: 22px;
+
+    display: block;
+    width: var(--lens-size);
+    height: var(--lens-size);
+    position: relative;
+    border-radius: 50%;
+
+    /* Transparent center with very subtle tint */
+    background: radial-gradient(
+      circle at center,
+      hsla(var(--color-accent-hue), 15%, 70%, 0.03) 0%,
+      hsla(var(--color-accent-hue), 20%, 60%, 0.08) 70%,
+      hsla(var(--color-accent-hue), 25%, 50%, 0.12) 100%
+    );
+
+    /* Glass rim - the key element */
+    border: 1px solid hsla(var(--color-accent-hue), 15%, 80%, 0.4);
+
+    /* Subtle depth and glow */
+    box-shadow:
+      /* Inner shadow for glass depth */
+      inset 0 0 4px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
+      /* Very subtle outer glow */
+      0 0 6px hsla(var(--color-accent-hue), 20%, 70%, 0.15);
+
+    transition:
+      box-shadow var(--transition-base),
+      transform var(--transition-fast),
+      border-color var(--transition-base);
+  }
+
+  /* Top highlight arc - like light catching glass edge */
+  .logo-lens::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: 50%;
+
+    /* Arc highlight at top */
+    background: linear-gradient(
+      160deg,
+      hsla(var(--color-accent-hue), 10%, 100%, 0.25) 0%,
+      hsla(var(--color-accent-hue), 10%, 100%, 0.08) 25%,
+      transparent 50%
+    );
+
+    pointer-events: none;
+  }
+
+  /* Chromatic aberration - very subtle color fringe */
+  .logo-lens::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 50%;
+
+    /* Subtle red/cyan rim offset */
+    box-shadow:
+      -0.5px 0 0 hsla(0, 50%, 60%, 0.15),
+      0.5px 0 0 hsla(180, 50%, 60%, 0.15);
+
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  /* Hover state */
+  .header__logo:hover .logo-lens {
+    transform: scale(1.06);
+    border-color: hsla(var(--color-accent-hue), 20%, 85%, 0.55);
+
+    box-shadow:
+      inset 0 0 6px hsla(var(--color-accent-hue), 15%, 100%, 0.15),
+      0 0 10px hsla(var(--color-accent-hue), 25%, 70%, 0.25),
+      0 0 20px hsla(var(--color-accent-hue), 20%, 70%, 0.1);
+  }
+
+  .header__logo:hover .logo-lens::after {
+    opacity: 0.8;
+    box-shadow:
+      -0.75px 0 0 hsla(0, 55%, 60%, 0.2),
+      0.75px 0 0 hsla(180, 55%, 60%, 0.2);
+  }
+
+  /* Subtle idle animation - gentle shimmer */
+  @media (prefers-reduced-motion: no-preference) {
+    .logo-lens {
+      animation: lens-shimmer 6s ease-in-out infinite;
+    }
+
+    .header__logo:hover .logo-lens {
+      animation: none;
+    }
+  }
+
+  @keyframes lens-shimmer {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 4px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
+        0 0 6px hsla(var(--color-accent-hue), 20%, 70%, 0.15);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 5px hsla(var(--color-accent-hue), 12%, 100%, 0.12),
+        0 0 8px hsla(var(--color-accent-hue), 22%, 70%, 0.18);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo-lens {
+      animation: none !important;
+    }
+  }
+
+  /* Desktop nav */
+  .header__nav {
+    display: none;
+    align-items: center;
+    gap: var(--space-xl);
+  }
+
+  @media (min-width: 640px) {
+    .header__nav {
+      display: flex;
+    }
+    .header__hamburger {
+      display: none !important;
+    }
+  }
+
+  .header__link {
+    font-size: var(--text-sm);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    padding-block: var(--space-xs);
+    position: relative;
+    transition: color var(--transition-fast);
+  }
+
+  .header__link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--color-accent);
+    transform: scaleX(0);
+    transition: transform var(--transition-base);
+  }
+
+  .header__link:hover {
+    color: var(--color-text);
+  }
+
+  .header__link:hover::after {
+    transform: scaleX(1);
+  }
+
+  .header__link--active {
+    color: var(--color-accent);
+  }
+
+  .header__link--active::after {
+    transform: scaleX(1);
+  }
+
+  /* Language switcher */
+  .header__lang {
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+    border: 1px solid var(--color-border);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+  }
+
+  .header__lang:hover {
+    color: var(--color-text);
+    border-color: var(--color-text-muted);
+  }
+
+  /* Hamburger (mobile) */
+  .header__hamburger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 28px;
+    height: 28px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .header__hamburger-line {
+    display: block;
+    width: 100%;
+    height: 1.5px;
+    background-color: var(--color-text);
+    transition: transform var(--transition-base), opacity var(--transition-fast);
+  }
+
+  .header__hamburger--open .header__hamburger-line:first-child {
+    transform: translateY(3.25px) rotate(45deg);
+  }
+
+  .header__hamburger--open .header__hamburger-line:last-child {
+    transform: translateY(-3.25px) rotate(-45deg);
+  }
+
+  /* Mobile menu overlay */
+  .header__mobile-menu {
+    position: fixed;
+    inset: 0;
+    top: var(--header-height);
+    background-color: var(--color-bg);
+    z-index: calc(var(--z-header) - 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+  }
+
+  .header__mobile-menu--open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .header__mobile-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2xl);
+  }
+
+  .header__mobile-link {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .header__mobile-link:hover,
+  .header__mobile-link--active {
+    color: var(--color-accent);
+  }
+
+  .header__mobile-controls {
+    margin-top: var(--space-xl);
+    display: flex;
+    gap: var(--space-lg);
+  }
+
+  @media (min-width: 640px) {
+    .header__mobile-menu {
+      display: none;
+    }
+  }
+</style>

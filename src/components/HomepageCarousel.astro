@@ -1,0 +1,547 @@
+---
+/**
+ * Homepage Carousel Component
+ *
+ * Full-screen image carousel with auto-rotation and manual controls.
+ * Features:
+ * - Auto-rotation (5s intervals, 10s for reduced-motion)
+ * - Manual controls: arrows, dots, pause button
+ * - Keyboard navigation (arrow keys, spacebar)
+ * - Touch gestures (swipe left/right)
+ * - Ambient glow effect (YouTube-style)
+ * - Accessibility: screen reader announcements, proper labeling
+ * - Circular navigation (wraps around)
+ */
+import { localized, localePath } from '@utils/i18n';
+import { deriveAccentFromGlow } from '@utils/extractColors';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  carouselPosts: CollectionEntry<'posts'>[];
+  defaultPostSlug?: string;
+  locale: 'en' | 'fr';
+}
+
+const { carouselPosts, defaultPostSlug, locale } = Astro.props;
+const defaultIndex = carouselPosts.findIndex(p => p.slug === defaultPostSlug);
+const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
+---
+
+<section
+  class="homepage-carousel"
+  role="region"
+  aria-roledescription="carousel"
+  aria-label="Featured photography"
+  data-default-index={initialIndex}
+>
+  <!-- Live region for screen reader announcements -->
+  <div id="carousel-live-region" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Slides -->
+  <div class="carousel__track">
+    {carouselPosts.map((post, index) => {
+      const { title, coverImage, glowColor } = post.data;
+      const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+      const accent = deriveAccentFromGlow(glow.r, glow.g, glow.b);
+      const slug = post.slug || post.id.replace(/\.md$/, '');
+      const postUrl = localePath(`/posts/${slug}`, locale);
+      const isInitial = index === initialIndex;
+
+      return (
+        <div
+          class:list={['carousel__slide', { 'carousel__slide--active': isInitial }]}
+          data-index={index}
+          data-accent-hue={accent.hue}
+          data-accent-saturation={accent.saturation}
+          data-accent-lightness={accent.lightness}
+          style={{
+            '--glow-r': glow.r,
+            '--glow-g': glow.g,
+            '--glow-b': glow.b,
+          }}
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`Slide ${index + 1} of ${carouselPosts.length}`}
+        >
+          <!-- Ambient glow layer -->
+          <div class="carousel__glow"></div>
+
+          <!-- Clickable image -->
+          <a href={postUrl} class="carousel__link">
+            <img
+              src={coverImage.src}
+              alt={localized(coverImage.alt, locale)}
+              class="carousel__image"
+              loading={index === 0 ? 'eager' : 'lazy'}
+              decoding={index === 0 ? 'sync' : 'async'}
+              fetchpriority={index === 0 ? 'high' : 'auto'}
+            />
+          </a>
+
+          <!-- Caption removed for cleaner look -->
+        </div>
+      );
+    })}
+  </div>
+
+  <!-- Navigation Controls -->
+  <div class="carousel__controls">
+    <!-- Previous/Next Arrows -->
+    <button class="carousel__arrow carousel__arrow--prev" aria-label="Previous image">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+
+    <button class="carousel__arrow carousel__arrow--next" aria-label="Next image">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
+
+    <!-- Pause Button -->
+    <button class="carousel__pause" aria-label="Pause auto-rotation" aria-pressed="false">
+      <svg class="carousel__pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="6" y="4" width="4" height="16"></rect>
+        <rect x="14" y="4" width="4" height="16"></rect>
+      </svg>
+      <svg class="carousel__play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" hidden>
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+    </button>
+  </div>
+</section>
+
+<style>
+  /* Full viewport carousel */
+  .homepage-carousel {
+    position: relative;
+    width: 100%;
+    height: 100vh; /* Full viewport to extend under header */
+    overflow: hidden;
+    background: var(--color-bg);
+  }
+
+  /* Track holds all slides */
+  .carousel__track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Individual slides - positioned to avoid header/footer */
+  .carousel__slide {
+    position: absolute;
+    top: var(--header-height); /* Start below header */
+    bottom: 80px; /* Space for footer */
+    left: 0;
+    right: 0;
+    opacity: 0;
+    transition: opacity 800ms var(--ease-out-smooth);
+    pointer-events: none;
+  }
+
+  .carousel__slide--active {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+  }
+
+  /* Ambient glow (adapted from PostCard feed mode) */
+  .carousel__glow {
+    position: absolute;
+    inset: -250px;
+    background: radial-gradient(
+      ellipse 120% 100% at center,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.15) 10%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 20%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.09) 30%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.03) 60%,
+      transparent 80%
+    );
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(60px);
+    mix-blend-mode: screen;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+
+  .carousel__slide--active .carousel__glow {
+    opacity: 1;
+  }
+
+  /* Image and link */
+  .carousel__link {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .carousel__image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  /* Controls container */
+  .carousel__controls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .carousel__arrow,
+  .carousel__dot,
+  .carousel__pause {
+    pointer-events: auto;
+  }
+
+  /* Navigation arrows - hidden by default, visible on interaction */
+  .carousel__arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    opacity: 0; /* Hidden by default */
+    transition: all var(--transition-fast);
+  }
+
+  /* Show controls on carousel hover/focus or when interacted */
+  .homepage-carousel:hover .carousel__arrow,
+  .homepage-carousel:focus-within .carousel__arrow,
+  .homepage-carousel.controls-visible .carousel__arrow,
+  .carousel__arrow:focus-visible {
+    opacity: 1;
+  }
+
+  .carousel__arrow:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .carousel__arrow--prev {
+    left: var(--space-xl);
+  }
+
+  .carousel__arrow--next {
+    right: var(--space-xl);
+  }
+
+  /* Pause button - positioned on right side */
+  .carousel__pause {
+    position: absolute;
+    bottom: var(--space-2xl);
+    right: var(--space-xl);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    opacity: 0; /* Hidden by default */
+    transition: all var(--transition-fast);
+  }
+
+  /* Show pause button on interaction */
+  .homepage-carousel:hover .carousel__pause,
+  .homepage-carousel:focus-within .carousel__pause,
+  .homepage-carousel.controls-visible .carousel__pause,
+  .carousel__pause:focus-visible {
+    opacity: 1;
+  }
+
+  .carousel__pause:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .carousel__pause[aria-pressed="true"] .carousel__pause-icon {
+    display: none;
+  }
+
+  .carousel__pause[aria-pressed="true"] .carousel__play-icon {
+    display: block;
+  }
+
+  /* Visually hidden for screen readers */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .carousel__slide {
+      bottom: 60px; /* Smaller space for footer on mobile */
+    }
+
+    .carousel__arrow {
+      width: 40px;
+      height: 40px;
+    }
+
+    .carousel__arrow--prev {
+      left: var(--space-md);
+    }
+
+    .carousel__arrow--next {
+      right: var(--space-md);
+    }
+
+    .carousel__pause {
+      bottom: var(--space-lg);
+      right: var(--space-md);
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  /* Respect motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .carousel__slide,
+    .carousel__glow {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  interface CarouselState {
+    currentIndex: number;
+    totalSlides: number;
+    isPlaying: boolean;
+    autoplayInterval: number | null;
+    autoplayDelay: number;
+  }
+
+  // Wait for DOM
+  document.addEventListener('DOMContentLoaded', initCarousel);
+  document.addEventListener('astro:after-swap', initCarousel);
+
+  function initCarousel() {
+    const carousel = document.querySelector('.homepage-carousel');
+    if (!carousel) return;
+
+    const slides = Array.from(carousel.querySelectorAll('.carousel__slide'));
+    const prevBtn = carousel.querySelector('.carousel__arrow--prev');
+    const nextBtn = carousel.querySelector('.carousel__arrow--next');
+    const pauseBtn = carousel.querySelector('.carousel__pause');
+    const liveRegion = document.getElementById('carousel-live-region');
+
+    if (slides.length === 0) return;
+
+    // Respect reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const state: CarouselState = {
+      currentIndex: parseInt(carousel.getAttribute('data-default-index') || '0'),
+      totalSlides: slides.length,
+      isPlaying: true,
+      autoplayInterval: null,
+      autoplayDelay: prefersReducedMotion ? 10000 : 5000
+    };
+
+    // Show initial slide
+    goToSlide(state.currentIndex, false);
+
+    // Event listeners
+    prevBtn?.addEventListener('click', () => {
+      goToSlide((state.currentIndex - 1 + state.totalSlides) % state.totalSlides);
+    });
+
+    nextBtn?.addEventListener('click', () => {
+      goToSlide((state.currentIndex + 1) % state.totalSlides);
+    });
+
+    pauseBtn?.addEventListener('click', toggleAutoplay);
+
+    // Keyboard navigation
+    function handleKeydown(e: KeyboardEvent) {
+      if (e.key === 'ArrowLeft') {
+        goToSlide((state.currentIndex - 1 + state.totalSlides) % state.totalSlides);
+      } else if (e.key === 'ArrowRight') {
+        goToSlide((state.currentIndex + 1) % state.totalSlides);
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        toggleAutoplay();
+      }
+    }
+    document.addEventListener('keydown', handleKeydown);
+
+    // Touch gestures
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let controlsTimeout: number | null = null;
+
+    // Show controls temporarily on touch/click
+    function showControlsTemporarily() {
+      carousel.classList.add('controls-visible');
+      if (controlsTimeout) clearTimeout(controlsTimeout);
+      controlsTimeout = window.setTimeout(() => {
+        carousel.classList.remove('controls-visible');
+      }, 3000); // Hide after 3 seconds
+    }
+
+    carousel.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      showControlsTemporarily();
+    });
+
+    carousel.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchStartX - touchEndX;
+      const threshold = 50;
+
+      if (Math.abs(diff) > threshold) {
+        if (diff > 0) {
+          // Swipe left - next
+          goToSlide((state.currentIndex + 1) % state.totalSlides);
+        } else {
+          // Swipe right - prev
+          goToSlide((state.currentIndex - 1 + state.totalSlides) % state.totalSlides);
+        }
+      }
+    });
+
+    // Show controls on click (for non-hover devices)
+    carousel.addEventListener('click', showControlsTemporarily);
+
+    // Pause on hover (desktop)
+    carousel.addEventListener('mouseenter', () => {
+      if (state.isPlaying && state.autoplayInterval) {
+        pauseAutoplay();
+      }
+    });
+
+    carousel.addEventListener('mouseleave', () => {
+      if (state.isPlaying && !state.autoplayInterval) {
+        startAutoplay();
+      }
+    });
+
+    // Start autoplay
+    startAutoplay();
+
+    // Functions
+    function goToSlide(index: number, announce = true) {
+      // Remove active from current
+      slides[state.currentIndex]?.classList.remove('carousel__slide--active');
+
+      // Add active to new
+      state.currentIndex = index;
+      const activeSlide = slides[index];
+      activeSlide?.classList.add('carousel__slide--active');
+
+      // Update body accent color from slide data
+      if (activeSlide) {
+        const hue = activeSlide.getAttribute('data-accent-hue');
+        const sat = activeSlide.getAttribute('data-accent-saturation');
+        const light = activeSlide.getAttribute('data-accent-lightness');
+        if (hue && sat && light) {
+          document.body.style.setProperty('--color-accent-hue', hue);
+          document.body.style.setProperty('--color-accent-saturation', `${sat}%`);
+          document.body.style.setProperty('--color-accent-lightness', `${light}%`);
+        }
+      }
+
+      // Announce to screen readers
+      if (announce && liveRegion) {
+        liveRegion.textContent = `Slide ${index + 1} of ${state.totalSlides}`;
+      }
+
+      // Preload adjacent images
+      preloadAdjacentImages();
+
+      // Reset autoplay timer
+      if (state.isPlaying) {
+        resetAutoplay();
+      }
+    }
+
+    function preloadAdjacentImages() {
+      const nextIndex = (state.currentIndex + 1) % state.totalSlides;
+      const prevIndex = (state.currentIndex - 1 + state.totalSlides) % state.totalSlides;
+
+      [nextIndex, prevIndex].forEach(i => {
+        const img = slides[i]?.querySelector('img') as HTMLImageElement | null;
+        if (img && img.src) {
+          const preload = new Image();
+          preload.src = img.src;
+        }
+      });
+    }
+
+    function startAutoplay() {
+      if (!state.isPlaying || state.autoplayInterval) return;
+
+      state.autoplayInterval = window.setInterval(() => {
+        goToSlide((state.currentIndex + 1) % state.totalSlides);
+      }, state.autoplayDelay);
+    }
+
+    function pauseAutoplay() {
+      if (state.autoplayInterval) {
+        clearInterval(state.autoplayInterval);
+        state.autoplayInterval = null;
+      }
+    }
+
+    function resetAutoplay() {
+      pauseAutoplay();
+      startAutoplay();
+    }
+
+    function toggleAutoplay() {
+      state.isPlaying = !state.isPlaying;
+
+      if (pauseBtn) {
+        pauseBtn.setAttribute('aria-pressed', String(!state.isPlaying));
+        pauseBtn.setAttribute('aria-label', state.isPlaying ? 'Pause auto-rotation' : 'Resume auto-rotation');
+      }
+
+      if (state.isPlaying) {
+        startAutoplay();
+      } else {
+        pauseAutoplay();
+      }
+    }
+
+    // Cleanup on navigation
+    document.addEventListener('astro:before-swap', () => {
+      pauseAutoplay();
+      if (controlsTimeout) clearTimeout(controlsTimeout);
+      document.removeEventListener('keydown', handleKeydown);
+    }, { once: true });
+  }
+</script>

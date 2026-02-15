@@ -1,0 +1,352 @@
+---
+/**
+ * PostCard Component
+ * 
+ * Displays a post as a card in the feed or gallery grid.
+ * Shows cover image with hover overlay containing title, tags, date.
+ * 
+ * Used by: Feed page, Gallery page, Homepage featured section
+ */
+import { getLocaleFromUrl, localized, localePath, t } from '@utils/i18n';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  post: CollectionEntry<'posts'>;
+  /** Enable staggered animation (pass index for delay) */
+  index?: number;
+  /** Aspect ratio variant */
+  variant?: 'square' | 'landscape' | 'auto';
+  /** Layout mode: grid (with hover overlay) or feed (metadata below) */
+  layout?: 'grid' | 'feed';
+}
+
+const locale = getLocaleFromUrl(Astro.url);
+const { post, index = 0, variant = 'auto', layout = 'grid' } = Astro.props;
+const { title, coverImage, tags, date, postType, glowColor } = post.data;
+
+// Fallback to cool blue-gray if no color extracted
+const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+
+// Remove .md extension from post ID
+const slug = post.slug || post.id.replace(/\.md$/, '');
+const postUrl = localePath(`/posts/${slug}`, locale);
+const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+---
+
+<article
+  class:list={[
+    'post-card',
+    `post-card--${variant}`,
+    `post-card--${layout}`,
+    layout === 'grid' && 'animate-in'
+  ]}
+  style={{
+    animationDelay: layout === 'grid' ? `${index * 60}ms` : undefined,
+    '--glow-r': glow.r,
+    '--glow-g': glow.g,
+    '--glow-b': glow.b,
+  }}
+  data-tags={tags.join(',')}
+>
+  <a href={postUrl} class="post-card__link" aria-label={localized(title, locale)}>
+    <div class="post-card__image-wrap">
+      <img
+        src={coverImage.src}
+        alt={localized(coverImage.alt, locale)}
+        class="post-card__image"
+        loading="lazy"
+        decoding="async"
+      />
+
+      {/* Only show overlay in grid mode */}
+      {layout === 'grid' && (
+        <div class="post-card__overlay">
+          <div class="post-card__overlay-content">
+            <h3 class="post-card__title">{localized(title, locale)}</h3>
+            <div class="post-card__meta">
+              <time datetime={date.toISOString()}>{formattedDate}</time>
+              {postType === 'series' && (
+                <span class="post-card__badge">{t('post.series', locale)}</span>
+              )}
+            </div>
+            <div class="post-card__tags">
+              {tags.slice(0, 3).map(tag => (
+                <span class="post-card__tag">{tag}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+  </a>
+</article>
+
+<style>
+  .post-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--border-radius);
+    background-color: var(--color-surface);
+    break-inside: avoid;
+    margin-bottom: var(--space-lg);
+  }
+
+  .post-card__link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* Image */
+  .post-card__image-wrap {
+    position: relative;
+    overflow: hidden;
+    display: block;
+  }
+
+  .post-card__image {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform var(--transition-gallery);
+  }
+
+  /* Square variant - force 1:1 aspect ratio */
+  .post-card--square .post-card__image-wrap {
+    aspect-ratio: 1;
+  }
+
+  .post-card--square .post-card__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Overlay — appears on hover */
+  .post-card__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: var(--space-lg);
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.2) 50%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity var(--transition-base);
+  }
+
+  .post-card:hover .post-card__overlay {
+    opacity: 1;
+  }
+
+  .post-card__overlay-content {
+    transform: translateY(8px);
+    transition: transform var(--transition-base);
+  }
+
+  .post-card:hover .post-card__overlay-content {
+    transform: translateY(0);
+  }
+
+  /* Ambient glow effect for grid mode - appears on hover */
+  .post-card--grid .post-card__image-wrap::after {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    background: radial-gradient(
+      ellipse 90% 90% at center,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.1) 40%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.05) 60%,
+      transparent 80%
+    );
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+  }
+
+  .post-card--grid:hover .post-card__image-wrap::after {
+    opacity: 1;
+  }
+
+  /* Allow glow to extend beyond for grid mode too */
+  .post-card--grid .post-card__image-wrap {
+    overflow: visible;
+  }
+
+  .post-card__title {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: var(--space-xs);
+  }
+
+  .post-card__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--text-xs);
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: var(--space-sm);
+  }
+
+  .post-card__badge {
+    padding: 1px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .post-card__tags {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+  }
+
+  .post-card__tag {
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .post-card__tag:not(:last-child)::after {
+    content: '·';
+    margin-left: var(--space-xs);
+  }
+
+  /* Parallax container for feed mode */
+  .post-card--feed .post-card__image {
+    transition: transform 0.1s ease-out;
+    will-change: transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .post-card--feed .post-card__image {
+      transform: none !important;
+    }
+  }
+
+  /* Feed-specific layout */
+  .post-card--feed {
+    background-color: transparent;
+    border-radius: 0;
+    margin-bottom: 0; /* Controlled by parent gap */
+    break-inside: auto;
+    overflow: visible; /* CRITICAL: Allow glow to extend beyond card boundaries */
+
+    /* Scroll animation initial state */
+    opacity: 0;
+    transform: translateY(40px) scale(0.98);
+    transition:
+      opacity 0.8s var(--ease-out-smooth),
+      transform 0.8s var(--ease-out-smooth);
+  }
+
+  /* Center image in feed mode */
+  .post-card--feed .post-card__link {
+    display: flex;
+    justify-content: center;
+  }
+
+  .post-card--feed.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .post-card--feed .post-card__image-wrap {
+    border-radius: var(--border-radius);
+    position: relative;
+    overflow: visible; /* Allow glow to extend beyond */
+    isolation: isolate; /* Create stacking context for glow */
+    max-height: 75vh; /* Limit image height to 75% of viewport */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ambient glow effect - full viewport width like homepage */
+  .post-card--feed .post-card__image-wrap::before {
+    content: '';
+    position: absolute;
+    /* Use viewport-relative positioning to ensure full-width coverage */
+    top: -250px;
+    bottom: -250px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    background: radial-gradient(
+      ellipse 120% 100% at center,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.15) 10%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 20%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.09) 30%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.03) 60%,
+      transparent 80%
+    );
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    filter: blur(60px);
+    mix-blend-mode: screen;
+  }
+
+  /* Show glow when card is visible */
+  .post-card--feed.visible .post-card__image-wrap::before {
+    opacity: 1;
+  }
+
+  /* Ensure image sits above glow */
+  .post-card--feed .post-card__image {
+    position: relative;
+    z-index: 1;
+    display: block;
+    max-height: 75vh; /* Match parent constraint */
+    width: auto; /* Maintain aspect ratio */
+    max-width: 100%; /* Don't overflow container width */
+    object-fit: contain;
+  }
+
+  .post-card--feed::after {
+    display: none; /* Remove border effect in feed mode */
+  }
+
+  /* Respect user preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .post-card--feed {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+
+  /* Progressive enhancement for modern browsers */
+  @supports (animation-timeline: view()) {
+    .post-card--feed {
+      animation: revealCard linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .post-card--feed {
+        animation: none;
+      }
+    }
+  }
+</style>

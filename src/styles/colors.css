@@ -1,0 +1,84 @@
+/**
+ * Dynamic Color System
+ *
+ * Accent color adapts to image content:
+ * - Default: Cool blue-gray (neutral, cold tone)
+ * - On pages with images: Accent derived from image's dominant color
+ * - Effect is subtle - just a hint of the matching color
+ *
+ * The accent HSL values can be overridden per-page via body style:
+ *   style="--color-accent-hue: 200; --color-accent-saturation: 40%; --color-accent-lightness: 60%;"
+ */
+
+:root {
+  /* Dynamic accent system - these can be overridden per-page via body style */
+  /* Default: Cool blue-gray (neutral, cold) */
+  --color-accent-hue: 200;
+  --color-accent-saturation: 12%;
+  --color-accent-lightness: 60%;
+}
+
+/* Computed accent colors on body level so they respond to body-level variable overrides */
+body {
+  /* -------------------------------------------------------------------------
+   * PRIMARY ACCENT - Logo, active states, primary buttons
+   * Full saturation as derived from image (still clamped by deriveAccentFromGlow)
+   * ------------------------------------------------------------------------- */
+  --color-accent: hsl(
+    var(--color-accent-hue),
+    var(--color-accent-saturation),
+    var(--color-accent-lightness)
+  );
+  --color-accent-hover: hsl(
+    var(--color-accent-hue),
+    var(--color-accent-saturation),
+    calc(var(--color-accent-lightness) + 8%)
+  );
+  --color-accent-subtle: hsla(
+    var(--color-accent-hue),
+    var(--color-accent-saturation),
+    var(--color-accent-lightness),
+    0.12
+  );
+
+  /* -------------------------------------------------------------------------
+   * TINTED TEXT - Secondary text that picks up a subtle hint of accent
+   * Very low saturation for readability, just enough to feel cohesive
+   * ------------------------------------------------------------------------- */
+  --color-text-tinted: hsl(
+    var(--color-accent-hue),
+    8%,
+    75%
+  );
+  --color-text-muted-tinted: hsl(
+    var(--color-accent-hue),
+    12%,
+    60%
+  );
+  --color-text-subtle-tinted: hsl(
+    var(--color-accent-hue),
+    10%,
+    45%
+  );
+
+  /* -------------------------------------------------------------------------
+   * TINTED BORDERS - Borders with subtle accent hint
+   * ------------------------------------------------------------------------- */
+  --color-border-tinted: hsl(
+    var(--color-accent-hue),
+    8%,
+    28%
+  );
+  --color-border-subtle-tinted: hsl(
+    var(--color-accent-hue),
+    6%,
+    22%
+  );
+
+  /* -------------------------------------------------------------------------
+   * LOGO LENS - Chromatic aberration colors for glass effect
+   * Fixed red/cyan provides realistic prismatic fringing
+   * ------------------------------------------------------------------------- */
+  --logo-ca-red: hsla(0, 65%, 55%, 0.6);
+  --logo-ca-cyan: hsla(180, 65%, 55%, 0.6);
+}

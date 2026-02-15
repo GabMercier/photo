@@ -1,0 +1,51 @@
+---
+import { getLocaleFromUrl, t } from '@utils/i18n';
+
+const locale = getLocaleFromUrl(Astro.url);
+const year = new Date().getFullYear();
+
+// Check if we're on homepage
+const isHomepage = Astro.url.pathname === '/' || Astro.url.pathname === '/fr/';
+---
+
+<footer class:list={['footer', isHomepage && 'footer--homepage']}>
+  <div class="footer__inner container">
+    <span class="footer__copyright">
+      &copy; {year} {t('footer.rights', locale)}
+    </span>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    padding: var(--space-2xl) 0;
+    border-top: none; /* Remove border for transparent effect */
+    margin-top: var(--space-4xl);
+    background: transparent;
+    position: relative;
+    z-index: 10; /* Ensure footer sits above carousel glow */
+  }
+
+  .footer__inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .footer__copyright {
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+  }
+
+  /* Homepage-specific styles - overlay the carousel */
+  .footer--homepage {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin-top: 0;
+    z-index: 100; /* Above carousel */
+  }
+</style>

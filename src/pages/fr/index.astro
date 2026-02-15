@@ -1,0 +1,110 @@
+---
+/**
+ * Homepage (French)
+ *
+ * Full-screen carousel showcasing selected photography posts.
+ * Uses homepageCarousel frontmatter field to select posts for display.
+ */
+import Base from '@layouts/Base.astro';
+import HomepageCarousel from '@components/HomepageCarousel.astro';
+import { getCollection } from 'astro:content';
+import { getLocaleFromUrl } from '@utils/i18n';
+import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
+
+const locale = getLocaleFromUrl(Astro.url);
+
+// Fetch posts marked for carousel
+const allPosts = await getCollection('posts', ({ data }) => {
+  return data.homepageCarousel && !data.draft && !data.private;
+});
+
+// Extract glow colors for posts that don't have them
+const postsWithColors = await Promise.all(
+  allPosts.map(async (post) => {
+    // Use existing glowColor from frontmatter if present
+    if (post.data.glowColor) {
+      return post;
+    }
+
+    // Otherwise extract at build time
+    const imagePath = post.data.coverImage.src;
+    const glowColor = await extractDominantColor(imagePath);
+
+    return {
+      ...post,
+      data: {
+        ...post.data,
+        glowColor,
+      },
+    };
+  })
+);
+
+// Sort by date (newest first)
+const carouselPosts = postsWithColors.sort((a, b) =>
+  b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+// Find default post
+const defaultPost = carouselPosts.find(p => p.data.homepageDefault);
+const defaultSlug = defaultPost?.slug;
+
+// Get initial accent from default post or first post
+const initialPost = defaultPost || carouselPosts[0];
+const initialGlow = initialPost?.data.glowColor || { r: 58, g: 68, b: 71 };
+const initialAccent = deriveAccentFromGlow(initialGlow.r, initialGlow.g, initialGlow.b);
+---
+
+<Base
+  accentHue={carouselPosts.length > 0 ? initialAccent.hue : undefined}
+  accentSaturation={carouselPosts.length > 0 ? initialAccent.saturation : undefined}
+  accentLightness={carouselPosts.length > 0 ? initialAccent.lightness : undefined}
+>
+  {carouselPosts.length > 0 ? (
+    <HomepageCarousel
+      carouselPosts={carouselPosts}
+      defaultPostSlug={defaultSlug}
+      locale={locale}
+    />
+  ) : (
+    <!-- Fallback if no carousel posts -->
+    <section class="hero">
+      <div class="container">
+        <h1>GMBPHO<span class="hero__dot">.</span>TO</h1>
+        <p>{locale === 'fr' ? 'Photographie' : 'Photography'}</p>
+        <a href={locale === 'fr' ? '/fr/feed' : '/feed'} class="btn btn--accent">
+          {locale === 'fr' ? 'Voir le fil' : 'View Feed'}
+        </a>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - var(--header-height));
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: clamp(var(--text-4xl), 10vw, 8rem);
+    letter-spacing: 0.15em;
+    margin-bottom: var(--space-md);
+  }
+
+  .hero__dot {
+    color: var(--color-accent);
+  }
+
+  .hero p {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    color: var(--color-text-muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-2xl);
+  }
+</style>
