@@ -1,0 +1,109 @@
+---
+/**
+ * Homepage Hero Fallback
+ *
+ * Displays when no carousel posts are available.
+ * Glass text effect with chromatic aberration.
+ */
+---
+
+<section class="hero">
+  <div class="container">
+    <h1>gpho<span class="hero__dot"></span>to</h1>
+  </div>
+</section>
+
+<style>
+  .hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - var(--header-height));
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-family: 'Urbanist', sans-serif;
+    font-weight: 600;
+    font-size: clamp(var(--text-4xl), 10vw, 8rem);
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-md);
+    position: relative;
+
+    /* Completely hollow - outline only, no fill */
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+
+    /* Thin glass edge/rim */
+    -webkit-text-stroke: 0.5px hsla(var(--color-accent-hue), 12%, 78%, 0.4);
+
+    /* Subtle glow + chromatic aberration at edges */
+    text-shadow:
+      0 0 6px hsla(var(--color-accent-hue), 18%, 70%, 0.1),
+      -0.3px 0 0 hsla(0, 45%, 70%, 0.06),
+      0.3px 0 0 hsla(180, 45%, 70%, 0.06);
+
+    transition:
+      text-shadow var(--transition-base),
+      -webkit-text-stroke var(--transition-base);
+  }
+
+  /* Hover - intensify the glass edge */
+  .hero h1:hover {
+    -webkit-text-stroke: 0.5px hsla(var(--color-accent-hue), 15%, 85%, 0.55);
+    text-shadow:
+      0 0 12px hsla(var(--color-accent-hue), 22%, 70%, 0.2),
+      0 0 25px hsla(var(--color-accent-hue), 18%, 70%, 0.1),
+      -0.5px 0 0 hsla(0, 50%, 70%, 0.12),
+      0.5px 0 0 hsla(180, 50%, 70%, 0.12);
+  }
+
+  .hero__dot {
+    display: inline-block;
+    width: 0.12em;
+    height: 0.12em;
+    margin: 0 0.01em;
+    vertical-align: baseline;
+    position: relative;
+    border-radius: 50%;
+
+    /* Completely hollow - outline only */
+    background: transparent;
+
+    /* Thin glass rim */
+    border: 0.5px solid hsla(var(--color-accent-hue), 12%, 78%, 0.35);
+
+    /* Subtle outer glow only */
+    box-shadow: 0 0 4px hsla(var(--color-accent-hue), 14%, 70%, 0.08);
+
+    transition:
+      border-color var(--transition-base),
+      box-shadow var(--transition-base);
+  }
+
+  .hero__dot::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 50%;
+    box-shadow:
+      -0.3px 0 0 hsla(0, 45%, 60%, 0.1),
+      0.3px 0 0 hsla(180, 45%, 60%, 0.1);
+    pointer-events: none;
+    opacity: 0.5;
+    transition: opacity var(--transition-base), box-shadow var(--transition-base);
+  }
+
+  /* Hover state for dot */
+  .hero h1:hover .hero__dot {
+    border-color: hsla(var(--color-accent-hue), 15%, 85%, 0.45);
+    box-shadow: 0 0 8px hsla(var(--color-accent-hue), 20%, 70%, 0.18);
+  }
+
+  .hero h1:hover .hero__dot::after {
+    opacity: 0.7;
+    box-shadow:
+      -0.5px 0 0 hsla(0, 50%, 60%, 0.15),
+      0.5px 0 0 hsla(180, 50%, 60%, 0.15);
+  }
+</style>

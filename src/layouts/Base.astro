@@ -9,6 +9,7 @@ import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import { ViewTransitions } from 'astro:transitions';
 import { getLocaleFromUrl, t } from '@utils/i18n';
+import '@styles/global.css';
 
 interface Props {
   title?: string;
@@ -61,9 +62,6 @@ const fullTitle = title || 'Photography';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@600&display=swap" rel="stylesheet" />
-
-    <!-- Global styles -->
-    <link rel="stylesheet" href="/src/styles/global.css" />
 
     <!-- View Transitions for smooth navigation -->
     <ViewTransitions />

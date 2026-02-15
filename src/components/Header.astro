@@ -68,19 +68,20 @@ function isActive(linkPath: string): boolean {
     </button>
   </div>
 
-  <!-- Mobile menu overlay -->
+  <!-- Mobile menu overlay (full-screen) -->
   <div class="header__mobile-menu" id="mobile-menu" aria-hidden="true">
     <nav class="header__mobile-nav">
-      {navLinks.map(link => (
+      {navLinks.map((link, index) => (
         <a
           href={localePath(link.path, locale)}
           class:list={['header__mobile-link', { 'header__mobile-link--active': isActive(link.path) }]}
+          style={`--link-index: ${index}`}
         >
           {t(link.key, locale)}
         </a>
       ))}
-      <div class="header__mobile-controls">
-        <a href={alternateLocalePath(Astro.url)} class="header__lang">
+      <div class="header__mobile-controls" style="--link-index: 3">
+        <a href={alternateLocalePath(Astro.url)} class="header__mobile-lang">
           {t('lang.switch', locale)}
         </a>
       </div>
@@ -96,7 +97,8 @@ function isActive(linkPath: string): boolean {
   function initMobileMenu() {
     const toggle = document.getElementById('mobile-menu-toggle');
     const menu = document.getElementById('mobile-menu');
-    if (!toggle || !menu) return;
+    const header = document.getElementById('site-header');
+    if (!toggle || !menu || !header) return;
 
     toggle.addEventListener('click', () => {
       const isOpen = toggle.getAttribute('aria-expanded') === 'true';
@@ -104,6 +106,7 @@ function isActive(linkPath: string): boolean {
       menu.setAttribute('aria-hidden', String(isOpen));
       menu.classList.toggle('header__mobile-menu--open');
       toggle.classList.toggle('header__hamburger--open');
+      header.classList.toggle('header--menu-open');
 
       // Prevent body scroll when menu is open
       document.body.style.overflow = isOpen ? '' : 'hidden';
@@ -116,6 +119,7 @@ function isActive(linkPath: string): boolean {
         menu.setAttribute('aria-hidden', 'true');
         menu.classList.remove('header__mobile-menu--open');
         toggle.classList.remove('header__hamburger--open');
+        header.classList.remove('header--menu-open');
         document.body.style.overflow = '';
       });
     });
@@ -194,6 +198,14 @@ function isActive(linkPath: string): boolean {
     -webkit-backdrop-filter: blur(12px);
     border-bottom: none; /* Remove border for seamless gradient effect */
     overflow: visible;
+    transition: background-color var(--transition-base);
+  }
+
+  /* When mobile menu is open, solid background */
+  .header--menu-open {
+    background-color: var(--color-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .header__inner {
@@ -202,6 +214,8 @@ function isActive(linkPath: string): boolean {
     justify-content: space-between;
     height: 100%;
     overflow: visible;
+    position: relative;
+    z-index: 2; /* Above mobile menu overlay */
   }
 
   /* Logo - full text that collapses to dot on scroll */
@@ -220,23 +234,23 @@ function isActive(linkPath: string): boolean {
     transition: all var(--transition-base);
   }
 
-  /* Glass text effect */
+  /* Glass text effect - hollow/translucent with thin edge */
   .logo__text {
     display: inline;
     background: linear-gradient(
       165deg,
-      hsla(var(--color-accent-hue), 10%, 80%, 0.12) 0%,
-      hsla(var(--color-accent-hue), 15%, 70%, 0.06) 50%,
-      hsla(var(--color-accent-hue), 10%, 80%, 0.12) 100%
+      hsla(var(--color-accent-hue), 8%, 75%, 0.04) 0%,
+      hsla(var(--color-accent-hue), 10%, 70%, 0.015) 50%,
+      hsla(var(--color-accent-hue), 8%, 75%, 0.04) 100%
     );
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), 15%, 80%, 0.5);
+    -webkit-text-stroke: 0.5px hsla(var(--color-accent-hue), 12%, 78%, 0.4);
     text-shadow:
-      0 0 8px hsla(var(--color-accent-hue), 20%, 70%, 0.2),
-      -0.4px 0 0 hsla(0, 50%, 70%, 0.12),
-      0.4px 0 0 hsla(180, 50%, 70%, 0.12);
+      0 0 6px hsla(var(--color-accent-hue), 18%, 70%, 0.12),
+      -0.3px 0 0 hsla(0, 45%, 70%, 0.08),
+      0.3px 0 0 hsla(180, 45%, 70%, 0.08);
     opacity: 1;
     max-width: 120px;
     overflow: visible;
@@ -259,21 +273,21 @@ function isActive(linkPath: string): boolean {
     vertical-align: baseline;
     margin: 0 0.02em;
 
-    /* Transparent glass center */
+    /* Hollow glass - very translucent center */
     background: radial-gradient(
       circle at center,
-      hsla(var(--color-accent-hue), 15%, 70%, 0.03) 0%,
-      hsla(var(--color-accent-hue), 20%, 60%, 0.08) 70%,
-      hsla(var(--color-accent-hue), 25%, 50%, 0.12) 100%
+      hsla(var(--color-accent-hue), 10%, 70%, 0.01) 0%,
+      hsla(var(--color-accent-hue), 15%, 60%, 0.03) 70%,
+      hsla(var(--color-accent-hue), 18%, 55%, 0.05) 100%
     );
 
-    /* Glass rim */
-    border: 1px solid hsla(var(--color-accent-hue), 15%, 80%, 0.4);
+    /* Thin glass rim */
+    border: 0.5px solid hsla(var(--color-accent-hue), 12%, 78%, 0.35);
 
-    /* Depth and glow */
+    /* Subtle depth and glow */
     box-shadow:
-      inset 0 0 4px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
-      0 0 6px hsla(var(--color-accent-hue), 20%, 70%, 0.2);
+      inset 0 0 3px hsla(var(--color-accent-hue), 8%, 100%, 0.06),
+      0 0 5px hsla(var(--color-accent-hue), 16%, 70%, 0.1);
 
     transition:
       width var(--transition-base),
@@ -291,8 +305,8 @@ function isActive(linkPath: string): boolean {
     border-radius: 50%;
     background: linear-gradient(
       160deg,
-      hsla(var(--color-accent-hue), 10%, 100%, 0.25) 0%,
-      hsla(var(--color-accent-hue), 10%, 100%, 0.08) 25%,
+      hsla(var(--color-accent-hue), 8%, 100%, 0.15) 0%,
+      hsla(var(--color-accent-hue), 8%, 100%, 0.04) 25%,
       transparent 50%
     );
     pointer-events: none;
@@ -305,33 +319,33 @@ function isActive(linkPath: string): boolean {
     inset: -1px;
     border-radius: 50%;
     box-shadow:
-      -0.5px 0 0 hsla(0, 50%, 60%, 0.15),
-      0.5px 0 0 hsla(180, 50%, 60%, 0.15);
+      -0.3px 0 0 hsla(0, 45%, 60%, 0.1),
+      0.3px 0 0 hsla(180, 45%, 60%, 0.1);
     pointer-events: none;
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   /* Hover state */
   .header__logo:hover .logo__text {
-    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), 20%, 85%, 0.65);
+    -webkit-text-stroke: 0.5px hsla(var(--color-accent-hue), 15%, 85%, 0.55);
     text-shadow:
-      0 0 10px hsla(var(--color-accent-hue), 25%, 70%, 0.25),
-      -0.5px 0 0 hsla(0, 55%, 70%, 0.15),
-      0.5px 0 0 hsla(180, 55%, 70%, 0.15);
+      0 0 10px hsla(var(--color-accent-hue), 22%, 70%, 0.18),
+      -0.4px 0 0 hsla(0, 50%, 70%, 0.12),
+      0.4px 0 0 hsla(180, 50%, 70%, 0.12);
   }
 
   .header__logo:hover .logo__dot {
-    border-color: hsla(var(--color-accent-hue), 20%, 85%, 0.55);
+    border-color: hsla(var(--color-accent-hue), 15%, 85%, 0.45);
     box-shadow:
-      inset 0 0 4px hsla(var(--color-accent-hue), 15%, 100%, 0.15),
-      0 0 8px hsla(var(--color-accent-hue), 25%, 70%, 0.25);
+      inset 0 0 4px hsla(var(--color-accent-hue), 12%, 100%, 0.1),
+      0 0 8px hsla(var(--color-accent-hue), 20%, 70%, 0.18);
   }
 
   .header__logo:hover .logo__dot::after {
-    opacity: 0.8;
+    opacity: 0.7;
     box-shadow:
-      -0.75px 0 0 hsla(0, 55%, 60%, 0.2),
-      0.75px 0 0 hsla(180, 55%, 60%, 0.2);
+      -0.5px 0 0 hsla(0, 50%, 60%, 0.15),
+      0.5px 0 0 hsla(180, 50%, 60%, 0.15);
   }
 
   /* ========================== */
@@ -362,13 +376,13 @@ function isActive(linkPath: string): boolean {
   @keyframes dot-shimmer {
     0%, 100% {
       box-shadow:
-        inset 0 0 3px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
-        0 0 5px hsla(var(--color-accent-hue), 20%, 70%, 0.15);
+        inset 0 0 3px hsla(var(--color-accent-hue), 8%, 100%, 0.06),
+        0 0 5px hsla(var(--color-accent-hue), 16%, 70%, 0.1);
     }
     50% {
       box-shadow:
-        inset 0 0 4px hsla(var(--color-accent-hue), 12%, 100%, 0.12),
-        0 0 7px hsla(var(--color-accent-hue), 22%, 70%, 0.18);
+        inset 0 0 4px hsla(var(--color-accent-hue), 10%, 100%, 0.08),
+        0 0 6px hsla(var(--color-accent-hue), 18%, 70%, 0.12);
     }
   }
 
@@ -480,11 +494,12 @@ function isActive(linkPath: string): boolean {
     transform: translateY(-3.25px) rotate(-45deg);
   }
 
-  /* Mobile menu overlay */
+  /* ================================== */
+  /* Mobile menu overlay (full-screen) */
+  /* ================================== */
   .header__mobile-menu {
     position: fixed;
     inset: 0;
-    top: var(--header-height);
     background-color: var(--color-bg);
     z-index: calc(var(--z-header) - 1);
     display: flex;
@@ -492,12 +507,16 @@ function isActive(linkPath: string): boolean {
     align-items: center;
     justify-content: center;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity var(--transition-base);
+    transition:
+      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0.4s;
   }
 
   .header__mobile-menu--open {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
   }
 
@@ -505,15 +524,50 @@ function isActive(linkPath: string): boolean {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-2xl);
+    gap: var(--space-xl);
   }
 
   .header__mobile-link {
-    font-family: var(--font-display);
-    font-size: var(--text-3xl);
+    font-family: var(--font-body);
+    font-size: clamp(1.5rem, 6vw, 2rem);
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--color-text-muted);
     text-decoration: none;
-    transition: color var(--transition-fast);
+    position: relative;
+    padding: var(--space-sm) var(--space-md);
+
+    /* Staggered animation setup */
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      color var(--transition-fast),
+      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: calc(var(--link-index, 0) * 0.08s);
+  }
+
+  .header__mobile-menu--open .header__mobile-link {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .header__mobile-link::after {
+    content: '';
+    position: absolute;
+    bottom: var(--space-xs);
+    left: var(--space-md);
+    right: var(--space-md);
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-accent),
+      transparent
+    );
+    transform: scaleX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .header__mobile-link:hover,
@@ -521,10 +575,53 @@ function isActive(linkPath: string): boolean {
     color: var(--color-accent);
   }
 
+  .header__mobile-link:hover::after,
+  .header__mobile-link--active::after {
+    transform: scaleX(1);
+  }
+
   .header__mobile-controls {
-    margin-top: var(--space-xl);
-    display: flex;
-    gap: var(--space-lg);
+    margin-top: var(--space-2xl);
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: calc(var(--link-index, 3) * 0.08s);
+  }
+
+  .header__mobile-menu--open .header__mobile-controls {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .header__mobile-lang {
+    font-size: var(--text-sm);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+    border: 1px solid var(--color-border);
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+  }
+
+  .header__mobile-lang:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .header__mobile-menu {
+      transition: opacity 0.15s, visibility 0.15s;
+    }
+    .header__mobile-link,
+    .header__mobile-controls {
+      transition: color 0.15s, opacity 0.15s;
+      transform: none !important;
+      transition-delay: 0s !important;
+    }
   }
 
   @media (min-width: 640px) {
