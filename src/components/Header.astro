@@ -32,9 +32,11 @@ function isActive(linkPath: string): boolean {
 
 <header class="header" id="site-header">
   <div class="header__inner container">
-    <!-- Logo / Site name -->
+    <!-- Logo / Site name - collapses to dot on scroll -->
     <a href={localePath('/', locale)} class="header__logo" aria-label="Home">
-      <span class="logo-lens" aria-hidden="true"></span>
+      <span class="logo__text" aria-hidden="true">gpho</span>
+      <span class="logo__dot" aria-hidden="true"></span>
+      <span class="logo__text" aria-hidden="true">to</span>
     </a>
 
     <!-- Desktop navigation -->
@@ -119,12 +121,63 @@ function isActive(linkPath: string): boolean {
     });
   }
 
+  /**
+   * Logo scroll behavior - collapse to dot on scroll or inactivity
+   * Expands again on page load/navigation only
+   */
+  function initScrollBehavior() {
+    const header = document.getElementById('site-header');
+    if (!header) return;
+
+    const SCROLL_THRESHOLD = 50;
+    const INACTIVITY_DELAY = 3000; // 3 seconds
+
+    let inactivityTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    function collapse() {
+      header.classList.add('header--scrolled');
+    }
+
+    function expand() {
+      header.classList.remove('header--scrolled');
+    }
+
+    function updateHeaderState() {
+      if (window.scrollY > SCROLL_THRESHOLD) {
+        collapse();
+      } else {
+        expand();
+      }
+    }
+
+    // Initial check
+    updateHeaderState();
+
+    // Start inactivity timer (only runs once per page load)
+    inactivityTimeout = setTimeout(() => {
+      // Only collapse if not already scrolled down
+      if (window.scrollY <= SCROLL_THRESHOLD) {
+        collapse();
+      }
+    }, INACTIVITY_DELAY);
+
+    // Listen for scroll - scrolling up at top expands, scrolling down collapses
+    window.addEventListener('scroll', updateHeaderState, { passive: true });
+
+    // Cleanup on navigation
+    document.addEventListener('astro:before-swap', () => {
+      if (inactivityTimeout) clearTimeout(inactivityTimeout);
+    }, { once: true });
+  }
+
   // Initialize on first load
   initMobileMenu();
+  initScrollBehavior();
 
   // Re-initialize after Astro View Transitions swap
   document.addEventListener('astro:after-swap', () => {
     initMobileMenu();
+    initScrollBehavior();
   });
 </script>
 
@@ -140,6 +193,7 @@ function isActive(linkPath: string): boolean {
     backdrop-filter: blur(12px); /* Frosted glass effect */
     -webkit-backdrop-filter: blur(12px);
     border-bottom: none; /* Remove border for seamless gradient effect */
+    overflow: visible;
   }
 
   .header__inner {
@@ -147,27 +201,65 @@ function isActive(linkPath: string): boolean {
     align-items: center;
     justify-content: space-between;
     height: 100%;
+    overflow: visible;
   }
 
-  /* Logo - transparent glass lens effect */
+  /* Logo - full text that collapses to dot on scroll */
   .header__logo {
     display: inline-flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: center;
     text-decoration: none;
     padding: var(--space-xs);
+    font-family: 'Urbanist', sans-serif;
+    font-weight: 600;
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    letter-spacing: 0.06em;
+    line-height: 1;
+    overflow: visible;
+    transition: all var(--transition-base);
   }
 
-  .logo-lens {
-    --lens-size: 22px;
+  /* Glass text effect */
+  .logo__text {
+    display: inline;
+    background: linear-gradient(
+      165deg,
+      hsla(var(--color-accent-hue), 10%, 80%, 0.12) 0%,
+      hsla(var(--color-accent-hue), 15%, 70%, 0.06) 50%,
+      hsla(var(--color-accent-hue), 10%, 80%, 0.12) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), 15%, 80%, 0.5);
+    text-shadow:
+      0 0 8px hsla(var(--color-accent-hue), 20%, 70%, 0.2),
+      -0.4px 0 0 hsla(0, 50%, 70%, 0.12),
+      0.4px 0 0 hsla(180, 50%, 70%, 0.12);
+    opacity: 1;
+    max-width: 120px;
+    overflow: visible;
+    transition:
+      opacity var(--transition-base),
+      max-width var(--transition-base),
+      margin var(--transition-base);
+  }
 
-    display: block;
-    width: var(--lens-size);
-    height: var(--lens-size);
+  /* Glass dot - positioned at baseline like a URL period */
+  .logo__dot {
+    --dot-size: 0.22em;
+
+    display: inline-block;
+    width: var(--dot-size);
+    height: var(--dot-size);
+    flex-shrink: 0;
     position: relative;
     border-radius: 50%;
+    vertical-align: baseline;
+    margin: 0 0.02em;
 
-    /* Transparent center with very subtle tint */
+    /* Transparent glass center */
     background: radial-gradient(
       circle at center,
       hsla(var(--color-accent-hue), 15%, 70%, 0.03) 0%,
@@ -175,100 +267,113 @@ function isActive(linkPath: string): boolean {
       hsla(var(--color-accent-hue), 25%, 50%, 0.12) 100%
     );
 
-    /* Glass rim - the key element */
+    /* Glass rim */
     border: 1px solid hsla(var(--color-accent-hue), 15%, 80%, 0.4);
 
-    /* Subtle depth and glow */
+    /* Depth and glow */
     box-shadow:
-      /* Inner shadow for glass depth */
       inset 0 0 4px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
-      /* Very subtle outer glow */
-      0 0 6px hsla(var(--color-accent-hue), 20%, 70%, 0.15);
+      0 0 6px hsla(var(--color-accent-hue), 20%, 70%, 0.2);
 
     transition:
+      width var(--transition-base),
+      height var(--transition-base),
+      transform var(--transition-base),
       box-shadow var(--transition-base),
-      transform var(--transition-fast),
       border-color var(--transition-base);
   }
 
-  /* Top highlight arc - like light catching glass edge */
-  .logo-lens::before {
+  /* Dot highlight arc */
+  .logo__dot::before {
     content: '';
     position: absolute;
     inset: 1px;
     border-radius: 50%;
-
-    /* Arc highlight at top */
     background: linear-gradient(
       160deg,
       hsla(var(--color-accent-hue), 10%, 100%, 0.25) 0%,
       hsla(var(--color-accent-hue), 10%, 100%, 0.08) 25%,
       transparent 50%
     );
-
     pointer-events: none;
   }
 
-  /* Chromatic aberration - very subtle color fringe */
-  .logo-lens::after {
+  /* Dot chromatic aberration */
+  .logo__dot::after {
     content: '';
     position: absolute;
     inset: -1px;
     border-radius: 50%;
-
-    /* Subtle red/cyan rim offset */
     box-shadow:
       -0.5px 0 0 hsla(0, 50%, 60%, 0.15),
       0.5px 0 0 hsla(180, 50%, 60%, 0.15);
-
     pointer-events: none;
     opacity: 0.6;
   }
 
   /* Hover state */
-  .header__logo:hover .logo-lens {
-    transform: scale(1.06);
-    border-color: hsla(var(--color-accent-hue), 20%, 85%, 0.55);
-
-    box-shadow:
-      inset 0 0 6px hsla(var(--color-accent-hue), 15%, 100%, 0.15),
+  .header__logo:hover .logo__text {
+    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), 20%, 85%, 0.65);
+    text-shadow:
       0 0 10px hsla(var(--color-accent-hue), 25%, 70%, 0.25),
-      0 0 20px hsla(var(--color-accent-hue), 20%, 70%, 0.1);
+      -0.5px 0 0 hsla(0, 55%, 70%, 0.15),
+      0.5px 0 0 hsla(180, 55%, 70%, 0.15);
   }
 
-  .header__logo:hover .logo-lens::after {
+  .header__logo:hover .logo__dot {
+    border-color: hsla(var(--color-accent-hue), 20%, 85%, 0.55);
+    box-shadow:
+      inset 0 0 4px hsla(var(--color-accent-hue), 15%, 100%, 0.15),
+      0 0 8px hsla(var(--color-accent-hue), 25%, 70%, 0.25);
+  }
+
+  .header__logo:hover .logo__dot::after {
     opacity: 0.8;
     box-shadow:
       -0.75px 0 0 hsla(0, 55%, 60%, 0.2),
       0.75px 0 0 hsla(180, 55%, 60%, 0.2);
   }
 
-  /* Subtle idle animation - gentle shimmer */
+  /* ========================== */
+  /* Scrolled state - dot only  */
+  /* ========================== */
+  .header--scrolled .logo__text {
+    opacity: 0;
+    max-width: 0;
+    margin: 0;
+  }
+
+  .header--scrolled .logo__dot {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Subtle shimmer animation on dot when collapsed */
   @media (prefers-reduced-motion: no-preference) {
-    .logo-lens {
-      animation: lens-shimmer 6s ease-in-out infinite;
+    .header--scrolled .logo__dot {
+      animation: dot-shimmer 6s ease-in-out infinite;
     }
 
-    .header__logo:hover .logo-lens {
+    .header__logo:hover .logo__dot {
       animation: none;
     }
   }
 
-  @keyframes lens-shimmer {
+  @keyframes dot-shimmer {
     0%, 100% {
       box-shadow:
-        inset 0 0 4px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
-        0 0 6px hsla(var(--color-accent-hue), 20%, 70%, 0.15);
+        inset 0 0 3px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
+        0 0 5px hsla(var(--color-accent-hue), 20%, 70%, 0.15);
     }
     50% {
       box-shadow:
-        inset 0 0 5px hsla(var(--color-accent-hue), 12%, 100%, 0.12),
-        0 0 8px hsla(var(--color-accent-hue), 22%, 70%, 0.18);
+        inset 0 0 4px hsla(var(--color-accent-hue), 12%, 100%, 0.12),
+        0 0 7px hsla(var(--color-accent-hue), 22%, 70%, 0.18);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .logo-lens {
+    .logo__dot {
       animation: none !important;
     }
   }
