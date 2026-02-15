@@ -12,5 +12,9 @@ tagline:
 contact:
   email: ""
   instagram: ""
----
+  twitter: ""
 
+bio:
+  en: ""
+  fr: ""
+---

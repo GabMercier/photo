@@ -3,24 +3,28 @@
  * About Page (French)
  *
  * Profile photo + bio with minimalist design.
- * Content is loaded from src/content/about/fr.md
+ * Content is loaded from a single bilingual file: src/content/about/about.md
  */
 import Base from '@layouts/Base.astro';
-import { getCollection, render } from 'astro:content';
+import { getCollection } from 'astro:content';
 import { getLocaleFromUrl, localized, t } from '@utils/i18n';
+import { marked } from 'marked';
 
 const locale = getLocaleFromUrl(Astro.url);
 
-// Get about content for current locale
+// Get about content (single bilingual file)
 const aboutEntries = await getCollection('about');
-const about = aboutEntries.find(entry => entry.id === `${locale}.md`) || aboutEntries[0];
+const about = aboutEntries.find(entry => entry.id === 'about.md') || aboutEntries[0];
 
 if (!about) {
-  throw new Error('No about content found. Create src/content/about/fr.md');
+  throw new Error('No about content found. Create src/content/about/about.md');
 }
 
-const { profileImage, tagline, contact } = about.data;
-const { Content } = await render(about);
+const { profileImage, tagline, contact, bio } = about.data;
+
+// Render the localized bio markdown to HTML
+const bioContent = bio ? localized(bio, locale) : '';
+const bioHtml = bioContent ? await marked.parse(bioContent) : '';
 ---
 
 <Base title={t('nav.about', locale)}>
@@ -42,9 +46,7 @@ const { Content } = await render(about);
           <p class="about__tagline">{localized(tagline, locale)}</p>
         )}
 
-        <div class="about__bio prose">
-          <Content />
-        </div>
+        <div class="about__bio prose" set:html={bioHtml} />
 
         {contact && (contact.email || contact.instagram || contact.twitter) && (
           <div class="about__contact">

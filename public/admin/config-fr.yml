@@ -207,9 +207,9 @@ collections:
   - name: "about"
     label: "👤 À propos"
     files:
-      - name: "about-fr"
-        label: "🇫🇷 À propos (Français)"
-        file: "src/content/about/fr.md"
+      - name: "about"
+        label: "À propos / About"
+        file: "src/content/about/about.md"
         fields:
           - label: "Photo de profil"
             name: "profileImage"
@@ -262,65 +262,13 @@ collections:
                 required: false
                 hint: "Sans @"
 
-          - label: "Biographie (Français)"
-            name: "body"
-            widget: "markdown"
-
-      - name: "about-en"
-        label: "🇬🇧 About (English)"
-        file: "src/content/about/en.md"
-        fields:
-          - label: "Profile Image"
-            name: "profileImage"
+          - label: "Biographie"
+            name: "bio"
             widget: "object"
-            fields:
-              - label: "Image"
-                name: "src"
-                widget: "image"
-              - label: "Alt Text"
-                name: "alt"
-                widget: "object"
-                fields:
-                  - label: "🇫🇷 Français"
-                    name: "fr"
-                    widget: "string"
-                  - label: "🇬🇧 English"
-                    name: "en"
-                    widget: "string"
-
-          - label: "Tagline"
-            name: "tagline"
-            widget: "object"
-            required: false
             fields:
               - label: "🇫🇷 Français"
                 name: "fr"
-                widget: "string"
+                widget: "markdown"
               - label: "🇬🇧 English"
                 name: "en"
-                widget: "string"
-
-          - label: "Contact"
-            name: "contact"
-            widget: "object"
-            required: false
-            collapsed: true
-            fields:
-              - label: "Email"
-                name: "email"
-                widget: "string"
-                required: false
-              - label: "Instagram"
-                name: "instagram"
-                widget: "string"
-                required: false
-                hint: "Without @"
-              - label: "Twitter"
-                name: "twitter"
-                widget: "string"
-                required: false
-                hint: "Without @"
-
-          - label: "Bio (English)"
-            name: "body"
-            widget: "markdown"
+                widget: "markdown"
