@@ -227,30 +227,30 @@ function isActive(linkPath: string): boolean {
     padding: var(--space-xs);
     font-family: 'Urbanist', sans-serif;
     font-weight: 600;
-    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-size: clamp(2rem, 5vw, 2.5rem);
     letter-spacing: 0.06em;
     line-height: 1;
     overflow: visible;
     transition: all var(--transition-base);
   }
 
-  /* Glass text effect - hollow/translucent with thin edge */
+  /* Glass text effect - translucent with crisp edge */
   .logo__text {
     display: inline;
     background: linear-gradient(
       165deg,
-      hsla(var(--color-accent-hue), 8%, 75%, 0.04) 0%,
-      hsla(var(--color-accent-hue), 10%, 70%, 0.015) 50%,
-      hsla(var(--color-accent-hue), 8%, 75%, 0.04) 100%
+      hsla(var(--color-accent-hue), 10%, 82%, 0.08) 0%,
+      hsla(var(--color-accent-hue), 12%, 78%, 0.03) 50%,
+      hsla(var(--color-accent-hue), 10%, 82%, 0.08) 100%
     );
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 0.5px hsla(var(--color-accent-hue), 12%, 78%, 0.4);
+    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), 12%, 72%, 0.85);
     text-shadow:
-      0 0 6px hsla(var(--color-accent-hue), 18%, 70%, 0.12),
-      -0.3px 0 0 hsla(0, 45%, 70%, 0.08),
-      0.3px 0 0 hsla(180, 45%, 70%, 0.08);
+      0 0 6px hsla(var(--color-accent-hue), 18%, 70%, 0.15),
+      -0.5px 0 0 hsla(0, 50%, 62%, 0.18),
+      0.5px 0 0 hsla(180, 50%, 62%, 0.18);
     opacity: 1;
     max-width: 120px;
     overflow: visible;
@@ -273,21 +273,21 @@ function isActive(linkPath: string): boolean {
     vertical-align: baseline;
     margin: 0 0.02em;
 
-    /* Hollow glass - very translucent center */
+    /* Hollow glass - subtle translucent center */
     background: radial-gradient(
       circle at center,
-      hsla(var(--color-accent-hue), 10%, 70%, 0.01) 0%,
-      hsla(var(--color-accent-hue), 15%, 60%, 0.03) 70%,
-      hsla(var(--color-accent-hue), 18%, 55%, 0.05) 100%
+      hsla(var(--color-accent-hue), 12%, 75%, 0.03) 0%,
+      hsla(var(--color-accent-hue), 16%, 68%, 0.08) 70%,
+      hsla(var(--color-accent-hue), 18%, 62%, 0.12) 100%
     );
 
-    /* Thin glass rim */
-    border: 0.5px solid hsla(var(--color-accent-hue), 12%, 78%, 0.35);
+    /* Crisp glass rim */
+    border: 1.5px solid hsla(var(--color-accent-hue), 12%, 72%, 0.8);
 
-    /* Subtle depth and glow */
+    /* Subtle glow */
     box-shadow:
-      inset 0 0 3px hsla(var(--color-accent-hue), 8%, 100%, 0.06),
-      0 0 5px hsla(var(--color-accent-hue), 16%, 70%, 0.1);
+      inset 0 0 3px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
+      0 0 4px hsla(var(--color-accent-hue), 18%, 70%, 0.15);
 
     transition:
       width var(--transition-base),
@@ -305,8 +305,8 @@ function isActive(linkPath: string): boolean {
     border-radius: 50%;
     background: linear-gradient(
       160deg,
-      hsla(var(--color-accent-hue), 8%, 100%, 0.15) 0%,
-      hsla(var(--color-accent-hue), 8%, 100%, 0.04) 25%,
+      hsla(var(--color-accent-hue), 12%, 100%, 0.3) 0%,
+      hsla(var(--color-accent-hue), 10%, 100%, 0.1) 25%,
       transparent 50%
     );
     pointer-events: none;
@@ -319,33 +319,33 @@ function isActive(linkPath: string): boolean {
     inset: -1px;
     border-radius: 50%;
     box-shadow:
-      -0.3px 0 0 hsla(0, 45%, 60%, 0.1),
-      0.3px 0 0 hsla(180, 45%, 60%, 0.1);
+      -0.5px 0 0 hsla(0, 55%, 60%, 0.2),
+      0.5px 0 0 hsla(180, 55%, 60%, 0.2);
     pointer-events: none;
-    opacity: 0.5;
+    opacity: 0.7;
   }
 
   /* Hover state */
   .header__logo:hover .logo__text {
-    -webkit-text-stroke: 0.5px hsla(var(--color-accent-hue), 15%, 85%, 0.55);
+    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), 15%, 80%, 0.95);
     text-shadow:
-      0 0 10px hsla(var(--color-accent-hue), 22%, 70%, 0.18),
-      -0.4px 0 0 hsla(0, 50%, 70%, 0.12),
-      0.4px 0 0 hsla(180, 50%, 70%, 0.12);
+      0 0 10px hsla(var(--color-accent-hue), 22%, 70%, 0.25),
+      -0.6px 0 0 hsla(0, 55%, 62%, 0.22),
+      0.6px 0 0 hsla(180, 55%, 62%, 0.22);
   }
 
   .header__logo:hover .logo__dot {
-    border-color: hsla(var(--color-accent-hue), 15%, 85%, 0.45);
+    border-color: hsla(var(--color-accent-hue), 15%, 80%, 0.9);
     box-shadow:
-      inset 0 0 4px hsla(var(--color-accent-hue), 12%, 100%, 0.1),
-      0 0 8px hsla(var(--color-accent-hue), 20%, 70%, 0.18);
+      inset 0 0 4px hsla(var(--color-accent-hue), 12%, 100%, 0.15),
+      0 0 8px hsla(var(--color-accent-hue), 22%, 70%, 0.25);
   }
 
   .header__logo:hover .logo__dot::after {
-    opacity: 0.7;
+    opacity: 0.9;
     box-shadow:
-      -0.5px 0 0 hsla(0, 50%, 60%, 0.15),
-      0.5px 0 0 hsla(180, 50%, 60%, 0.15);
+      -0.7px 0 0 hsla(0, 60%, 60%, 0.25),
+      0.7px 0 0 hsla(180, 60%, 60%, 0.25);
   }
 
   /* ========================== */
@@ -358,8 +358,8 @@ function isActive(linkPath: string): boolean {
   }
 
   .header--scrolled .logo__dot {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
   }
 
   /* Subtle shimmer animation on dot when collapsed */
@@ -376,13 +376,13 @@ function isActive(linkPath: string): boolean {
   @keyframes dot-shimmer {
     0%, 100% {
       box-shadow:
-        inset 0 0 3px hsla(var(--color-accent-hue), 8%, 100%, 0.06),
-        0 0 5px hsla(var(--color-accent-hue), 16%, 70%, 0.1);
+        inset 0 0 3px hsla(var(--color-accent-hue), 10%, 100%, 0.1),
+        0 0 4px hsla(var(--color-accent-hue), 18%, 70%, 0.15);
     }
     50% {
       box-shadow:
-        inset 0 0 4px hsla(var(--color-accent-hue), 10%, 100%, 0.08),
-        0 0 6px hsla(var(--color-accent-hue), 18%, 70%, 0.12);
+        inset 0 0 4px hsla(var(--color-accent-hue), 12%, 100%, 0.14),
+        0 0 6px hsla(var(--color-accent-hue), 20%, 70%, 0.2);
     }
   }
 
