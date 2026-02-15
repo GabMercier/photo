@@ -1,0 +1,326 @@
+# =============================================================================
+# Configuration Decap CMS (Français)
+# =============================================================================
+# CMS bilingue pour portfolio photo (EN/FR)
+# Les champs correspondent au schéma Astro dans src/content.config.ts
+# =============================================================================
+
+# --- Backend ---
+backend:
+  name: github
+  repo: GabMercier/photo
+  branch: main
+
+# --- Développement local ---
+# Exécuter: npx decap-server (depuis la racine du projet)
+local_backend: true
+
+# --- Médias ---
+media_folder: "public/images/uploads"
+public_folder: "/images/uploads"
+
+# --- Langue de l'interface ---
+locale: "fr"
+
+# =============================================================================
+# Collections
+# =============================================================================
+collections:
+
+  # ==========================================================================
+  # Collection des Publications
+  # ==========================================================================
+  - name: "posts"
+    label: "📷 Publications"
+    label_singular: "Publication"
+    folder: "src/content/posts"
+    create: true
+    slug: "{{slug}}"
+    extension: "md"
+    identifier_field: "title.fr"
+    summary: "{{title.fr}} — {{date}}"
+    sortable_fields: ["date", "title.fr"]
+
+    view_filters:
+      - label: "🏠 Carrousel d'accueil"
+        field: "homepageCarousel"
+        pattern: true
+      - label: "⭐ En vedette"
+        field: "featured"
+        pattern: true
+      - label: "🔒 Privé"
+        field: "private"
+        pattern: true
+      - label: "📚 Série"
+        field: "postType"
+        pattern: "series"
+
+    fields:
+      # --- Titre ---
+      - label: "Titre"
+        name: "title"
+        widget: "object"
+        summary: "{{fields.fr}}"
+        fields:
+          - label: "🇫🇷 Français"
+            name: "fr"
+            widget: "string"
+          - label: "🇬🇧 English"
+            name: "en"
+            widget: "string"
+
+      # --- Description ---
+      - label: "Description"
+        name: "description"
+        widget: "object"
+        required: false
+        collapsed: true
+        fields:
+          - label: "🇫🇷 Français"
+            name: "fr"
+            widget: "string"
+            required: false
+          - label: "🇬🇧 English"
+            name: "en"
+            widget: "string"
+            required: false
+
+      # --- Date ---
+      - label: "Date"
+        name: "date"
+        widget: "datetime"
+        date_format: "YYYY-MM-DD"
+        time_format: false
+
+      # --- Image principale ---
+      - label: "Image principale"
+        name: "coverImage"
+        widget: "object"
+        fields:
+          - label: "Image"
+            name: "src"
+            widget: "image"
+          - label: "Texte alternatif"
+            name: "alt"
+            widget: "object"
+            fields:
+              - label: "🇫🇷 Français"
+                name: "fr"
+                widget: "string"
+              - label: "🇬🇧 English"
+                name: "en"
+                widget: "string"
+
+      # --- Images supplémentaires ---
+      - label: "Images supplémentaires"
+        name: "images"
+        widget: "list"
+        required: false
+        collapsed: true
+        label_singular: "Image"
+        summary: "{{fields.alt.fr}}"
+        fields:
+          - label: "Image"
+            name: "src"
+            widget: "image"
+          - label: "Texte alternatif"
+            name: "alt"
+            widget: "object"
+            fields:
+              - label: "🇫🇷 Français"
+                name: "fr"
+                widget: "string"
+              - label: "🇬🇧 English"
+                name: "en"
+                widget: "string"
+          - label: "Appareil photo"
+            name: "camera"
+            widget: "string"
+            required: false
+          - label: "Objectif"
+            name: "lens"
+            widget: "string"
+            required: false
+          - label: "Paramètres"
+            name: "settings"
+            widget: "string"
+            required: false
+            hint: "ex: f/2.8 · 1/500s · ISO 100"
+
+      # --- Classification ---
+      - label: "Étiquettes"
+        name: "tags"
+        widget: "list"
+        default: []
+        hint: "rue, macro, portrait, paysage, etc."
+
+      - label: "Type de publication"
+        name: "postType"
+        widget: "select"
+        options:
+          - label: "Image unique"
+            value: "single"
+          - label: "Série"
+            value: "series"
+        default: "single"
+
+      # --- Visibilité ---
+      - label: "Brouillon"
+        name: "draft"
+        widget: "boolean"
+        default: false
+        hint: "Non publié"
+
+      - label: "Privé"
+        name: "private"
+        widget: "boolean"
+        default: false
+        hint: "Accès protégé"
+
+      - label: "En vedette"
+        name: "featured"
+        widget: "boolean"
+        default: false
+
+      # --- Page d'accueil ---
+      - label: "Afficher dans le carrousel"
+        name: "homepageCarousel"
+        widget: "boolean"
+        default: false
+        hint: "Afficher sur la page d'accueil"
+
+      - label: "Diapositive par défaut"
+        name: "homepageDefault"
+        widget: "boolean"
+        default: false
+        hint: "Commencer le carrousel ici"
+
+      # --- Contenu ---
+      - label: "Contenu"
+        name: "body"
+        widget: "markdown"
+        hint: "Contenu textuel optionnel"
+
+  # ==========================================================================
+  # Page À propos
+  # ==========================================================================
+  - name: "about"
+    label: "👤 À propos"
+    files:
+      - name: "about-fr"
+        label: "🇫🇷 À propos (Français)"
+        file: "src/content/about/fr.md"
+        fields:
+          - label: "Photo de profil"
+            name: "profileImage"
+            widget: "object"
+            fields:
+              - label: "Image"
+                name: "src"
+                widget: "image"
+              - label: "Texte alternatif"
+                name: "alt"
+                widget: "object"
+                fields:
+                  - label: "🇫🇷 Français"
+                    name: "fr"
+                    widget: "string"
+                  - label: "🇬🇧 English"
+                    name: "en"
+                    widget: "string"
+
+          - label: "Slogan"
+            name: "tagline"
+            widget: "object"
+            required: false
+            fields:
+              - label: "🇫🇷 Français"
+                name: "fr"
+                widget: "string"
+              - label: "🇬🇧 English"
+                name: "en"
+                widget: "string"
+
+          - label: "Coordonnées"
+            name: "contact"
+            widget: "object"
+            required: false
+            collapsed: true
+            fields:
+              - label: "Courriel"
+                name: "email"
+                widget: "string"
+                required: false
+              - label: "Instagram"
+                name: "instagram"
+                widget: "string"
+                required: false
+                hint: "Sans @"
+              - label: "Twitter"
+                name: "twitter"
+                widget: "string"
+                required: false
+                hint: "Sans @"
+
+          - label: "Biographie (Français)"
+            name: "body"
+            widget: "markdown"
+
+      - name: "about-en"
+        label: "🇬🇧 About (English)"
+        file: "src/content/about/en.md"
+        fields:
+          - label: "Profile Image"
+            name: "profileImage"
+            widget: "object"
+            fields:
+              - label: "Image"
+                name: "src"
+                widget: "image"
+              - label: "Alt Text"
+                name: "alt"
+                widget: "object"
+                fields:
+                  - label: "🇫🇷 Français"
+                    name: "fr"
+                    widget: "string"
+                  - label: "🇬🇧 English"
+                    name: "en"
+                    widget: "string"
+
+          - label: "Tagline"
+            name: "tagline"
+            widget: "object"
+            required: false
+            fields:
+              - label: "🇫🇷 Français"
+                name: "fr"
+                widget: "string"
+              - label: "🇬🇧 English"
+                name: "en"
+                widget: "string"
+
+          - label: "Contact"
+            name: "contact"
+            widget: "object"
+            required: false
+            collapsed: true
+            fields:
+              - label: "Email"
+                name: "email"
+                widget: "string"
+                required: false
+              - label: "Instagram"
+                name: "instagram"
+                widget: "string"
+                required: false
+                hint: "Without @"
+              - label: "Twitter"
+                name: "twitter"
+                widget: "string"
+                required: false
+                hint: "Without @"
+
+          - label: "Bio (English)"
+            name: "body"
+            widget: "markdown"

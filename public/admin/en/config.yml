@@ -1,0 +1,300 @@
+# =============================================================================
+# Decap CMS Configuration (English)
+# =============================================================================
+
+backend:
+  name: github
+  repo: GabMercier/photo
+  branch: main
+
+local_backend: true
+
+media_folder: "public/images/uploads"
+public_folder: "/images/uploads"
+
+locale: "en"
+
+collections:
+
+  # ==========================================================================
+  # Posts
+  # ==========================================================================
+  - name: "posts"
+    label: "Posts"
+    label_singular: "Post"
+    folder: "src/content/posts"
+    create: true
+    slug: "{{slug}}"
+    extension: "md"
+    identifier_field: "title.en"
+    summary: "{{title.en}} — {{date}}"
+    sortable_fields: ["date", "title.en"]
+
+    view_filters:
+      - label: "Homepage Carousel"
+        field: "homepageCarousel"
+        pattern: true
+      - label: "Featured"
+        field: "featured"
+        pattern: true
+      - label: "Private"
+        field: "private"
+        pattern: true
+      - label: "Series"
+        field: "postType"
+        pattern: "series"
+
+    fields:
+      - label: "Title"
+        name: "title"
+        widget: "object"
+        summary: "{{fields.en}}"
+        fields:
+          - label: "English"
+            name: "en"
+            widget: "string"
+          - label: "Français"
+            name: "fr"
+            widget: "string"
+
+      - label: "Description"
+        name: "description"
+        widget: "object"
+        required: false
+        collapsed: true
+        fields:
+          - label: "English"
+            name: "en"
+            widget: "string"
+            required: false
+          - label: "Français"
+            name: "fr"
+            widget: "string"
+            required: false
+
+      - label: "Date"
+        name: "date"
+        widget: "datetime"
+        date_format: "YYYY-MM-DD"
+        time_format: false
+
+      - label: "Cover Image"
+        name: "coverImage"
+        widget: "object"
+        fields:
+          - label: "Image"
+            name: "src"
+            widget: "image"
+          - label: "Alt Text"
+            name: "alt"
+            widget: "object"
+            fields:
+              - label: "English"
+                name: "en"
+                widget: "string"
+              - label: "Français"
+                name: "fr"
+                widget: "string"
+
+      - label: "Additional Images"
+        name: "images"
+        widget: "list"
+        required: false
+        collapsed: true
+        label_singular: "Image"
+        summary: "{{fields.alt.en}}"
+        fields:
+          - label: "Image"
+            name: "src"
+            widget: "image"
+          - label: "Alt Text"
+            name: "alt"
+            widget: "object"
+            fields:
+              - label: "English"
+                name: "en"
+                widget: "string"
+              - label: "Français"
+                name: "fr"
+                widget: "string"
+          - label: "Camera"
+            name: "camera"
+            widget: "string"
+            required: false
+          - label: "Lens"
+            name: "lens"
+            widget: "string"
+            required: false
+          - label: "Settings"
+            name: "settings"
+            widget: "string"
+            required: false
+            hint: "e.g., f/2.8 · 1/500s · ISO 100"
+
+      - label: "Tags"
+        name: "tags"
+        widget: "list"
+        default: []
+
+      - label: "Post Type"
+        name: "postType"
+        widget: "select"
+        options:
+          - label: "Single Image"
+            value: "single"
+          - label: "Series"
+            value: "series"
+        default: "single"
+
+      - label: "Draft"
+        name: "draft"
+        widget: "boolean"
+        default: false
+
+      - label: "Private"
+        name: "private"
+        widget: "boolean"
+        default: false
+
+      - label: "Featured"
+        name: "featured"
+        widget: "boolean"
+        default: false
+
+      - label: "Show in Carousel"
+        name: "homepageCarousel"
+        widget: "boolean"
+        default: false
+
+      - label: "Default Carousel Slide"
+        name: "homepageDefault"
+        widget: "boolean"
+        default: false
+
+      - label: "Body"
+        name: "body"
+        widget: "markdown"
+
+  # ==========================================================================
+  # About
+  # ==========================================================================
+  - name: "about"
+    label: "About"
+    files:
+      - name: "about-en"
+        label: "About (English)"
+        file: "src/content/about/en.md"
+        fields:
+          - label: "Profile Image"
+            name: "profileImage"
+            widget: "object"
+            fields:
+              - label: "Image"
+                name: "src"
+                widget: "image"
+              - label: "Alt Text"
+                name: "alt"
+                widget: "object"
+                fields:
+                  - label: "English"
+                    name: "en"
+                    widget: "string"
+                  - label: "Français"
+                    name: "fr"
+                    widget: "string"
+
+          - label: "Tagline"
+            name: "tagline"
+            widget: "object"
+            required: false
+            fields:
+              - label: "English"
+                name: "en"
+                widget: "string"
+              - label: "Français"
+                name: "fr"
+                widget: "string"
+
+          - label: "Contact"
+            name: "contact"
+            widget: "object"
+            required: false
+            collapsed: true
+            fields:
+              - label: "Email"
+                name: "email"
+                widget: "string"
+                required: false
+              - label: "Instagram"
+                name: "instagram"
+                widget: "string"
+                required: false
+                hint: "Without @"
+              - label: "Twitter"
+                name: "twitter"
+                widget: "string"
+                required: false
+                hint: "Without @"
+
+          - label: "Bio (English)"
+            name: "body"
+            widget: "markdown"
+
+      - name: "about-fr"
+        label: "À propos (Français)"
+        file: "src/content/about/fr.md"
+        fields:
+          - label: "Profile Image"
+            name: "profileImage"
+            widget: "object"
+            fields:
+              - label: "Image"
+                name: "src"
+                widget: "image"
+              - label: "Alt Text"
+                name: "alt"
+                widget: "object"
+                fields:
+                  - label: "English"
+                    name: "en"
+                    widget: "string"
+                  - label: "Français"
+                    name: "fr"
+                    widget: "string"
+
+          - label: "Tagline"
+            name: "tagline"
+            widget: "object"
+            required: false
+            fields:
+              - label: "English"
+                name: "en"
+                widget: "string"
+              - label: "Français"
+                name: "fr"
+                widget: "string"
+
+          - label: "Contact"
+            name: "contact"
+            widget: "object"
+            required: false
+            collapsed: true
+            fields:
+              - label: "Email"
+                name: "email"
+                widget: "string"
+                required: false
+              - label: "Instagram"
+                name: "instagram"
+                widget: "string"
+                required: false
+                hint: "Without @"
+              - label: "Twitter"
+                name: "twitter"
+                widget: "string"
+                required: false
+                hint: "Without @"
+
+          - label: "Bio (Français)"
+            name: "body"
+            widget: "markdown"

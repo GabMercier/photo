@@ -5,9 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
   <title>Content Manager</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .lang-selector {
+      text-align: center;
+    }
+    .lang-selector h1 {
+      color: #ccd6f6;
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin-bottom: 2rem;
+      letter-spacing: 0.05em;
+    }
+    .lang-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+    .lang-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 2rem 3rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      color: #8892b0;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+    .lang-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+      color: #ccd6f6;
+      transform: translateY(-2px);
+    }
+    .lang-btn .flag {
+      font-size: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 48px;
+    }
+    .lang-btn .flag-img {
+      width: 64px;
+      height: 43px;
+      border-radius: 6px;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .lang-btn .label {
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+    }
+  </style>
 </head>
 <body>
-  <div id="nc-root"></div>
-  <script src="https://unpkg.com/decap-cms@3.3.3/dist/decap-cms.js"></script>
+  <div class="lang-selector">
+    <h1>Select Language / Choisir la langue</h1>
+    <div class="lang-buttons">
+      <a href="/admin/en/index.html" class="lang-btn">
+        <span class="flag"><img src="/admin/uk-flag.png" alt="UK" class="flag-img"></span>
+        <span class="label">ENGLISH</span>
+      </a>
+      <a href="/admin/fr/index.html" class="lang-btn">
+        <span class="flag"><img src="/admin/quebec-flag.png" alt="QC" class="flag-img"></span>
+        <span class="label">FRANÇAIS</span>
+      </a>
+    </div>
+  </div>
 </body>
 </html>
