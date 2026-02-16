@@ -137,12 +137,15 @@ function isActive(linkPath: string): boolean {
     const INACTIVITY_DELAY = 3000; // 3 seconds
 
     let inactivityTimeout: ReturnType<typeof setTimeout> | null = null;
+    let inactivityCollapsed = false; // Track if collapsed by inactivity
 
     function collapse() {
       header.classList.add('header--scrolled');
     }
 
     function expand() {
+      // Don't expand if already collapsed by inactivity
+      if (inactivityCollapsed) return;
       header.classList.remove('header--scrolled');
     }
 
@@ -161,6 +164,7 @@ function isActive(linkPath: string): boolean {
     inactivityTimeout = setTimeout(() => {
       // Only collapse if not already scrolled down
       if (window.scrollY <= SCROLL_THRESHOLD) {
+        inactivityCollapsed = true;
         collapse();
       }
     }, INACTIVITY_DELAY);
