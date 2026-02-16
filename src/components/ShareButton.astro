@@ -1,0 +1,184 @@
+---
+/**
+ * ShareButton Component
+ *
+ * Uses the Web Share API when available (mobile, some desktops).
+ * Falls back to copying the URL to clipboard on unsupported browsers.
+ * Styled to match the glass aesthetic of the site.
+ */
+import { t, type Locale } from '@utils/i18n';
+
+interface Props {
+  title: string;
+  description?: string;
+  url?: string;
+  locale: Locale;
+}
+
+const { title, description = '', url, locale } = Astro.props;
+---
+
+<div class="share-button-container">
+  <button
+    class="share-button"
+    data-share-title={title}
+    data-share-text={description}
+    data-share-url={url}
+    aria-label={t('share.label', locale)}
+  >
+    <svg class="share-button__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="3"></circle>
+      <circle cx="6" cy="12" r="3"></circle>
+      <circle cx="18" cy="19" r="3"></circle>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+    </svg>
+    <span class="share-button__text">{t('share.button', locale)}</span>
+  </button>
+
+  <!-- Toast notification for copy feedback -->
+  <div class="share-toast" role="status" aria-live="polite">
+    {t('share.copied', locale)}
+  </div>
+</div>
+
+<script>
+  function initShareButtons() {
+    const shareButtons = document.querySelectorAll('.share-button');
+
+    shareButtons.forEach(button => {
+      button.addEventListener('click', async () => {
+        const title = button.dataset.shareTitle || document.title;
+        const text = button.dataset.shareText || '';
+        const url = button.dataset.shareUrl || window.location.href;
+
+        const container = button.closest('.share-button-container');
+        const toast = container?.querySelector('.share-toast');
+
+        // Try Web Share API first
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title,
+              text,
+              url,
+            });
+          } catch (err) {
+            // User cancelled or error - ignore AbortError (user cancelled)
+            if (err.name !== 'AbortError') {
+              console.error('Share failed:', err);
+              // Fallback to clipboard
+              await copyToClipboard(url, toast);
+            }
+          }
+        } else {
+          // Fallback: copy URL to clipboard
+          await copyToClipboard(url, toast);
+        }
+      });
+    });
+  }
+
+  async function copyToClipboard(text: string, toast: Element | null) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(toast);
+    } catch (err) {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast(toast);
+    }
+  }
+
+  function showToast(toast: Element | null) {
+    if (!toast) return;
+    toast.classList.add('share-toast--visible');
+    setTimeout(() => {
+      toast.classList.remove('share-toast--visible');
+    }, 2000);
+  }
+
+  // Initialize on load
+  initShareButtons();
+
+  // Re-initialize after View Transitions
+  document.addEventListener('astro:after-swap', initShareButtons);
+</script>
+
+<style>
+  .share-button-container {
+    position: relative;
+  }
+
+  .share-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: transparent;
+    border: 1px solid hsla(var(--color-accent-hue), 10%, 65%, 0.35);
+    color: hsla(var(--color-accent-hue), 10%, 70%, 0.7);
+    transition: all var(--transition-fast);
+  }
+
+  .share-button__icon {
+    color: inherit;
+    flex-shrink: 0;
+  }
+
+  .share-button__text {
+    font-size: var(--text-xs);
+    letter-spacing: 0.02em;
+  }
+
+  .share-button:hover {
+    border-color: hsla(var(--color-accent-hue), 12%, 72%, 0.5);
+    color: hsla(var(--color-accent-hue), 12%, 78%, 0.9);
+  }
+
+  .share-button:active {
+    transform: scale(0.98);
+  }
+
+  /* Toast notification */
+  .share-toast {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    padding: 4px 10px;
+    border-radius: var(--border-radius);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: var(--text-xs);
+    white-space: nowrap;
+
+    /* Subtle background */
+    background: hsla(var(--color-accent-hue), 15%, 20%, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsla(var(--color-accent-hue), 12%, 40%, 0.5);
+    color: hsla(var(--color-accent-hue), 10%, 85%, 0.95);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* Hidden by default */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-fast), visibility var(--transition-fast);
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .share-toast--visible {
+    opacity: 1;
+    visibility: visible;
+  }
+</style>

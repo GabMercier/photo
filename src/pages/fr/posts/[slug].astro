@@ -1,6 +1,7 @@
 ---
 import Base from '@layouts/Base.astro';
 import Slideshow from '@components/Slideshow.astro';
+import ShareButton from '@components/ShareButton.astro';
 import { getCollection, render } from 'astro:content';
 import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
 import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
@@ -95,6 +96,11 @@ const formattedDate = date.toLocaleDateString('fr-CA', { year: 'numeric', month:
         <div class="post__meta">
           <time datetime={date.toISOString()}>{formattedDate}</time>
           {postType === 'series' && <span class="post__badge">{t('post.series', locale)}</span>}
+          <ShareButton
+            title={localized(title, locale) || 'gphoto'}
+            description={localized(description, locale)}
+            locale={locale}
+          />
         </div>
         <div class="post__tags">
           {tags.map(tag => <a href={`${localePath('/gallery', locale)}?tag=${encodeURIComponent(tag)}`} class="tag">{tag}</a>)}
@@ -302,6 +308,7 @@ const formattedDate = date.toLocaleDateString('fr-CA', { year: 'numeric', month:
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    padding: 20px 10px 40px 10px;
   }
 
   /* Content starts right after viewport */

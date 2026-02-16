@@ -15,6 +15,8 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  /** Canonical URL for the page (optional, defaults to current URL) */
+  canonicalUrl?: string;
   /** Dynamic accent color derived from image (optional) */
   accentHue?: number;
   accentSaturation?: number;
@@ -24,19 +26,25 @@ interface Props {
 const locale = getLocaleFromUrl(Astro.url);
 const {
   title = '',
-  description = 'Photography portfolio',
+  description = 'gphoto',
   ogImage = '/og-default.jpg',
+  canonicalUrl,
   accentHue,
   accentSaturation,
   accentLightness,
 } = Astro.props;
+
+// Build canonical URL - use provided or default to current URL (without query params)
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const canonical = canonicalUrl || new URL(Astro.url.pathname, siteUrl).href;
+const ogImageUrl = ogImage.startsWith('http') ? ogImage : new URL(ogImage, siteUrl).href;
 
 // Build accent style string if values provided
 const accentStyle = accentHue !== undefined
   ? `--color-accent-hue: ${accentHue}; --color-accent-saturation: ${accentSaturation}%; --color-accent-lightness: ${accentLightness}%;`
   : undefined;
 
-const fullTitle = title || 'Photography';
+const fullTitle = title || 'gphoto';
 ---
 
 <!doctype html>
@@ -47,11 +55,22 @@ const fullTitle = title || 'Photography';
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
 
+    <!-- Canonical URL -->
+    <link rel="canonical" href={canonical} />
+
     <!-- Open Graph -->
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={ogImage} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:url" content={canonical} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="gphoto" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
 
     <title>{fullTitle}</title>
 

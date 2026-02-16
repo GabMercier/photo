@@ -19,24 +19,29 @@ import { defineCollection, z } from 'astro:content';
 const about = defineCollection({
   type: 'content',
   schema: z.object({
-    // Profile image (displayed as circular)
+    // Profile image (displayed as circular) - optional
     profileImage: z.object({
       src: z.string(),
       alt: z.object({
-        en: z.string(),
-        fr: z.string(),
-      }),
-    }),
+        en: z.string().optional().default(''),
+        fr: z.string().optional().default(''),
+      }).optional(),
+    }).optional(),
     // Optional subtitle/tagline
     tagline: z.object({
-      en: z.string(),
-      fr: z.string(),
+      en: z.string().optional().default(''),
+      fr: z.string().optional().default(''),
     }).optional(),
     // Contact/social links (optional)
     contact: z.object({
       email: z.string().optional(),
       instagram: z.string().optional(),
       twitter: z.string().optional(),
+    }).optional(),
+    // Bio content (optional, bilingual)
+    bio: z.object({
+      en: z.string().optional().default(''),
+      fr: z.string().optional().default(''),
     }).optional(),
   }),
 });
@@ -45,17 +50,18 @@ const posts = defineCollection({
   type: 'content', // Markdown/MDX files with frontmatter
   schema: z.object({
     // --- Bilingual metadata ---
+    // Title is required (used for slug and identification)
     title: z.object({
-      en: z.string(),
-      fr: z.string(),
+      en: z.string().min(1, 'English title is required'),
+      fr: z.string().optional().default(''),
     }),
     description: z.object({
-      en: z.string().optional(),
-      fr: z.string().optional(),
+      en: z.string().optional().default(''),
+      fr: z.string().optional().default(''),
     }).optional(),
 
     // --- Dates & status ---
-    date: z.coerce.date(),
+    date: z.coerce.date().optional().default(() => new Date()),
     updatedDate: z.coerce.date().optional(),
     draft: z.boolean().default(false),
     private: z.boolean().default(false), // Protected content (Cloudflare Access)
@@ -65,9 +71,9 @@ const posts = defineCollection({
     coverImage: z.object({
       src: z.string(),
       alt: z.object({
-        en: z.string(),
-        fr: z.string(),
-      }),
+        en: z.string().optional().default(''),
+        fr: z.string().optional().default(''),
+      }).optional(),
     }),
     // Ambient glow color (YouTube-style effect)
     // Extracted from image or manually specified
@@ -82,9 +88,9 @@ const posts = defineCollection({
       z.object({
         src: z.string(),
         alt: z.object({
-          en: z.string(),
-          fr: z.string(),
-        }),
+          en: z.string().optional().default(''),
+          fr: z.string().optional().default(''),
+        }).optional(),
         // Optional EXIF-style metadata (for future use)
         camera: z.string().optional(),
         lens: z.string().optional(),

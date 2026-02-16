@@ -25,7 +25,7 @@
 
 :root {
   /* Typography scale (modular, ratio ~1.25) */
-  --font-display: 'Georgia', 'Times New Roman', serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', monospace;
 

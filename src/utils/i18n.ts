@@ -58,6 +58,11 @@ const translations: Record<string, Record<Locale, string>> = {
   // Language
   'lang.switch': { en: 'FR', fr: 'EN' },
   'lang.current': { en: 'English', fr: 'Français' },
+
+  // Share
+  'share.button': { en: 'Share', fr: 'Partager' },
+  'share.label': { en: 'Share this post', fr: 'Partager ce post' },
+  'share.copied': { en: 'Link copied!', fr: 'Lien copié!' },
 };
 
 // ---------------------------------------------------------------------------

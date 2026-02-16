@@ -60,18 +60,43 @@ collections:
         pattern: "series"
 
     fields:
-      # --- Title / Titre ---
+      # --- Cover Image / Image principale (REQUIRED - minimum for a post) ---
+      - label: "Cover Image / Image principale"
+        name: "coverImage"
+        widget: "object"
+        fields:
+          - label: "Image"
+            name: "src"
+            widget: "image"
+          - label: "Alt Text / Texte alternatif"
+            name: "alt"
+            widget: "object"
+            required: false
+            collapsed: true
+            fields:
+              - label: "🇬🇧 English"
+                name: "en"
+                widget: "string"
+                required: false
+              - label: "🇫🇷 Français"
+                name: "fr"
+                widget: "string"
+                required: false
+
+      # --- Title / Titre (REQUIRED) ---
       - label: "Title / Titre"
         name: "title"
         widget: "object"
         summary: "{{fields.en}}"
         fields:
-          - label: "🇬🇧 English"
+          - label: "🇬🇧 English (required)"
             name: "en"
             widget: "string"
+            required: true
           - label: "🇫🇷 Français"
             name: "fr"
             widget: "string"
+            required: false
 
       # --- Description ---
       - label: "Description"
@@ -95,25 +120,7 @@ collections:
         widget: "datetime"
         date_format: "YYYY-MM-DD"
         time_format: false
-
-      # --- Cover Image / Image principale ---
-      - label: "Cover Image / Image principale"
-        name: "coverImage"
-        widget: "object"
-        fields:
-          - label: "Image"
-            name: "src"
-            widget: "image"
-          - label: "Alt Text / Texte alternatif"
-            name: "alt"
-            widget: "object"
-            fields:
-              - label: "🇬🇧 English"
-                name: "en"
-                widget: "string"
-              - label: "🇫🇷 Français"
-                name: "fr"
-                widget: "string"
+        required: false
 
       # --- Additional Images / Images supplémentaires ---
       - label: "Additional Images / Images supplémentaires"
@@ -122,7 +129,7 @@ collections:
         required: false
         collapsed: true
         label_singular: "Image"
-        summary: "{{fields.alt.en}}"
+        summary: "Image"
         fields:
           - label: "Image"
             name: "src"
@@ -130,13 +137,17 @@ collections:
           - label: "Alt Text / Texte alternatif"
             name: "alt"
             widget: "object"
+            required: false
+            collapsed: true
             fields:
               - label: "🇬🇧 English"
                 name: "en"
                 widget: "string"
+                required: false
               - label: "🇫🇷 Français"
                 name: "fr"
                 widget: "string"
+                required: false
           - label: "Camera / Appareil"
             name: "camera"
             widget: "string"
@@ -199,10 +210,11 @@ collections:
         default: false
         hint: "Start carousel here / Commencer le carrousel ici"
 
-      # --- Body / Contenu ---
+      # --- Body / Contenu (optional) ---
       - label: "Body / Contenu"
         name: "body"
         widget: "markdown"
+        required: false
         hint: "Optional text content / Contenu textuel optionnel"
 
   # ==========================================================================
@@ -218,6 +230,8 @@ collections:
           - label: "Profile Image / Photo de profil"
             name: "profileImage"
             widget: "object"
+            required: false
+            collapsed: true
             fields:
               - label: "Image"
                 name: "src"
@@ -225,25 +239,32 @@ collections:
               - label: "Alt Text / Texte alternatif"
                 name: "alt"
                 widget: "object"
+                required: false
+                collapsed: true
                 fields:
                   - label: "🇬🇧 English"
                     name: "en"
                     widget: "string"
+                    required: false
                   - label: "🇫🇷 Français"
                     name: "fr"
                     widget: "string"
+                    required: false
 
           - label: "Tagline / Slogan"
             name: "tagline"
             widget: "object"
             required: false
+            collapsed: true
             fields:
               - label: "🇬🇧 English"
                 name: "en"
                 widget: "string"
+                required: false
               - label: "🇫🇷 Français"
                 name: "fr"
                 widget: "string"
+                required: false
 
           - label: "Contact / Coordonnées"
             name: "contact"
@@ -269,10 +290,14 @@ collections:
           - label: "Bio"
             name: "bio"
             widget: "object"
+            required: false
+            collapsed: true
             fields:
               - label: "🇬🇧 English"
                 name: "en"
                 widget: "markdown"
+                required: false
               - label: "🇫🇷 Français"
                 name: "fr"
                 widget: "markdown"
+                required: false

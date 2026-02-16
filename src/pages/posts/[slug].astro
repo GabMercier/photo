@@ -7,6 +7,7 @@
  */
 import Base from '@layouts/Base.astro';
 import Slideshow from '@components/Slideshow.astro';
+import ShareButton from '@components/ShareButton.astro';
 import { getCollection, render } from 'astro:content';
 import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
 import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
@@ -125,6 +126,11 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
           {postType === 'series' && (
             <span class="post__badge">{t('post.series', locale)}</span>
           )}
+          <ShareButton
+            title={localized(title, locale) || 'gphoto'}
+            description={localized(description, locale)}
+            locale={locale}
+          />
         </div>
         <div class="post__tags">
           {tags.map(tag => (
@@ -317,6 +323,7 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    padding: 20px 10px 40px 10px;
   }
 
   /* Article with page-wide glow */
