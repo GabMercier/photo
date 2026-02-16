@@ -43,7 +43,7 @@ const translations: Record<string, Record<Locale, string>> = {
   'misc.featured': { en: 'Featured', fr: 'En vedette' },
   'misc.private': { en: 'Private', fr: 'Privé' },
   'misc.backToFeed': { en: 'Back to feed', fr: 'Retour au fil' },
-  'misc.backToGallery': { en: '← Back to gallery', fr: '← Retour à la galerie' },
+  'misc.backToGallery': { en: 'Back to gallery', fr: 'Retour à la galerie' },
 
   // Slideshow
   'slideshow.close': { en: 'Close', fr: 'Fermer' },
