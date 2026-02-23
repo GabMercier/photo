@@ -1,6 +1,7 @@
 ---
 coverImage:
   src: /images/uploads/_dsc4288.jpg
+  focalPoint: left
 title:
   en: Blue
   fr: Bleu
