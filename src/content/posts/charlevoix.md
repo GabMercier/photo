@@ -4,6 +4,7 @@ coverImage:
   alt:
     fr: Charlevoix
     en: Charlevoix
+  focalPoint: right
 title:
   fr: Charlevoix
   en: Charlevoix
