@@ -10,7 +10,7 @@ tags: []
 postType: single
 draft: false
 private: false
-featured: false
-homepageCarousel: false
-homepageDefault: false
+featured: true
+homepageCarousel: true
+homepageDefault: true
 ---
