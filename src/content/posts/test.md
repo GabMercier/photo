@@ -5,6 +5,7 @@ coverImage:
 title:
   en: test
   fr: test
+date: 2026-02-24
 tags: []
 postType: single
 draft: false
