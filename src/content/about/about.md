@@ -2,16 +2,16 @@
 profileImage:
   src: /images/uploads/_dsc3665-2.jpg
   alt:
-    en: ""
-    fr: ""
+    en: dlkjs
+    fr: dkjfhkjh
 tagline:
-  en: ""
-  fr: ""
+  en: dkjfh
+  fr: fjdhkfjdhu
 contact:
   email: ""
   instagram: ""
   twitter: ""
 bio:
-  en: ""
-  fr: ""
+  en: jhkj
+  fr: kjfdhkfjh
 ---
