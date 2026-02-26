@@ -10,10 +10,7 @@ backend:
   name: github
   repo: GabMercier/photo
   branch: main
-
-# --- Développement local ---
-# Exécuter: npx decap-server (depuis la racine du projet)
-local_backend: true
+  base_url: https://decap-oauth.netlify.app
 
 # --- Médias ---
 media_folder: "public/images/uploads"
