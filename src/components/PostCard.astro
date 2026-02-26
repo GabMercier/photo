@@ -9,13 +9,15 @@
  */
 import { getLocaleFromUrl, localized, localePath, t } from '@utils/i18n';
 import type { CollectionEntry } from 'astro:content';
+import OptimizedImage from '@components/OptimizedImage.astro';
+import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
 
 interface Props {
   post: CollectionEntry<'posts'>;
   /** Enable staggered animation (pass index for delay) */
   index?: number;
   /** Aspect ratio variant */
-  variant?: 'square' | 'landscape' | 'auto';
+  variant?: 'square' | 'portrait' | 'landscape' | 'auto';
   /** Layout mode: grid (with hover overlay) or feed (metadata below) */
   layout?: 'grid' | 'feed';
 }
@@ -23,6 +25,22 @@ interface Props {
 const locale = getLocaleFromUrl(Astro.url);
 const { post, index = 0, variant = 'auto', layout = 'grid' } = Astro.props;
 const { title, coverImage, tags, date, postType, glowColor } = post.data;
+
+// Get localized title, or empty string if no title provided
+const displayTitle = localized(title, locale);
+
+// Get image data to determine orientation
+const imageData = await getOptimizedImage(coverImage.src);
+const isPortrait = imageData.aspectRatio < 1;
+
+// Focal point for horizontal cropping of landscape images in portrait containers
+// Maps to full object-position value for CSS
+const focalPointMap: Record<string, string> = {
+  'left': 'left center',
+  'center': 'center center',
+  'right': 'right center',
+};
+const focalPoint = focalPointMap[coverImage.focalPoint || 'center'] || 'center center';
 
 // Fallback to cool blue-gray if no color extracted
 const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
@@ -42,6 +60,7 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     'post-card',
     `post-card--${variant}`,
     `post-card--${layout}`,
+    layout === 'feed' && (isPortrait ? 'post-card--portrait' : 'post-card--landscape'),
     layout === 'grid' && 'animate-in'
   ]}
   style={{
@@ -49,24 +68,27 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     '--glow-r': glow.r,
     '--glow-g': glow.g,
     '--glow-b': glow.b,
+    '--focal-point': focalPoint,
   }}
   data-tags={tags.join(',')}
 >
-  <a href={postUrl} class="post-card__link" aria-label={localized(title, locale)}>
+  <a href={postUrl} class="post-card__link" aria-label={displayTitle || t('post.single', locale)}>
     <div class="post-card__image-wrap">
-      <img
+      <OptimizedImage
         src={coverImage.src}
         alt={localized(coverImage.alt, locale)}
         class="post-card__image"
         loading="lazy"
         decoding="async"
+        sizes={layout === 'feed' ? imageSizes.feed : imageSizes.gallery}
+        style={{ 'object-position': focalPoint }}
       />
 
       {/* Only show overlay in grid mode */}
       {layout === 'grid' && (
         <div class="post-card__overlay">
           <div class="post-card__overlay-content">
-            <h3 class="post-card__title">{localized(title, locale)}</h3>
+            {displayTitle && <h3 class="post-card__title">{displayTitle}</h3>}
             <div class="post-card__meta">
               <time datetime={date.toISOString()}>{formattedDate}</time>
               {postType === 'series' && (
@@ -80,6 +102,23 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
             </div>
           </div>
         </div>
+      )}
+
+      {/* Expand button for feed mode - shows full image in lightbox (mobile only) */}
+      {layout === 'feed' && (
+        <button
+          class="post-card__expand"
+          aria-label={t('feed.viewFull', locale)}
+          data-full-src={coverImage.src}
+          data-full-alt={localized(coverImage.alt, locale)}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
       )}
     </div>
 
@@ -119,12 +158,46 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   /* Square variant - force 1:1 aspect ratio */
   .post-card--square .post-card__image-wrap {
     aspect-ratio: 1;
+    overflow: hidden;
   }
 
-  .post-card--square .post-card__image {
+  /* Picture element must fill container for img to work */
+  .post-card--square .post-card__image-wrap :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Override height: auto from .post-card__image for square variant */
+  .post-card--square .post-card__image,
+  .post-card--square .post-card__image-wrap :global(img) {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: var(--focal-point, center center);
+  }
+
+  /* Portrait variant - 3:4 aspect ratio cards */
+  .post-card--portrait .post-card__image-wrap {
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+  }
+
+  /* Picture element must fill container for img to work */
+  .post-card--portrait .post-card__image-wrap :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Override height: auto from .post-card__image for portrait variant */
+  .post-card--portrait .post-card__image,
+  .post-card--portrait .post-card__image-wrap :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Horizontal focal point for landscape images cropped to portrait */
+    object-position: var(--focal-point, center center);
   }
 
   /* Overlay — appears on hover */
@@ -179,8 +252,8 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     opacity: 1;
   }
 
-  /* Allow glow to extend beyond for grid mode too */
-  .post-card--grid .post-card__image-wrap {
+  /* Allow glow to extend beyond for grid mode (but not portrait/square which need cropping) */
+  .post-card--grid.post-card--auto .post-card__image-wrap {
     overflow: visible;
   }
 
@@ -240,31 +313,56 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     }
   }
 
-  /* Feed-specific layout */
+  /* Feed-specific layout - full viewport snap */
   .post-card--feed {
     background-color: transparent;
     border-radius: 0;
-    margin-bottom: 0; /* Controlled by parent gap */
-    break-inside: auto;
-    overflow: visible; /* CRITICAL: Allow glow to extend beyond card boundaries */
+    overflow: visible; /* Allow glow to extend beyond */
+    margin-bottom: 0; /* Remove base margin for proper snap */
 
-    /* Scroll animation initial state */
-    opacity: 0;
-    transform: translateY(40px) scale(0.98);
-    transition:
-      opacity 0.8s var(--ease-out-smooth),
-      transform 0.8s var(--ease-out-smooth);
-  }
+    /* Visible area height (viewport minus header) */
+    min-height: calc(100vh - var(--header-height));
+    height: calc(100vh - var(--header-height));
+    padding: 0;
+    box-sizing: border-box;
 
-  /* Center image in feed mode */
-  .post-card--feed .post-card__link {
+    /* Scroll snap - snap to start for predictable behavior */
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+
+    /* Center content vertically - use flex-start to respect padding */
     display: flex;
+    align-items: center;
     justify-content: center;
   }
 
+  /* First card needs extra top space for visual centering */
+  .post-card--feed:first-child {
+    padding-top: var(--space-3xl);
+  }
+
+  /* Fade-in animation initial state */
+  .post-card--feed {
+    opacity: 0;
+    transform: translateY(30px);
+    transition:
+      opacity 0.6s var(--ease-out-smooth),
+      transform 0.6s var(--ease-out-smooth);
+  }
+
+  /* Link fills the card and centers image */
+  .post-card--feed .post-card__link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Visible state - triggered by IntersectionObserver */
   .post-card--feed.visible {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 
   .post-card--feed .post-card__image-wrap {
@@ -272,10 +370,35 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     position: relative;
     overflow: visible; /* Allow glow to extend beyond */
     isolation: isolate; /* Create stacking context for glow */
-    max-height: 75vh; /* Limit image height to 75% of viewport */
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  /* Handle picture element from OptimizedImage in feed mode */
+  .post-card--feed .post-card__image-wrap :global(picture) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Base image constraints */
+  .post-card--feed .post-card__image-wrap :global(img) {
+    position: relative;
+    z-index: 1;
+    height: 80vh;
+    width: auto;
+    object-fit: contain;
+  }
+
+  /* Landscape images in feed: can be wider */
+  .post-card--feed.post-card--landscape .post-card__image-wrap :global(img) {
+    max-width: min(95vw, 1300px);
+  }
+
+  /* Portrait images in feed: constrain width so they don't tower over everything */
+  .post-card--feed.post-card--portrait .post-card__image-wrap :global(img) {
+    max-width: min(90vw, 900px);
   }
 
   /* Ambient glow effect - full viewport width like homepage */
@@ -300,53 +423,141 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     );
     z-index: 0;
     pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.8s ease;
+    opacity: 1; /* Always visible with scroll-snap */
     filter: blur(60px);
     mix-blend-mode: screen;
-  }
-
-  /* Show glow when card is visible */
-  .post-card--feed.visible .post-card__image-wrap::before {
-    opacity: 1;
-  }
-
-  /* Ensure image sits above glow */
-  .post-card--feed .post-card__image {
-    position: relative;
-    z-index: 1;
-    display: block;
-    max-height: 75vh; /* Match parent constraint */
-    width: auto; /* Maintain aspect ratio */
-    max-width: 100%; /* Don't overflow container width */
-    object-fit: contain;
   }
 
   .post-card--feed::after {
     display: none; /* Remove border effect in feed mode */
   }
 
-  /* Respect user preferences */
+  /* Respect user preferences - disable scroll-snap smooth behavior */
   @media (prefers-reduced-motion: reduce) {
     .post-card--feed {
-      opacity: 1;
-      transform: none;
-      transition: none;
+      scroll-snap-align: none;
     }
   }
 
-  /* Progressive enhancement for modern browsers */
-  @supports (animation-timeline: view()) {
-    .post-card--feed {
-      animation: revealCard linear both;
-      animation-timeline: view();
-      animation-range: entry 0% cover 30%;
+  /* Expand button - hidden by default */
+  .post-card__expand {
+    display: none;
+    position: absolute;
+    bottom: var(--space-md);
+    right: var(--space-md);
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .post-card__expand:hover,
+  .post-card__expand:focus {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.05);
+  }
+
+  .post-card__expand:active {
+    transform: scale(0.95);
+  }
+
+  .post-card__expand svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Mobile - shared styles */
+  @media (max-width: 768px) {
+    /* Show expand button on mobile */
+    .post-card__expand {
+      display: flex;
+    }
+  }
+
+  /* Mobile portrait: crop all images to 3:4 */
+  @media (max-width: 768px) and (orientation: portrait) {
+    /* All feed images get same container size on mobile portrait */
+    .post-card--feed .post-card__image-wrap {
+      aspect-ratio: 3 / 4;
+      width: 90vw;
+      max-width: 500px;
+      overflow: visible; /* Keep overflow visible for glow effect */
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .post-card--feed {
-        animation: none;
-      }
+    /* Picture element fills container and clips content */
+    .post-card--feed .post-card__image-wrap :global(picture) {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border-radius: var(--border-radius);
+    }
+
+    /* All images fill container with cover */
+    .post-card--feed .post-card__image-wrap :global(img) {
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      max-width: none;
+      object-fit: cover;
+      border-radius: var(--border-radius);
+      object-position: var(--focal-point, center center);
+    }
+  }
+
+  /* Mobile landscape: natural image display */
+  @media (max-width: 900px) and (orientation: landscape) {
+    .post-card--feed {
+      min-height: calc(100vh - var(--header-height));
+      height: auto;
+      padding: var(--space-lg) 0;
+    }
+
+    .post-card--feed .post-card__image-wrap {
+      aspect-ratio: unset;
+      width: auto;
+      max-width: 95vw;
+    }
+
+    .post-card--feed .post-card__image-wrap :global(img) {
+      width: auto;
+      height: auto;
+      max-height: 70vh;
+      max-width: 95vw;
+      object-fit: contain;
+      border-radius: var(--border-radius);
     }
   }
 </style>
+
+<script>
+  // Handle expand button clicks to open full image in lightbox
+  function initExpandButtons() {
+    const expandButtons = document.querySelectorAll('.post-card__expand');
+
+    expandButtons.forEach((button) => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const src = button.dataset.fullSrc;
+        const alt = button.dataset.fullAlt;
+
+        if (window.openSlideshow && src) {
+          window.openSlideshow([{ src, alt }], 0);
+        }
+      });
+    });
+  }
+
+  // Initialize on page load and after view transitions
+  document.addEventListener('DOMContentLoaded', initExpandButtons);
+  document.addEventListener('astro:after-swap', initExpandButtons);
+</script>

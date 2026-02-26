@@ -39,10 +39,10 @@ collections:
     label_singular: "Post"
     folder: "src/content/posts"
     create: true
-    slug: "{{slug}}"
+    slug: "{{year}}{{month}}{{day}}{{hour}}{{minute}}{{second}}"
     extension: "md"
-    identifier_field: "title.en"
-    summary: "{{title.en}} — {{date}}"
+    identifier_field: "date"
+    summary: "{{date}} — {{title.en}}"
     sortable_fields: ["date", "title.en"]
 
     view_filters:
@@ -82,28 +82,28 @@ collections:
                 name: "fr"
                 widget: "string"
                 required: false
+          - label: "Crop Position / Position de recadrage"
+            name: "focalPoint"
+            widget: "select"
+            required: false
+            default: "center"
+            hint: "For landscape images: which part to show in portrait view / Pour images paysage: quelle partie afficher en mode portrait"
+            options:
+              - label: "Left / Gauche"
+                value: "left"
+              - label: "Center / Centre (Recommended)"
+                value: "center"
+              - label: "Right / Droite"
+                value: "right"
 
-      # --- Title / Titre (REQUIRED) ---
+      # --- Title / Titre (OPTIONAL) ---
       - label: "Title / Titre"
         name: "title"
         widget: "object"
-        summary: "{{fields.en}}"
-        fields:
-          - label: "🇬🇧 English (required)"
-            name: "en"
-            widget: "string"
-            required: true
-          - label: "🇫🇷 Français"
-            name: "fr"
-            widget: "string"
-            required: false
-
-      # --- Description ---
-      - label: "Description"
-        name: "description"
-        widget: "object"
         required: false
         collapsed: true
+        summary: "{{fields.en}}"
+        hint: "Optional - if not provided, post displays without title"
         fields:
           - label: "🇬🇧 English"
             name: "en"
@@ -113,6 +113,25 @@ collections:
             name: "fr"
             widget: "string"
             required: false
+
+      # --- Description (for social sharing / SEO) ---
+      - label: "Description (Social/SEO)"
+        name: "description"
+        widget: "object"
+        required: false
+        collapsed: true
+        hint: "Short description for social media sharing (150-200 chars recommended)"
+        fields:
+          - label: "🇬🇧 English"
+            name: "en"
+            widget: "text"
+            required: false
+            hint: "Brief description for social sharing / search results"
+          - label: "🇫🇷 Français"
+            name: "fr"
+            widget: "text"
+            required: false
+            hint: "Brève description pour le partage social / résultats de recherche"
 
       # --- Date ---
       - label: "Date"

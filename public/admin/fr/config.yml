@@ -35,10 +35,10 @@ collections:
     label_singular: "Publication"
     folder: "src/content/posts"
     create: true
-    slug: "{{slug}}"
+    slug: "{{year}}{{month}}{{day}}{{hour}}{{minute}}{{second}}"
     extension: "md"
-    identifier_field: "title.en"
-    summary: "{{title.fr}} — {{date}}"
+    identifier_field: "date"
+    summary: "{{date}} — {{title.fr}}"
     sortable_fields: ["date", "title.fr"]
 
     view_filters:
@@ -56,7 +56,25 @@ collections:
         pattern: "series"
 
     fields:
-      # --- Image principale (REQUIS - minimum pour une publication) ---
+      # --- Titre (optionnel, pour l'affichage) ---
+      - label: "Titre (optionnel)"
+        name: "title"
+        widget: "object"
+        required: false
+        collapsed: true
+        summary: "{{fields.fr}}"
+        hint: "Optionnel - si non fourni, la publication s'affiche sans titre"
+        fields:
+          - label: "Français"
+            name: "fr"
+            widget: "string"
+            required: false
+          - label: "English"
+            name: "en"
+            widget: "string"
+            required: false
+
+      # --- Image principale ---
       - label: "Image principale"
         name: "coverImage"
         widget: "object"
@@ -78,21 +96,19 @@ collections:
                 name: "en"
                 widget: "string"
                 required: false
-
-      # --- Titre (REQUIS) ---
-      - label: "Titre"
-        name: "title"
-        widget: "object"
-        summary: "{{fields.fr}}"
-        fields:
-          - label: "English (requis)"
-            name: "en"
-            widget: "string"
-            required: true
-          - label: "Français"
-            name: "fr"
-            widget: "string"
+          - label: "Position de recadrage"
+            name: "focalPoint"
+            widget: "select"
             required: false
+            default: "center"
+            hint: "Pour images paysage: quelle partie afficher en mode portrait"
+            options:
+              - label: "Gauche"
+                value: "left"
+              - label: "Centre (Recommandé)"
+                value: "center"
+              - label: "Droite"
+                value: "right"
 
       # --- Description ---
       - label: "Description"
@@ -175,6 +191,25 @@ collections:
             value: "series"
         default: "single"
 
+      - label: "Taille galerie"
+        name: "gallerySize"
+        widget: "select"
+        hint: "Contrôle la taille dans la grille galerie (bureau seulement)"
+        options:
+          - label: "Auto (détecter du ratio)"
+            value: "auto"
+          - label: "Petit (1×1)"
+            value: "small"
+          - label: "Portrait (1×2 haut)"
+            value: "portrait"
+          - label: "Portrait grand (1×3 très haut)"
+            value: "portrait-tall"
+          - label: "Paysage (2×1 large)"
+            value: "landscape"
+          - label: "Vedette (2×2 grand)"
+            value: "featured"
+        default: "auto"
+
       # --- Visibilité ---
       - label: "Brouillon"
         name: "draft"
@@ -211,7 +246,6 @@ collections:
         name: "body"
         widget: "markdown"
         required: false
-        hint: "Contenu textuel optionnel"
 
   # ==========================================================================
   # Page À propos

@@ -10,6 +10,15 @@
 <div id="slideshow" class="slideshow" role="dialog" aria-modal="true" hidden>
   <div class="slideshow__backdrop"></div>
 
+  <a id="slideshow-view-post" class="slideshow__view-post" href="#" hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+      <polyline points="15 3 21 3 21 9"></polyline>
+      <line x1="10" y1="14" x2="21" y2="3"></line>
+    </svg>
+    <span id="slideshow-view-post-text">View Post</span>
+  </a>
+
   <button
     id="slideshow-close"
     class="slideshow__close"
@@ -104,8 +113,6 @@
 
   .slideshow__nav {
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
     z-index: 10;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
@@ -133,10 +140,18 @@
 
   .slideshow__nav--prev {
     left: var(--space-xl);
+    bottom: var(--space-xl);
   }
 
   .slideshow__nav--next {
     right: var(--space-xl);
+    bottom: var(--space-xl);
+  }
+
+  /* Hide nav buttons and counter for single images */
+  .slideshow--single .slideshow__nav,
+  .slideshow--single .slideshow__counter {
+    display: none;
   }
 
   .slideshow__image-wrap {
@@ -196,6 +211,41 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
+  .slideshow__view-post {
+    position: absolute;
+    top: var(--space-lg);
+    left: var(--space-lg);
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-lg);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: var(--text-sm);
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+  }
+
+  .slideshow__view-post:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: white;
+  }
+
+  .slideshow__view-post[hidden] {
+    display: none;
+  }
+
+  .slideshow__view-post svg {
+    flex-shrink: 0;
+  }
+
   @media (max-width: 768px) {
     .slideshow__nav {
       width: 48px;
@@ -204,15 +254,22 @@
 
     .slideshow__nav--prev {
       left: var(--space-md);
+      bottom: var(--space-lg);
     }
 
     .slideshow__nav--next {
       right: var(--space-md);
+      bottom: var(--space-lg);
     }
 
     .slideshow__close {
       top: var(--space-md);
       right: var(--space-md);
+    }
+
+    .slideshow__view-post {
+      top: var(--space-md);
+      left: var(--space-md);
     }
 
     .slideshow__footer {
@@ -267,6 +324,12 @@
     overlay.removeAttribute('hidden');
     requestAnimationFrame(() => {
       overlay.classList.add('slideshow--open');
+      // Add single-image class to hide nav when only 1 image
+      if (images.length === 1) {
+        overlay.classList.add('slideshow--single');
+      } else {
+        overlay.classList.remove('slideshow--single');
+      }
     });
 
     // Load first image
@@ -286,6 +349,7 @@
     state.isOpen = false;
 
     overlay.classList.remove('slideshow--open');
+    overlay.classList.remove('slideshow--single');
 
     setTimeout(() => {
       overlay.setAttribute('hidden', '');
@@ -313,6 +377,8 @@
     const totalCounter = document.getElementById('slideshow-total');
     const prevBtn = document.getElementById('slideshow-prev');
     const nextBtn = document.getElementById('slideshow-next');
+    const viewPostBtn = document.getElementById('slideshow-view-post');
+    const viewPostText = document.getElementById('slideshow-view-post-text');
 
     if (!imgElement) return;
 
@@ -326,6 +392,22 @@
     // Update caption
     if (captionElement) {
       captionElement.textContent = image.caption || '';
+    }
+
+    // Update View Post button
+    if (viewPostBtn) {
+      if (image.postUrl) {
+        viewPostBtn.href = image.postUrl;
+        viewPostBtn.removeAttribute('hidden');
+        // Update button text if provided
+        if (viewPostText && image.postTitle) {
+          viewPostText.textContent = image.postTitle;
+        } else if (viewPostText) {
+          viewPostText.textContent = 'View Post';
+        }
+      } else {
+        viewPostBtn.setAttribute('hidden', '');
+      }
     }
 
     // Update counter

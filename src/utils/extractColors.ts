@@ -8,6 +8,43 @@ export interface DominantColor {
   hex: string;
 }
 
+export type ColorFamily = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'neutral';
+export type ColorMood = 'light' | 'dark' | 'balanced';
+
+export interface ColorMetadata extends DominantColor {
+  colorFamily: ColorFamily;
+  mood: ColorMood;
+  lightness: number; // 0-100
+}
+
+/**
+ * Determine color family from hue angle (0-360)
+ * Maps continuous hue to discrete color categories
+ */
+export function getColorFamily(hue: number, saturation: number): ColorFamily {
+  // Low saturation = neutral (grayscale or near-grayscale)
+  if (saturation < 15) return 'neutral';
+
+  // Map hue to color family
+  if (hue < 15 || hue >= 345) return 'red';
+  if (hue < 45) return 'orange';
+  if (hue < 75) return 'yellow';
+  if (hue < 165) return 'green';
+  if (hue < 255) return 'blue';
+  if (hue < 345) return 'purple';
+  return 'neutral';
+}
+
+/**
+ * Determine mood from lightness value (0-100)
+ * Light images feel airy/bright, dark images feel moody/dramatic
+ */
+export function getMood(lightness: number): ColorMood {
+  if (lightness > 60) return 'light';
+  if (lightness < 40) return 'dark';
+  return 'balanced';
+}
+
 /**
  * Convert RGB to HSL color space
  */
@@ -87,9 +124,15 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
  */
 export function deriveAccentFromGlow(r: number, g: number, b: number): { hue: number; saturation: number; lightness: number } {
   const hsl = rgbToHsl(r, g, b);
+
+  // Check if input is essentially grayscale (R≈G≈B)
+  const maxDiff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+  const isGrayscale = maxDiff < 15;
+
   return {
     hue: Math.round(hsl.h),
-    saturation: Math.round(Math.max(35, Math.min(60, hsl.s))),
+    // Keep neutral colors neutral (low saturation), otherwise boost to 35-60%
+    saturation: isGrayscale ? 0 : Math.round(Math.max(35, Math.min(60, hsl.s))),
     lightness: Math.round(Math.max(55, Math.min(70, hsl.l))),
   };
 }
@@ -212,4 +255,91 @@ export async function extractColorPalette(
     console.error(`Error extracting palette from ${imagePath}:`, error);
     return [{ r: 58, g: 68, b: 71, hex: '#3A4447' }];
   }
+}
+
+/**
+ * Extract full color metadata from an image
+ * Returns dominant color plus colorFamily and mood for filtering
+ *
+ * For B&W detection: checks pixel-level color variance
+ * For colored images: uses normalized color for classification
+ */
+export async function extractColorMetadata(imagePath: string): Promise<ColorMetadata> {
+  // Check if image is truly grayscale (most pixels have R≈G≈B)
+  const grayscale = await isImageGrayscale(imagePath);
+
+  // Get normalized color for glow effect and classification
+  const dominantColor = await extractDominantColor(imagePath);
+  const normalizedHsl = rgbToHsl(dominantColor.r, dominantColor.g, dominantColor.b);
+
+  return {
+    ...dominantColor,
+    // True grayscale → neutral, otherwise use normalized color's hue/saturation
+    colorFamily: grayscale ? 'neutral' : getColorFamily(normalizedHsl.h, normalizedHsl.s),
+    mood: getMood(normalizedHsl.l),
+    lightness: Math.round(normalizedHsl.l),
+  };
+}
+
+/**
+ * Check if an image is truly grayscale by measuring color variance across pixels
+ * Returns true if pixels have R≈G≈B consistently (low color variance)
+ */
+async function isImageGrayscale(imagePath: string): Promise<boolean> {
+  try {
+    let sharpInstance: sharp.Sharp;
+
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      const response = await fetch(imagePath);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      sharpInstance = sharp(buffer);
+    } else {
+      const fullPath = join(process.cwd(), 'public', imagePath);
+      sharpInstance = sharp(fullPath);
+    }
+
+    const { data } = await sharpInstance
+      .resize(50, 50, { fit: 'cover' })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Measure how many pixels have significant color difference (R≠G or G≠B)
+    let coloredPixels = 0;
+    const threshold = 15; // Max diff between R,G,B for a pixel to be "gray"
+
+    for (let i = 0; i < data.length; i += 3) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const maxDiff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+      if (maxDiff > threshold) {
+        coloredPixels++;
+      }
+    }
+
+    const totalPixels = data.length / 3;
+    const coloredRatio = coloredPixels / totalPixels;
+
+    // If less than 10% of pixels have significant color, it's grayscale
+    return coloredRatio < 0.1;
+  } catch (error) {
+    console.error(`Error checking grayscale for ${imagePath}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Get color metadata from existing glowColor RGB values
+ * Use this when you already have extracted color and just need family/mood
+ */
+export function getColorMetadataFromRgb(r: number, g: number, b: number): { colorFamily: ColorFamily; mood: ColorMood; lightness: number } {
+  const hsl = rgbToHsl(r, g, b);
+  return {
+    colorFamily: getColorFamily(hsl.h, hsl.s),
+    mood: getMood(hsl.l),
+    lightness: Math.round(hsl.l),
+  };
 }

@@ -49,6 +49,7 @@ const translations: Record<string, Record<Locale, string>> = {
   'slideshow.close': { en: 'Close', fr: 'Fermer' },
   'slideshow.previous': { en: 'Previous', fr: 'Précédent' },
   'slideshow.next': { en: 'Next', fr: 'Suivant' },
+  'slideshow.viewPost': { en: 'View Post', fr: 'Voir le post' },
   'gallery.previous': { en: 'Previous post', fr: 'Post précédent' },
   'gallery.next': { en: 'Next post', fr: 'Post suivant' },
 
@@ -63,6 +64,9 @@ const translations: Record<string, Record<Locale, string>> = {
   'share.button': { en: 'Share', fr: 'Partager' },
   'share.label': { en: 'Share this post', fr: 'Partager ce post' },
   'share.copied': { en: 'Link copied!', fr: 'Lien copié!' },
+
+  // Feed
+  'feed.viewFull': { en: 'View full image', fr: 'Voir l\'image complète' },
 };
 
 // ---------------------------------------------------------------------------

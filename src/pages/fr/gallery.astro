@@ -1,15 +1,120 @@
 ---
+/**
+ * Gallery Page (French) — All images from all posts
+ *
+ * Displays every individual image (hero + series) as a separate thumbnail.
+ * - Search input filters by post title and tags
+ * - Tag pills filter by post tags
+ * - Clicking any image opens a slideshow of currently visible images
+ * - Each image in slideshow has a "View Post" button
+ */
 import Base from '@layouts/Base.astro';
-import PostCard from '@components/PostCard.astro';
+import GalleryImage, { type ImageOrientation } from '@components/GalleryImage.astro';
 import FilterBar from '@components/FilterBar.astro';
 import { getCollection } from 'astro:content';
-import { getLocaleFromUrl, t } from '@utils/i18n';
+import { getLocaleFromUrl, t, localized, localePath } from '@utils/i18n';
+import { extractColorMetadata, getColorMetadataFromRgb, type ColorFamily, type ColorMood } from '@utils/extractColors';
+import { getOptimizedImage } from '@utils/optimizedImage';
+
+/**
+ * Determine image orientation from gallerySize setting or aspect ratio
+ */
+function getImageOrientation(
+  aspectRatio: number,
+  gallerySize?: 'auto' | 'small' | 'portrait' | 'portrait-tall' | 'landscape' | 'featured'
+): ImageOrientation {
+  if (gallerySize && gallerySize !== 'auto') {
+    return gallerySize === 'small' ? 'square' : gallerySize;
+  }
+  if (aspectRatio < 0.85) return 'portrait';
+  if (aspectRatio > 1.2) return 'landscape';
+  return 'square';
+}
 
 const locale = getLocaleFromUrl(Astro.url);
+
 const posts = (await getCollection('posts', ({ data }) => {
   return !data.draft && !data.private;
 })).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
 const allTags = [...new Set(posts.flatMap(p => p.data.tags))].sort();
+
+// Build flat array of ALL images (hero + series)
+interface GalleryImageData {
+  src: string;
+  alt: string;
+  postUrl: string;
+  postTitle: string;
+  tags: string[];
+  focalPoint: 'left' | 'center' | 'right';
+  colorFamily: ColorFamily;
+  mood: ColorMood;
+  orientation: ImageOrientation;
+}
+
+const allImages: GalleryImageData[] = [];
+const colorFamiliesSet = new Set<ColorFamily>();
+
+// Extract colors from images at build time
+for (const post of posts) {
+  const slug = post.slug || post.id.replace(/\.md$/, '');
+  const postUrl = localePath(`/posts/${slug}`, locale);
+  const postTitle = localized(post.data.title, locale) || t('slideshow.viewPost', locale);
+  const tags = post.data.tags;
+
+  // Get color metadata: use existing glowColor if available, otherwise extract from image
+  let colorMeta: { colorFamily: ColorFamily; mood: ColorMood; lightness: number };
+  if (post.data.glowColor) {
+    const glow = post.data.glowColor;
+    colorMeta = getColorMetadataFromRgb(glow.r, glow.g, glow.b);
+  } else {
+    // Extract color from cover image at build time
+    const extracted = await extractColorMetadata(post.data.coverImage.src);
+    colorMeta = {
+      colorFamily: extracted.colorFamily,
+      mood: extracted.mood,
+      lightness: extracted.lightness,
+    };
+  }
+  colorFamiliesSet.add(colorMeta.colorFamily);
+
+  // Get aspect ratio for hero image (for masonry layout)
+  const heroImageData = await getOptimizedImage(post.data.coverImage.src);
+  const heroOrientation = getImageOrientation(heroImageData.aspectRatio, post.data.gallerySize);
+
+  allImages.push({
+    src: post.data.coverImage.src,
+    alt: localized(post.data.coverImage.alt, locale) || '',
+    postUrl,
+    postTitle,
+    tags,
+    focalPoint: (post.data.coverImage.focalPoint || 'center') as 'left' | 'center' | 'right',
+    colorFamily: colorMeta.colorFamily,
+    mood: colorMeta.mood,
+    orientation: heroOrientation,
+  });
+
+  if (post.data.images && post.data.images.length > 0) {
+    for (const img of post.data.images) {
+      const seriesImageData = await getOptimizedImage(img.src);
+      const seriesOrientation = getImageOrientation(seriesImageData.aspectRatio);
+
+      allImages.push({
+        src: img.src,
+        alt: localized(img.alt, locale) || '',
+        postUrl,
+        postTitle,
+        tags,
+        focalPoint: (img.focalPoint || 'center') as 'left' | 'center' | 'right',
+        colorFamily: colorMeta.colorFamily,
+        mood: colorMeta.mood,
+        orientation: seriesOrientation,
+      });
+    }
+  }
+}
+
+const colorFamilies = Array.from(colorFamiliesSet).sort();
 ---
 
 <Base title={t('nav.gallery', locale)}>
@@ -17,25 +122,147 @@ const allTags = [...new Set(posts.flatMap(p => p.data.tags))].sort();
     <header class="gallery__header">
       <h1 class="gallery__title">{t('nav.gallery', locale)}</h1>
     </header>
-    <FilterBar tags={allTags} />
+
+    <FilterBar tags={allTags} colorFamilies={colorFamilies} />
+
     <div class="gallery__grid" id="gallery-grid">
-      {posts.map((post, i) => (
-        <PostCard post={post} index={i} variant="square" />
+      {allImages.map((img, i) => (
+        <GalleryImage
+          src={img.src}
+          alt={img.alt}
+          postUrl={img.postUrl}
+          postTitle={img.postTitle}
+          tags={img.tags}
+          index={i}
+          focalPoint={img.focalPoint}
+          colorFamily={img.colorFamily}
+          mood={img.mood}
+          orientation={img.orientation}
+        />
       ))}
     </div>
-    {posts.length === 0 && (
+
+    {allImages.length === 0 && (
       <p class="gallery__empty">{t('gallery.noResults', locale)}</p>
     )}
   </section>
+
+  <script>
+    function initGallerySlideshow() {
+      const galleryGrid = document.getElementById('gallery-grid');
+      if (!galleryGrid) return;
+
+      function getVisibleImages() {
+        const visibleItems = galleryGrid.querySelectorAll('.gallery-image:not(.gallery-image--hidden)');
+        return Array.from(visibleItems).map(item => ({
+          src: item.dataset.src,
+          alt: item.dataset.alt || '',
+          postUrl: item.dataset.postUrl,
+          postTitle: item.dataset.postTitle,
+        }));
+      }
+
+      galleryGrid.addEventListener('click', (e) => {
+        const button = (e.target as HTMLElement).closest('.gallery-image__button');
+        if (!button) return;
+
+        const galleryItem = button.closest('.gallery-image');
+        if (!galleryItem || galleryItem.classList.contains('gallery-image--hidden')) return;
+
+        const visibleImages = getVisibleImages();
+        const clickedSrc = galleryItem.dataset.src;
+        const startIndex = visibleImages.findIndex(img => img.src === clickedSrc);
+
+        if (window.openSlideshow && visibleImages.length > 0) {
+          window.openSlideshow(visibleImages, startIndex >= 0 ? startIndex : 0);
+        }
+      });
+    }
+
+    function fillMasonryGaps() {
+      if (window.innerWidth < 1024) return;
+
+      const galleryGrid = document.getElementById('gallery-grid');
+      if (!galleryGrid) return;
+
+      const visibleItems = Array.from(
+        galleryGrid.querySelectorAll('.gallery-image:not(.gallery-image--hidden)')
+      ) as HTMLElement[];
+
+      if (visibleItems.length === 0) return;
+
+      const gridStyle = getComputedStyle(galleryGrid);
+      const columns = gridStyle.gridTemplateColumns.split(' ').length;
+
+      let totalCells = 0;
+      visibleItems.forEach(item => {
+        const isLandscape = item.classList.contains('gallery-image--landscape');
+        const isFeatured = item.classList.contains('gallery-image--featured');
+        if (isFeatured) {
+          totalCells += 2;
+        } else if (isLandscape) {
+          totalCells += 2;
+        } else {
+          totalCells += 1;
+        }
+      });
+
+      const remainder = totalCells % columns;
+      if (remainder === 0) return;
+
+      const gapSize = columns - remainder;
+      const squareItems = visibleItems
+        .filter(item => item.classList.contains('gallery-image--square'))
+        .slice(-gapSize);
+
+      squareItems.forEach(item => {
+        item.style.gridColumn = 'span 2';
+      });
+    }
+
+    function initMasonryGapFill() {
+      fillMasonryGaps();
+
+      const galleryGrid = document.getElementById('gallery-grid');
+      if (galleryGrid) {
+        const observer = new MutationObserver(() => {
+          const expanded = document.querySelectorAll('.gallery-image[style*="grid-column"]');
+          expanded.forEach(item => (item as HTMLElement).style.gridColumn = '');
+          setTimeout(fillMasonryGaps, 50);
+        });
+        observer.observe(galleryGrid, { attributes: true, subtree: true, attributeFilter: ['class'] });
+      }
+
+      let resizeTimeout: ReturnType<typeof setTimeout>;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          const expanded = document.querySelectorAll('.gallery-image[style*="grid-column"]');
+          expanded.forEach(item => (item as HTMLElement).style.gridColumn = '');
+          fillMasonryGaps();
+        }, 150);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initGallerySlideshow();
+      initMasonryGapFill();
+    });
+    document.addEventListener('astro:page-load', () => {
+      initGallerySlideshow();
+      initMasonryGapFill();
+    });
+  </script>
 </Base>
 
 <style>
   .gallery { padding-top: var(--space-3xl); }
   .gallery__header { margin-bottom: var(--space-xl); }
   .gallery__title { font-family: var(--font-body); font-size: var(--text-sm); font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-muted); }
-  .gallery__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-sm); }
+  .gallery__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-sm); }
   @media (min-width: 640px) { .gallery__grid { grid-template-columns: repeat(3, 1fr); } }
-  @media (min-width: 1024px) { .gallery__grid { grid-template-columns: repeat(4, 1fr); gap: var(--space-md); } }
-  @media (min-width: 1440px) { .gallery__grid { grid-template-columns: repeat(5, 1fr); } }
+  /* Desktop: Masonry layout with dense packing */
+  @media (min-width: 1024px) { .gallery__grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 220px; grid-auto-flow: dense; gap: var(--space-md); } }
+  @media (min-width: 1440px) { .gallery__grid { grid-template-columns: repeat(5, 1fr); grid-auto-rows: 200px; } }
   .gallery__empty { text-align: center; color: var(--color-text-muted); padding: var(--space-4xl) 0; }
 </style>

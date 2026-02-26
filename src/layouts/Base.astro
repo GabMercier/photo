@@ -7,6 +7,7 @@
  */
 import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
+import Slideshow from '@components/Slideshow.astro';
 import { ViewTransitions } from 'astro:transitions';
 import { getLocaleFromUrl, t } from '@utils/i18n';
 import '@styles/global.css';
@@ -15,24 +16,35 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  ogImageAlt?: string;
   /** Canonical URL for the page (optional, defaults to current URL) */
   canonicalUrl?: string;
   /** Dynamic accent color derived from image (optional) */
   accentHue?: number;
   accentSaturation?: number;
   accentLightness?: number;
+  /** Open Graph type: website (default), article for posts */
+  ogType?: 'website' | 'article';
 }
 
 const locale = getLocaleFromUrl(Astro.url);
 const {
   title = '',
-  description = 'gphoto',
+  description = '',
   ogImage = '/og-default.jpg',
+  ogImageAlt = '',
   canonicalUrl,
   accentHue,
   accentSaturation,
   accentLightness,
+  ogType = 'website',
 } = Astro.props;
+
+// Site branding
+const siteName = 'Gabriel Mercier Photography';
+const defaultDescription = locale === 'fr'
+  ? 'Portfolio photographique de Gabriel Mercier — paysages, nature et moments capturés.'
+  : 'Photography portfolio by Gabriel Mercier — landscapes, nature, and captured moments.';
 
 // Build canonical URL - use provided or default to current URL (without query params)
 const siteUrl = import.meta.env.SITE || Astro.url.origin;
@@ -40,11 +52,22 @@ const canonical = canonicalUrl || new URL(Astro.url.pathname, siteUrl).href;
 const ogImageUrl = ogImage.startsWith('http') ? ogImage : new URL(ogImage, siteUrl).href;
 
 // Build accent style string if values provided
+// Include raw saturation number for calc() usage in CSS
 const accentStyle = accentHue !== undefined
-  ? `--color-accent-hue: ${accentHue}; --color-accent-saturation: ${accentSaturation}%; --color-accent-lightness: ${accentLightness}%;`
+  ? `--color-accent-hue: ${accentHue}; --color-accent-saturation: ${accentSaturation}%; --color-accent-lightness: ${accentLightness}%; --saturation-raw: ${accentSaturation};`
   : undefined;
 
-const fullTitle = title || 'gphoto';
+// Title formatting: "Page Title | Site Name" or just "Site Name" for homepage
+const pageTitle = title || '';
+const fullTitle = pageTitle
+  ? (pageTitle.includes('Gabriel') ? pageTitle : `${pageTitle} | ${siteName}`)
+  : siteName;
+
+// Description with fallback
+const metaDescription = description || defaultDescription;
+
+// Image alt with fallback
+const imageAlt = ogImageAlt || pageTitle || siteName;
 ---
 
 <!doctype html>
@@ -52,30 +75,43 @@ const fullTitle = title || 'gphoto';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
+
+    <!-- Primary Meta Tags -->
+    <title>{fullTitle}</title>
+    <meta name="title" content={fullTitle} />
+    <meta name="description" content={metaDescription} />
+    <meta name="theme-color" content="#000000" />
 
     <!-- Canonical URL -->
     <link rel="canonical" href={canonical} />
 
-    <!-- Open Graph -->
-    <meta property="og:title" content={fullTitle} />
-    <meta property="og:description" content={description} />
-    <meta property="og:image" content={ogImageUrl} />
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="gphoto" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={metaDescription} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:secure_url" content={ogImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:locale" content={locale === 'fr' ? 'fr_CA' : 'en_CA'} />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={canonical} />
     <meta name="twitter:title" content={fullTitle} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:description" content={metaDescription} />
     <meta name="twitter:image" content={ogImageUrl} />
-
-    <title>{fullTitle}</title>
+    <meta name="twitter:image:alt" content={imageAlt} />
 
     <!-- Favicon (placeholder — replace with your own) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- RSS Feed -->
+    <link rel="alternate" type="application/rss+xml" title="Gabriel Mercier Photography" href="/rss.xml" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -89,11 +125,15 @@ const fullTitle = title || 'gphoto';
   <body style={accentStyle}>
     <Header />
 
-    <main id="main-content" class:list={[Astro.url.pathname === '/' || Astro.url.pathname === '/fr/' ? 'main--homepage' : '']}>
+    <main id="main-content" class:list={[
+      (Astro.url.pathname === '/' || Astro.url.pathname === '/fr/') && 'main--homepage',
+      (Astro.url.pathname === '/feed' || Astro.url.pathname === '/feed/' || Astro.url.pathname === '/fr/feed' || Astro.url.pathname === '/fr/feed/') && 'main--fullscreen'
+    ]}>
       <slot />
     </main>
 
     <Footer />
+    <Slideshow />
   </body>
 </html>
 
@@ -115,6 +155,12 @@ const fullTitle = title || 'gphoto';
   main.main--homepage {
     padding-top: 0;
     background: transparent; /* Ensure no background blocks carousel glow */
+  }
+
+  /* Remove padding for fullscreen pages like feed */
+  main.main--fullscreen {
+    padding-top: 0;
+    background: transparent;
   }
 
   /* Ambient background glow - uses accent color system

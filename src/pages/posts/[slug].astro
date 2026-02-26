@@ -6,33 +6,46 @@
  * Displays the full post with hero image, content, and series images.
  */
 import Base from '@layouts/Base.astro';
-import Slideshow from '@components/Slideshow.astro';
 import ShareButton from '@components/ShareButton.astro';
+import OptimizedImage from '@components/OptimizedImage.astro';
+import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
 import { getCollection, render } from 'astro:content';
 import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
-import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
+import { extractColorMetadata, deriveAccentFromGlow } from '@utils/extractColors';
 
 // Generate static paths for all posts at build time
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
 
   // Extract glow colors for posts that don't have them
+  // Also check for grayscale images to use neutral color
   const postsWithColors = await Promise.all(
     posts.map(async (post) => {
+      const imagePath = post.data.coverImage.src;
+      const colorMeta = await extractColorMetadata(imagePath);
+
+      // For grayscale images, use neutral gray regardless of frontmatter
+      if (colorMeta.colorFamily === 'neutral') {
+        return {
+          ...post,
+          data: {
+            ...post.data,
+            glowColor: { r: 90, g: 90, b: 90, hex: '#5A5A5A' },
+          },
+        };
+      }
+
       // Use existing glowColor from frontmatter if present
       if (post.data.glowColor) {
         return post;
       }
 
-      // Otherwise extract at build time
-      const imagePath = post.data.coverImage.src;
-      const glowColor = await extractDominantColor(imagePath);
-
+      // Otherwise use extracted color
       return {
         ...post,
         data: {
           ...post.data,
-          glowColor,
+          glowColor: colorMeta,
         },
       };
     })
@@ -48,8 +61,23 @@ const locale = getLocaleFromUrl(Astro.url);
 const { post } = Astro.props;
 const { title, coverImage, images, tags, date, postType, description, glowColor } = post.data;
 
+// Get display title (may be empty if no title provided)
+const displayTitle = localized(title, locale);
+
 // Fallback to cool blue-gray if no color extracted
 const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+
+// Get image data to determine if landscape (for mobile cropping)
+const heroImageData = await getOptimizedImage(coverImage.src);
+const isLandscape = heroImageData.aspectRatio >= 1;
+
+// Focal point for cropping
+const focalPointMap: Record<string, string> = {
+  'left': 'left center',
+  'center': 'center center',
+  'right': 'right center',
+};
+const focalPoint = focalPointMap[coverImage.focalPoint || 'center'] || 'center center';
 
 // Derive accent color from glow for dynamic theming
 const accent = deriveAccentFromGlow(glow.r, glow.g, glow.b);
@@ -66,9 +94,11 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
 ---
 
 <Base
-  title={localized(title, locale)}
+  title={displayTitle || t('post.single', locale)}
   description={localized(description, locale)}
   ogImage={coverImage.src}
+  ogImageAlt={localized(coverImage.alt, locale) || displayTitle || t('post.single', locale)}
+  ogType="article"
   accentHue={accent.hue}
   accentSaturation={accent.saturation}
   accentLightness={accent.lightness}
@@ -82,12 +112,34 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     }}
   >
     <!-- Hero image - full viewport -->
-    <div class="post__hero">
-      <img
+    <div
+      class:list={['post__hero', isLandscape && 'post__hero--landscape']}
+      style={{ '--focal-point': focalPoint }}
+    >
+      <OptimizedImage
         src={coverImage.src}
         alt={localized(coverImage.alt, locale)}
         class="post__hero-image"
+        loading="eager"
+        decoding="sync"
+        fetchpriority="high"
+        sizes={imageSizes.hero}
       />
+
+      {/* Expand button for mobile - shows full image in lightbox */}
+      <button
+        class="post__hero-expand"
+        aria-label={t('feed.viewFull', locale)}
+        data-full-src={coverImage.src}
+        data-full-alt={localized(coverImage.alt, locale)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <polyline points="9 21 3 21 3 15"></polyline>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+      </button>
     </div>
 
     <!-- Gallery navigation (always rendered, shown/hidden by JavaScript) -->
@@ -111,27 +163,31 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
       <span id="gallery-nav-current">1</span> / <span id="gallery-nav-total">1</span>
     </div>
 
-    <!-- Post content -->
-    <div class="post__content container container--narrow">
-      <!-- Back link (updated by JavaScript if in gallery mode) -->
+    <!-- Navigation bar below hero: back, date, share -->
+    <nav class="post__nav container container--narrow">
       <a href={localePath('/feed', locale)} class="post__back" id="post-back-link">
         {t('misc.backToFeed', locale)}
       </a>
+      <div class="post__nav-right">
+        <time datetime={date.toISOString()}>{formattedDate}</time>
+        {postType === 'series' && (
+          <span class="post__badge">{t('post.series', locale)}</span>
+        )}
+        <ShareButton
+          title={displayTitle || 'gphoto'}
+          description={localized(description, locale)}
+          locale={locale}
+        />
+      </div>
+    </nav>
 
-      <!-- Title and meta -->
+    <!-- Post content -->
+    <div class="post__content container container--narrow">
+      <!-- Title and tags -->
       <header class="post__header animate-in">
-        <h1 class="post__title">{localized(title, locale)}</h1>
-        <div class="post__meta">
-          <time datetime={date.toISOString()}>{formattedDate}</time>
-          {postType === 'series' && (
-            <span class="post__badge">{t('post.series', locale)}</span>
-          )}
-          <ShareButton
-            title={localized(title, locale) || 'gphoto'}
-            description={localized(description, locale)}
-            locale={locale}
-          />
-        </div>
+        {displayTitle && (
+          <h1 class="post__title">{displayTitle}</h1>
+        )}
         <div class="post__tags">
           {tags.map(tag => (
             <a href={`${localePath('/gallery', locale)}?tag=${encodeURIComponent(tag)}`} class="tag">{tag}</a>
@@ -148,18 +204,21 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
       {images && images.length > 0 && (
         <div class="post__series">
           {images.map((img, i) => (
-            <figure class="post__series-item animate-in" style={`animation-delay: ${i * 100}ms`}>
-              <img
+            <figure
+              class="post__series-item animate-in"
+              style={`animation-delay: ${i * 100}ms`}
+              data-slideshow-src={img.src}
+              data-slideshow-alt={localized(img.alt, locale)}
+              data-slideshow-caption={[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
+              data-slideshow-index={i}
+            >
+              <OptimizedImage
                 src={img.src}
                 alt={localized(img.alt, locale)}
+                class="post__series-image"
                 loading="lazy"
                 decoding="async"
-                class="post__series-image"
-                data-slideshow-src={img.src}
-                data-slideshow-alt={localized(img.alt, locale)}
-                data-slideshow-caption={[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
-                data-slideshow-index={i}
-                style="cursor: pointer;"
+                sizes="(max-width: 768px) 100vw, 800px"
               />
               {img.settings && (
                 <figcaption class="post__series-caption">
@@ -173,21 +232,43 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     </div>
   </article>
 
-  <Slideshow />
-
   <script>
+    // Get all images for the slideshow (hero + series images)
+    function getAllPostImages() {
+      const images = [];
+
+      // Add hero image first
+      const expandBtn = document.querySelector('.post__hero-expand');
+      if (expandBtn?.dataset.fullSrc) {
+        images.push({
+          src: expandBtn.dataset.fullSrc,
+          alt: expandBtn.dataset.fullAlt || '',
+          caption: ''
+        });
+      }
+
+      // Add series images
+      document.querySelectorAll('.post__series-item[data-slideshow-src]').forEach(el => {
+        images.push({
+          src: el.dataset.slideshowSrc,
+          alt: el.dataset.slideshowAlt || '',
+          caption: el.dataset.slideshowCaption || ''
+        });
+      });
+
+      return images;
+    }
+
     // Series slideshow initialization
     function initSeriesSlideshow() {
-      const seriesImages = document.querySelectorAll('.post__series-image');
+      const seriesItems = document.querySelectorAll('.post__series-item[data-slideshow-src]');
 
-      seriesImages.forEach((img) => {
-        img.addEventListener('click', () => {
-          const allImages = Array.from(document.querySelectorAll('.post__series-image')).map(el => ({
-            src: el.dataset.slideshowSrc,
-            alt: el.dataset.slideshowAlt,
-            caption: el.dataset.slideshowCaption
-          }));
-          const index = parseInt(img.dataset.slideshowIndex);
+      seriesItems.forEach((figure, i) => {
+        figure.style.cursor = 'pointer';
+        figure.addEventListener('click', () => {
+          const allImages = getAllPostImages();
+          // Series images start at index 1 (hero is index 0)
+          const index = i + 1;
 
           if (window.openSlideshow) {
             window.openSlideshow(allImages, index);
@@ -198,11 +279,30 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
       });
     }
 
+    // Hero expand button - opens slideshow starting at hero (index 0)
+    function initHeroExpand() {
+      const expandBtn = document.querySelector('.post__hero-expand');
+      if (!expandBtn) return;
+
+      expandBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const allImages = getAllPostImages();
+
+        if (window.openSlideshow && allImages.length > 0) {
+          window.openSlideshow(allImages, 0);
+        }
+      });
+    }
+
     // Initialize on load
     initSeriesSlideshow();
+    initHeroExpand();
 
     // Re-initialize after View Transitions
-    document.addEventListener('astro:after-swap', initSeriesSlideshow);
+    document.addEventListener('astro:after-swap', () => {
+      initSeriesSlideshow();
+      initHeroExpand();
+    });
 
     // Gallery navigation initialization
     function initGalleryNav() {
@@ -317,13 +417,24 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     align-items: center;
     justify-content: center;
     animation: fadeIn var(--transition-gallery) forwards;
+    padding: var(--space-2xl);
+    box-sizing: border-box;
   }
 
-  .post__hero-image {
-    max-width: 100%;
-    max-height: 100%;
+  /* Handle picture element from OptimizedImage - use :global for child component */
+  .post__hero :global(picture) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .post__hero :global(.post__hero-image) {
+    display: block;
+    max-width: 90vw;
+    max-height: calc(100vh - var(--header-height) - var(--space-4xl));
+    width: auto;
+    height: auto;
     object-fit: contain;
-    padding: 20px 10px 40px 10px;
   }
 
   /* Article with page-wide glow */
@@ -353,13 +464,25 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     mix-blend-mode: screen;
   }
 
-  /* Content starts right after viewport */
-  .post__content {
+  /* Navigation bar between hero and content */
+  .post__nav {
     position: relative;
-    z-index: 2; /* Ensure content sits above hero glow */
-    padding-top: var(--space-3xl);
-    padding-bottom: var(--space-3xl);
-    background: transparent;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-lg);
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-xl);
+  }
+
+  .post__nav-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   /* Back link */
@@ -369,7 +492,6 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     gap: var(--space-xs);
     font-size: var(--text-sm);
     color: var(--color-text-subtle);
-    margin-bottom: var(--space-2xl);
     transition: color var(--transition-fast);
   }
 
@@ -382,25 +504,6 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     color: var(--color-accent);
   }
 
-  /* Header */
-  .post__header {
-    margin-bottom: var(--space-2xl);
-  }
-
-  .post__title {
-    font-size: var(--text-4xl);
-    margin-bottom: var(--space-md);
-  }
-
-  .post__meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-    margin-bottom: var(--space-md);
-  }
-
   .post__badge {
     padding: 2px 8px;
     border: 1px solid var(--color-border);
@@ -409,6 +512,25 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-subtle);
+  }
+
+  /* Content area */
+  .post__content {
+    position: relative;
+    z-index: 2;
+    padding-top: 0;
+    padding-bottom: var(--space-3xl);
+    background: transparent;
+  }
+
+  /* Header */
+  .post__header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .post__title {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-md);
   }
 
   .post__tags {
@@ -528,6 +650,42 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
+  /* Expand button for hero - hidden by default */
+  .post__hero-expand {
+    display: none;
+    position: absolute;
+    bottom: var(--space-lg);
+    right: var(--space-lg);
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .post__hero-expand:hover,
+  .post__hero-expand:focus {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.05);
+  }
+
+  .post__hero-expand:active {
+    transform: scale(0.95);
+  }
+
+  .post__hero-expand svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Mobile - shared styles */
   @media (max-width: 768px) {
     .gallery-nav--prev {
       left: var(--space-md);
@@ -535,6 +693,64 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
 
     .gallery-nav--next {
       right: var(--space-md);
+    }
+
+    /* Show expand button on mobile for ALL images */
+    .post__hero-expand {
+      display: flex;
+    }
+
+    /* Navigation bar stacks on mobile */
+    .post__nav {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-md);
+    }
+
+    .post__nav-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+
+  /* Mobile portrait - crop to 3:4 */
+  @media (max-width: 768px) and (orientation: portrait) {
+    .post__hero {
+      padding: 0;
+      height: auto;
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+    }
+
+    .post__hero :global(picture) {
+      width: 100%;
+      height: 100%;
+    }
+
+    .post__hero :global(.post__hero-image) {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      object-fit: cover;
+      object-position: var(--focal-point, center center);
+    }
+  }
+
+  /* Mobile landscape - natural image display */
+  @media (max-width: 900px) and (orientation: landscape) {
+    .post__hero {
+      padding: var(--space-md) 0;
+      min-height: auto;
+      height: auto;
+    }
+
+    .post__hero :global(.post__hero-image) {
+      max-width: 100%;
+      max-height: 70vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
     }
   }
 </style>

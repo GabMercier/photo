@@ -4,11 +4,12 @@ import { getLocaleFromUrl, t } from '@utils/i18n';
 const locale = getLocaleFromUrl(Astro.url);
 const year = new Date().getFullYear();
 
-// Check if we're on homepage
+// Check if we're on homepage or feed
 const isHomepage = Astro.url.pathname === '/' || Astro.url.pathname === '/fr/';
+const isFeed = Astro.url.pathname.includes('/feed');
 ---
 
-<footer class:list={['footer', isHomepage && 'footer--homepage']}>
+<footer class:list={['footer', isHomepage && 'footer--homepage', isFeed && 'footer--hidden']}>
   <div class="footer__inner container">
     <span class="footer__copyright">
       &copy; {year} {t('footer.rights', locale)}
@@ -47,5 +48,10 @@ const isHomepage = Astro.url.pathname === '/' || Astro.url.pathname === '/fr/';
     right: 0;
     margin-top: 0;
     z-index: 100; /* Above carousel */
+  }
+
+  /* Hide footer on feed pages - feed has its own scroll container */
+  .footer--hidden {
+    display: none;
   }
 </style>

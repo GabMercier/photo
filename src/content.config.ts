@@ -49,12 +49,16 @@ const about = defineCollection({
 const posts = defineCollection({
   type: 'content', // Markdown/MDX files with frontmatter
   schema: z.object({
+    // --- CMS identifier (auto-generated UUID, not displayed) ---
+    id: z.string().optional(),
+
     // --- Bilingual metadata ---
-    // Title is required (used for slug and identification)
+    // Title is optional - if not provided, post displays without title
+    // Slug is derived from filename, not title
     title: z.object({
-      en: z.string().min(1, 'English title is required'),
+      en: z.string().optional().default(''),
       fr: z.string().optional().default(''),
-    }),
+    }).optional(),
     description: z.object({
       en: z.string().optional().default(''),
       fr: z.string().optional().default(''),
@@ -74,6 +78,9 @@ const posts = defineCollection({
         en: z.string().optional().default(''),
         fr: z.string().optional().default(''),
       }).optional(),
+      // Horizontal crop position for landscape images in portrait containers (mobile, gallery)
+      // Only applies when image needs horizontal cropping
+      focalPoint: z.enum(['left', 'center', 'right']).optional().default('center'),
     }),
     // Ambient glow color (YouTube-style effect)
     // Extracted from image or manually specified
@@ -103,6 +110,14 @@ const posts = defineCollection({
     tags: z.array(z.string()).default([]),
     // Post format
     postType: z.enum(['single', 'series']).default('single'),
+    // Gallery display size (controls masonry grid spanning)
+    // auto: uses aspect ratio detection
+    // small: 1×1 cell
+    // portrait: 1 col × 2 rows
+    // portrait-tall: 1 col × 3 rows (extra tall)
+    // landscape: 2 cols × 1 row
+    // featured: 2 cols × 2 rows (big prominent image)
+    gallerySize: z.enum(['auto', 'small', 'portrait', 'portrait-tall', 'landscape', 'featured']).default('auto'),
     // Featured on homepage
     featured: z.boolean().default(false),
     // Homepage carousel selection

@@ -1,0 +1,149 @@
+---
+/**
+ * Newsletter Signup Component
+ *
+ * Email signup form using Buttondown.
+ * Bilingual support (EN/FR).
+ *
+ * Usage:
+ *   <NewsletterSignup />
+ *
+ * Note: Replace 'YOUR_BUTTONDOWN_USERNAME' with your actual Buttondown username.
+ */
+import { getLocaleFromUrl, t } from '@utils/i18n';
+
+interface Props {
+  /** Optional custom class */
+  class?: string;
+}
+
+const locale = getLocaleFromUrl(Astro.url);
+const { class: className } = Astro.props;
+
+// TODO: Replace with your Buttondown username
+const buttondownUsername = 'gphoto';
+---
+
+<div class:list={['newsletter', className]}>
+  <div class="newsletter__content">
+    <h3 class="newsletter__title">
+      {locale === 'fr' ? '' : ''}
+    </h3>
+    <p class="newsletter__description">
+      {locale === 'fr'
+        ? ''
+        : ''}
+    </p>
+  </div>
+
+  <form
+    action={`https://buttondown.email/api/emails/embed-subscribe/${buttondownUsername}`}
+    method="post"
+    target="popupwindow"
+    onsubmit="window.open(`https://buttondown.email/${buttondownUsername}`, 'popupwindow')"
+    class="newsletter__form"
+  >
+    <div class="newsletter__input-group">
+      <input
+        type="email"
+        name="email"
+        id="bd-email"
+        placeholder={locale === 'fr' ? 'Votre courriel' : 'Your email'}
+        required
+        class="newsletter__input"
+      />
+      <button type="submit" class="newsletter__button">
+        {locale === 'fr' ? 'S\'abonner' : 'Subscribe'}
+      </button>
+    </div>
+    <p class="newsletter__privacy">
+      {locale === 'fr'
+        ? ''
+        : ''}
+    </p>
+  </form>
+</div>
+
+<style>
+  .newsletter {
+    padding: var(--space-2xl) 0;
+  }
+
+  .newsletter__content {
+    margin-bottom: var(--space-lg);
+  }
+
+  .newsletter__title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 400;
+    margin-bottom: var(--space-sm);
+  }
+
+  .newsletter__description {
+    color: var(--color-text-muted);
+    font-size: var(--text-base);
+  }
+
+  .newsletter__form {
+    max-width: 400px;
+  }
+
+  .newsletter__input-group {
+    display: flex;
+    gap: var(--space-sm);
+  }
+
+  .newsletter__input {
+    flex: 1;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    color: var(--color-text);
+    font-size: var(--text-base);
+    transition: border-color var(--transition-fast);
+  }
+
+  .newsletter__input::placeholder {
+    color: var(--color-text-subtle);
+  }
+
+  .newsletter__input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .newsletter__button {
+    padding: var(--space-sm) var(--space-lg);
+    background: var(--color-accent);
+    border: none;
+    border-radius: var(--border-radius);
+    color: var(--color-bg);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+    white-space: nowrap;
+  }
+
+  .newsletter__button:hover {
+    opacity: 0.9;
+  }
+
+  .newsletter__privacy {
+    margin-top: var(--space-sm);
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+  }
+
+  @media (max-width: 480px) {
+    .newsletter__input-group {
+      flex-direction: column;
+    }
+
+    .newsletter__button {
+      width: 100%;
+    }
+  }
+</style>

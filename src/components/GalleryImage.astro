@@ -1,0 +1,190 @@
+---
+/**
+ * GalleryImage Component
+ *
+ * Displays an individual image in the gallery grid.
+ * Shows hover overlay with post title and link to full post.
+ */
+import OptimizedImage from '@components/OptimizedImage.astro';
+import { imageSizes } from '@utils/optimizedImage';
+
+import type { ColorFamily, ColorMood } from '@utils/extractColors';
+
+/** Image orientation/size for masonry layout */
+export type ImageOrientation = 'portrait' | 'portrait-tall' | 'landscape' | 'square' | 'featured';
+
+interface Props {
+  src: string;
+  alt: string;
+  postUrl: string;
+  postTitle: string;
+  tags: string[];
+  index?: number;
+  focalPoint?: 'left' | 'center' | 'right';
+  /** Color family for filtering (red, orange, yellow, green, blue, purple, neutral) */
+  colorFamily?: ColorFamily;
+  /** Color mood for filtering (light, dark, balanced) */
+  mood?: ColorMood;
+  /** Image orientation for masonry grid (portrait spans 2 rows, landscape spans 2 cols) */
+  orientation?: ImageOrientation;
+}
+
+const {
+  src,
+  alt,
+  postUrl,
+  postTitle,
+  tags,
+  index = 0,
+  focalPoint = 'center',
+  colorFamily = 'neutral',
+  mood = 'balanced',
+  orientation = 'square',
+} = Astro.props;
+
+// Build class list for masonry layout
+const orientationClass = `gallery-image--${orientation}`;
+
+// Map focal point to CSS object-position value
+const focalPointMap: Record<string, string> = {
+  'left': 'left center',
+  'center': 'center center',
+  'right': 'right center',
+};
+const objectPosition = focalPointMap[focalPoint] || 'center center';
+---
+
+<article
+  class={`gallery-image animate-in ${orientationClass}`}
+  style={{ animationDelay: `${index * 40}ms`, '--focal-point': objectPosition }}
+  data-tags={tags.join(',')}
+  data-title={postTitle.toLowerCase()}
+  data-src={src}
+  data-alt={alt}
+  data-post-url={postUrl}
+  data-post-title={postTitle}
+  data-color-family={colorFamily}
+  data-mood={mood}
+>
+  <button class="gallery-image__button" type="button" aria-label={`View ${alt || postTitle}`}>
+    <div class="gallery-image__wrap">
+      <OptimizedImage
+        src={src}
+        alt={alt}
+        class="gallery-image__img"
+        loading="lazy"
+        decoding="async"
+        sizes={imageSizes.gallery}
+      />
+    </div>
+  </button>
+</article>
+
+<style>
+  .gallery-image {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--border-radius);
+    background-color: var(--color-surface);
+  }
+
+  .gallery-image__button {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .gallery-image__wrap {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+  }
+
+  .gallery-image__wrap :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .gallery-image__img,
+  .gallery-image__wrap :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--focal-point, center center);
+    transition: transform var(--transition-gallery);
+  }
+
+  .gallery-image:hover .gallery-image__img,
+  .gallery-image:hover :global(img) {
+    transform: scale(1.03);
+  }
+
+  /* Animation */
+  .animate-in {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeInUp 0.4s var(--ease-out-smooth) forwards;
+  }
+
+  @keyframes fadeInUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Hidden state for filtering */
+  .gallery-image[hidden] {
+    display: none;
+  }
+
+  /* ==========================================================================
+   * Desktop Masonry Layout
+   * Portrait images span 2 rows, landscape images span 2 columns
+   * ========================================================================== */
+  @media (min-width: 1024px) {
+    .gallery-image {
+      height: 100%;
+    }
+
+    .gallery-image__button {
+      height: 100%;
+    }
+
+    .gallery-image__wrap {
+      aspect-ratio: unset;
+      height: 100%;
+    }
+
+    /* Portrait: tall images span 2 rows */
+    .gallery-image--portrait {
+      grid-row: span 2;
+    }
+
+    /* Portrait-tall: extra tall images span 3 rows */
+    .gallery-image--portrait-tall {
+      grid-row: span 3;
+    }
+
+    /* Landscape: wide images span 2 columns */
+    .gallery-image--landscape {
+      grid-column: span 2;
+    }
+
+    /* Featured: large images span 2 columns AND 2 rows */
+    .gallery-image--featured {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+
+    /* Square: 1x1 cell (default) */
+    .gallery-image--square {
+      /* No spanning needed */
+    }
+  }
+</style>

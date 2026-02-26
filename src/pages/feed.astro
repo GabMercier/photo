@@ -6,7 +6,7 @@ import Base from '@layouts/Base.astro';
 import PostCard from '@components/PostCard.astro';
 import { getCollection } from 'astro:content';
 import { getLocaleFromUrl, t, localePath } from '@utils/i18n';
-import { extractDominantColor } from '@utils/extractColors';
+import { extractColorMetadata } from '@utils/extractColors';
 
 const locale = getLocaleFromUrl(Astro.url);
 
@@ -15,22 +15,34 @@ const allPosts = (await getCollection('posts', ({ data }) => {
 })).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
 // Extract glow colors for posts that don't have them in frontmatter
+// Also check for grayscale images to use neutral color
 const posts = await Promise.all(
   allPosts.map(async (post) => {
+    const imagePath = post.data.coverImage.src;
+    const colorMeta = await extractColorMetadata(imagePath);
+
+    // For grayscale images, use neutral gray regardless of frontmatter
+    if (colorMeta.colorFamily === 'neutral') {
+      return {
+        ...post,
+        data: {
+          ...post.data,
+          glowColor: { r: 90, g: 90, b: 90, hex: '#5A5A5A' },
+        },
+      };
+    }
+
     // Use existing glowColor from frontmatter if present
     if (post.data.glowColor) {
       return post;
     }
 
-    // Otherwise extract at build time
-    const imagePath = post.data.coverImage.src;
-    const glowColor = await extractDominantColor(imagePath);
-
+    // Otherwise use extracted color
     return {
       ...post,
       data: {
         ...post.data,
-        glowColor,
+        glowColor: colorMeta,
       },
     };
   })
@@ -52,12 +64,11 @@ const posts = await Promise.all(
 </Base>
 
 <script>
-  // Scroll-driven reveal animation with IntersectionObserver
+  // Fade-in animation with IntersectionObserver
   document.addEventListener('astro:page-load', () => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (prefersReducedMotion) {
-      // Skip animations, show all cards immediately
       document.querySelectorAll('.post-card--feed').forEach(card => {
         card.classList.add('visible');
       });
@@ -68,60 +79,44 @@ const posts = await Promise.all(
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
-          // Unobserve after animation for performance
           observer.unobserve(entry.target);
         }
       });
     }, {
-      threshold: 0.15,
-      rootMargin: '0px 0px -80px 0px' // Start animation before entering viewport
+      threshold: 0.3,
+      rootMargin: '0px'
     });
 
     document.querySelectorAll('.post-card--feed').forEach(card => {
       observer.observe(card);
     });
-
-    // Subtle parallax on scroll
-    let ticking = false;
-
-    window.addEventListener('scroll', () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          // Parallax on images (very subtle)
-          document.querySelectorAll('.post-card--feed .post-card__image').forEach((img) => {
-            const card = img.closest('.post-card--feed');
-            const rect = card.getBoundingClientRect();
-            const inView = rect.top < window.innerHeight && rect.bottom > 0;
-
-            if (inView) {
-              const speed = 0.05; // Very subtle
-              const yPos = -(rect.top * speed);
-              img.style.transform = `translateY(${yPos}px)`;
-            }
-          });
-
-          ticking = false;
-        });
-
-        ticking = true;
-      }
-    }, { passive: true });
   });
 </script>
 
 <style>
   .feed {
-    padding-top: var(--space-3xl);
-    padding-bottom: var(--space-5xl);
-    max-width: none; /* Override container max-width for full-width centering */
+    /* Fixed positioning to take over viewport scroll */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0;
+    max-width: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    /* Account for header in snap positioning */
+    scroll-padding-top: var(--header-height);
   }
 
-  /* Single-column content area - full width to allow card centering */
+  /* Single-column content area */
   .feed__content {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: clamp(var(--space-4xl), 12vw, var(--space-6xl));
   }
 
   .feed__empty {
