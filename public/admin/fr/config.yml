@@ -38,6 +38,7 @@ collections:
     identifier_field: "date"
     summary: "{{date}} — {{title.fr}}"
     sortable_fields: ["date", "title.fr"]
+    media_preview: true
 
     view_filters:
       - label: "Carrousel d'accueil"

@@ -29,6 +29,7 @@ collections:
     identifier_field: "date"
     summary: "{{date}} — {{title.en}}"
     sortable_fields: ["date", "title.en"]
+    media_preview: true
 
     view_filters:
       - label: "Homepage Carousel"
