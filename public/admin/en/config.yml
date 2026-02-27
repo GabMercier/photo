@@ -6,7 +6,11 @@ backend:
   name: github
   repo: GabMercier/photo
   branch: main
-  base_url: https://decap-oauth.netlify.app
+
+# Uncomment when OAuth is set up:
+# base_url: https://YOUR-OAUTH-APP.netlify.app
+
+local_backend: true
 
 media_folder: "public/images/uploads"
 public_folder: "/images/uploads"
