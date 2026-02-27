@@ -58,17 +58,17 @@ const posts = defineCollection({
     title: z.object({
       en: z.string().optional().default(''),
       fr: z.string().optional().default(''),
-    }).optional(),
+    }).nullable().optional().transform(val => val ?? { en: '', fr: '' }),
     description: z.object({
       en: z.string().optional().default(''),
       fr: z.string().optional().default(''),
-    }).optional(),
+    }).nullable().optional().transform(val => val ?? { en: '', fr: '' }),
 
     // --- Dates & status ---
-    date: z.coerce.date().optional().default(() => new Date()),
-    updatedDate: z.coerce.date().optional(),
-    draft: z.boolean().default(false),
-    private: z.boolean().default(false), // Protected content (Cloudflare Access)
+    date: z.coerce.date().nullable().optional().transform(val => val ?? new Date()),
+    updatedDate: z.coerce.date().nullable().optional(),
+    draft: z.boolean().nullable().optional().transform(val => val ?? false),
+    private: z.boolean().nullable().optional().transform(val => val ?? false), // Protected content (Cloudflare Access)
 
     // --- Images ---
     // Cover image displayed in feed cards and as hero
@@ -77,10 +77,10 @@ const posts = defineCollection({
       alt: z.object({
         en: z.string().optional().default(''),
         fr: z.string().optional().default(''),
-      }).optional(),
+      }).nullable().optional().transform(val => val ?? { en: '', fr: '' }),
       // Horizontal crop position for landscape images in portrait containers (mobile, gallery)
       // Only applies when image needs horizontal cropping
-      focalPoint: z.enum(['left', 'center', 'right']).optional().default('center'),
+      focalPoint: z.enum(['left', 'center', 'right']).nullable().optional().default('center'),
     }),
     // Ambient glow color (YouTube-style effect)
     // Extracted from image or manually specified
@@ -97,19 +97,19 @@ const posts = defineCollection({
         alt: z.object({
           en: z.string().optional().default(''),
           fr: z.string().optional().default(''),
-        }).optional(),
+        }).nullable().optional().transform(val => val ?? { en: '', fr: '' }),
         // Optional EXIF-style metadata (for future use)
-        camera: z.string().optional(),
-        lens: z.string().optional(),
-        settings: z.string().optional(),
+        camera: z.string().nullable().optional(),
+        lens: z.string().nullable().optional(),
+        settings: z.string().nullable().optional(),
       })
-    ).optional(),
+    ).nullable().optional(),
 
     // --- Classification ---
     // Style tags for filtering (e.g., "street", "macro", "astrophotography")
-    tags: z.array(z.string()).default([]),
+    tags: z.array(z.string()).nullable().optional().transform(val => val ?? []),
     // Post format
-    postType: z.enum(['single', 'series']).default('single'),
+    postType: z.enum(['single', 'series']).nullable().optional().transform(val => val ?? 'single'),
     // Gallery display size (controls masonry grid spanning)
     // auto: uses aspect ratio detection
     // small: 1×1 cell
@@ -117,12 +117,12 @@ const posts = defineCollection({
     // portrait-tall: 1 col × 3 rows (extra tall)
     // landscape: 2 cols × 1 row
     // featured: 2 cols × 2 rows (big prominent image)
-    gallerySize: z.enum(['auto', 'small', 'portrait', 'portrait-tall', 'landscape', 'featured']).default('auto'),
+    gallerySize: z.enum(['auto', 'small', 'portrait', 'portrait-tall', 'landscape', 'featured']).nullable().optional().transform(val => val ?? 'auto'),
     // Featured on homepage
-    featured: z.boolean().default(false),
+    featured: z.boolean().nullable().optional().transform(val => val ?? false),
     // Homepage carousel selection
-    homepageCarousel: z.boolean().default(false),
-    homepageDefault: z.boolean().default(false),
+    homepageCarousel: z.boolean().nullable().optional().transform(val => val ?? false),
+    homepageDefault: z.boolean().nullable().optional().transform(val => val ?? false),
   }),
 });
 
