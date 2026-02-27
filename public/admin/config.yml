@@ -11,10 +11,6 @@ backend:
   repo: GabMercier/photo
   branch: main
 
-# --- Local development ---
-# Run: npx decap-server (from project root)
-local_backend: true
-
 # --- Media ---
 media_folder: "public/images/uploads"
 public_folder: "/images/uploads"
