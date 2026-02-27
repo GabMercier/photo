@@ -10,8 +10,8 @@ backend:
   name: github
   repo: GabMercier/photo
   branch: main
-  auth_type: pkce
-  app_id: Ov23liHZq9YWH78DubM6
+  base_url: https://gphoto.pages.dev
+  auth_endpoint: /auth
 
 # --- Médias ---
 media_folder: "public/images/uploads"
