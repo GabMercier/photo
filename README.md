@@ -8,7 +8,7 @@ A bilingual photography portfolio built with Astro. Features dynamic color themi
 
 **Dynamic Theming** — Accent colors extracted from images at build time, ambient glow effects
 
-**Visual CMS** — Decap CMS with separate EN/FR interfaces for content management
+**Visual CMS** — Sveltia CMS with separate EN/FR interfaces for content management
 
 **Gallery Views** — Grid gallery with tag filtering, feed view, and homepage carousel
 
@@ -19,7 +19,7 @@ A bilingual photography portfolio built with Astro. Features dynamic color themi
 ## Tech Stack
 
 - **Astro 5** — Static site generation
-- **Decap CMS** — Git-based visual editor
+- **Sveltia CMS** — Git-based visual editor
 - **Sharp** — Image processing & color extraction
 - **View Transitions API** — Smooth navigation
 
@@ -28,7 +28,7 @@ A bilingual photography portfolio built with Astro. Features dynamic color themi
 ```bash
 npm install
 npm run dev          # Start dev server (localhost:4321)
-npx decap-server     # Start CMS proxy (for local editing)
+npx Sveltia-server     # Start CMS proxy (for local editing)
 ```
 
 ## Content Structure
