@@ -28,8 +28,9 @@ A bilingual photography portfolio built with Astro. Features dynamic color themi
 ```bash
 npm install
 npm run dev          # Start dev server (localhost:4321)
-npx Sveltia-server     # Start CMS proxy (for local editing)
 ```
+Open the admin at 
+http://localhost:4321/admin/en/index.html
 
 ## Content Structure
 
