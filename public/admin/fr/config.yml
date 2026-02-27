@@ -176,6 +176,7 @@ collections:
       - label: "Étiquettes"
         name: "tags"
         widget: "list"
+        required: false
         default: []
         hint: "rue, macro, portrait, paysage, etc."
 
