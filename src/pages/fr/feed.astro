@@ -95,6 +95,9 @@ const posts = await Promise.all(
 
 <Base title={t('nav.feed', locale)}>
   <section class="feed container">
+    <!-- Ambient glow that crossfades to match the current post -->
+    <div class="feed__glow" id="feed-glow"></div>
+
     <!-- Timeline sidebar -->
     <nav class="feed__timeline" id="feed-timeline" aria-label="Navigation chronologique">
       {timeline.map((entry) => (
@@ -173,9 +176,61 @@ const posts = await Promise.all(
       postWraps.forEach(wrap => fadeObserver.observe(wrap));
     }
 
-    // Track current visible post and update timeline
+    // Ambient glow crossfade: two layers, toggle opacity
+    const feedGlow = document.getElementById('feed-glow');
+    let glowLayer = 1; // 1 = ::before visible, 2 = ::after visible
+    let isFirstGlow = true;
+
+    function getGlowColors(wrap: HTMLElement) {
+      const card = wrap.querySelector<HTMLElement>('.post-card');
+      if (!card) return null;
+      const s = card.style;
+      return {
+        r: s.getPropertyValue('--glow-r'),
+        g: s.getPropertyValue('--glow-g'),
+        b: s.getPropertyValue('--glow-b'),
+        r2: s.getPropertyValue('--glow2-r'),
+        g2: s.getPropertyValue('--glow2-g'),
+        b2: s.getPropertyValue('--glow2-b'),
+      };
+    }
+
+    function setLayerColors(layer: string, c: ReturnType<typeof getGlowColors>) {
+      if (!feedGlow || !c) return;
+      feedGlow.style.setProperty(`--glow-r${layer}`, c.r);
+      feedGlow.style.setProperty(`--glow-g${layer}`, c.g);
+      feedGlow.style.setProperty(`--glow-b${layer}`, c.b);
+      feedGlow.style.setProperty(`--glow2-r${layer}`, c.r2);
+      feedGlow.style.setProperty(`--glow2-g${layer}`, c.g2);
+      feedGlow.style.setProperty(`--glow2-b${layer}`, c.b2);
+    }
+
+    function updateFeedGlow(wrap: HTMLElement) {
+      if (!feedGlow) return;
+      const colors = getGlowColors(wrap);
+      if (!colors) return;
+
+      if (isFirstGlow) {
+        // Set both layers to the same color on init (no crossfade)
+        setLayerColors('1', colors);
+        setLayerColors('2', colors);
+        isFirstGlow = false;
+        return;
+      }
+
+      // Set colors on the hidden layer, then swap visibility
+      const target = glowLayer === 1 ? '2' : '1';
+      setLayerColors(target, colors);
+
+      feedGlow.style.setProperty('--layer1-opacity', target === '1' ? '1' : '0');
+      feedGlow.style.setProperty('--layer2-opacity', target === '2' ? '1' : '0');
+      glowLayer = parseInt(target);
+    }
+
+    // Track current visible post and update timeline + glow
     let currentYear: number | null = null;
     let currentMonth: number | null = null;
+    let currentIndex: number | null = null;
 
     const scrollObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -183,6 +238,12 @@ const posts = await Promise.all(
           const wrap = entry.target as HTMLElement;
           const year = parseInt(wrap.dataset.year || '0');
           const month = parseInt(wrap.dataset.month || '0');
+          const index = parseInt(wrap.dataset.index || '-1');
+
+          if (index !== currentIndex) {
+            currentIndex = index;
+            updateFeedGlow(wrap);
+          }
 
           if (year !== currentYear || month !== currentMonth) {
             currentYear = year;
@@ -221,11 +282,12 @@ const posts = await Promise.all(
       }
     });
 
-    // Initialize highlight for first post
+    // Initialize highlight + glow for first post
     if (postWraps[0]) {
       const year = parseInt(postWraps[0].dataset.year || '0');
       const month = parseInt(postWraps[0].dataset.month || '0');
       updateTimelineHighlight(year, month);
+      updateFeedGlow(postWraps[0]);
     }
   }
 
@@ -404,13 +466,68 @@ const posts = await Promise.all(
     box-shadow: 0 0 4px var(--color-accent, rgba(255, 255, 255, 0.4));
   }
 
+  /* Ambient glow that crossfades between post colors */
+  .feed__glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(80px);
+    mix-blend-mode: screen;
+  }
+
+  /* Two glow layers for crossfade — JS toggles opacity between them */
+  .feed__glow::before,
+  .feed__glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transition: opacity 1s ease;
+  }
+
+  .feed__glow::before {
+    opacity: var(--layer1-opacity, 1);
+    background:
+      radial-gradient(
+        ellipse 120% 80% at 35% 30%,
+        rgba(var(--glow-r1, 58), var(--glow-g1, 68), var(--glow-b1, 71), 0.18) 0%,
+        rgba(var(--glow-r1, 58), var(--glow-g1, 68), var(--glow-b1, 71), 0.08) 35%,
+        transparent 65%
+      ),
+      radial-gradient(
+        ellipse 120% 80% at 65% 70%,
+        rgba(var(--glow2-r1, 58), var(--glow2-g1, 68), var(--glow2-b1, 71), 0.14) 0%,
+        rgba(var(--glow2-r1, 58), var(--glow2-g1, 68), var(--glow2-b1, 71), 0.06) 35%,
+        transparent 65%
+      );
+  }
+
+  .feed__glow::after {
+    background:
+      radial-gradient(
+        ellipse 120% 80% at 35% 30%,
+        rgba(var(--glow-r2, 58), var(--glow-g2, 68), var(--glow-b2, 71), 0.18) 0%,
+        rgba(var(--glow-r2, 58), var(--glow-g2, 68), var(--glow-b2, 71), 0.08) 35%,
+        transparent 65%
+      ),
+      radial-gradient(
+        ellipse 120% 80% at 65% 70%,
+        rgba(var(--glow2-r2, 58), var(--glow2-g2, 68), var(--glow2-b2, 71), 0.14) 0%,
+        rgba(var(--glow2-r2, 58), var(--glow2-g2, 68), var(--glow2-b2, 71), 0.06) 35%,
+        transparent 65%
+      );
+    opacity: var(--layer2-opacity, 0);
+  }
+
   /* Single-column content area */
   .feed__content {
+    position: relative;
+    z-index: 1;
     width: 100%;
     display: flex;
     flex-direction: column;
-    /* Gap so first image is centered between header bottom and viewport bottom */
-    padding-top: calc(var(--header-height) + var(--space-xl));
+    /* Push first image down so it's visually centered below the header */
+    padding-top: calc(var(--header-height) + var(--space-3xl));
   }
 
   .feed__post-wrap {
