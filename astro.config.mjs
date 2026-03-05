@@ -6,7 +6,7 @@ import sitemap from '@astrojs/sitemap';
 // https://astro.build/config
 export default defineConfig({
   // Replace with your actual domain when ready
-  site: 'https://gmbpho.to',
+  site: 'https://gphoto.pages.dev',
 
   // Enable internationalization
   i18n: {
