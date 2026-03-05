@@ -28,3 +28,7 @@ yarn-error.log*
 
 # Personal documentation (keep local)
 DOCUMENTATION.md
+
+# Depth map generation tooling (local only)
+scripts/.venv/
+scripts/models/

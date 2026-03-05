@@ -1,0 +1,4 @@
+---
+en: "Minimalist"
+fr: "Minimaliste"
+---

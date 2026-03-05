@@ -1,6 +1,6 @@
 # Photography Portfolio Development Roadmap
 
-**Last Updated:** February 25, 2026  
+**Last Updated:** March 4, 2026
 **Project:** gphoto.pages.dev  
 **Purpose:** Personal portfolio → Template business foundation
 
@@ -201,92 +201,10 @@ description:
 
 ### Astro Version Upgrade
 
-**Current Status:** Unknown (check `package.json`)  
-**Latest Version:** Astro 5.17 (released Jan 29, 2026)
-
-**Why Upgrade:**
-- Image background color control (white instead of black for JPEG conversions)
-- Sharp kernel selection (fine-tune image quality for photography)
-- Async file parsing for content loaders
-- Bug fixes and performance improvements
-
-**New Features Relevant to Photography Portfolio:**
-
-**1. Background Color for Images:**
-```astro
-<Image 
-  src={myImage} 
-  format="jpeg" 
-  background="white"  // No more black backgrounds
-  alt="Product" 
-/>
-```
-
-**2. Sharp Kernel Selection:**
-```javascript
-// astro.config.mjs
-export default defineConfig({
-  image: {
-    service: {
-      entrypoint: 'astro/assets/services/sharp',
-      config: {
-        kernel: 'mks2021'  // Options: lanczos3 (default), mks2021, cubic, etc.
-      }
-    }
-  }
-})
-```
-
-**Kernel options for photography:**
-- `lanczos3` (default): Good all-around quality
-- `mks2021`: Sharper edges, good for detail-heavy photos
-- `cubic`: Smoother, good for portraits
-
-**Upgrade Process:**
-
-**1. Check current version:**
-```bash
-cat package.json | grep "astro"
-# or
-npm list astro
-```
-
-**2. Upgrade (recommended automated method):**
-```bash
-npx @astrojs/upgrade
-```
-
-**3. Manual upgrade if needed:**
-```bash
-npm install astro@latest
-# or
-pnpm upgrade astro --latest
-```
-
-**4. Testing checklist:**
-```bash
-# After upgrade, test:
-- [ ] Dev server starts (`npm run dev`)
-- [ ] Build completes (`npm run build`)
-- [ ] Preview works (`npm run preview`)
-- [ ] Image optimization still works
-- [ ] Decap CMS still loads
-- [ ] View transitions working
-- [ ] Color extraction still functional
-- [ ] Bilingual routing intact
-```
-
-**5. Check changelog for breaking changes:**
-https://github.com/withastro/astro/blob/main/packages/astro/CHANGELOG.md
-
-**When to Upgrade:**
-- **If on 5.x:** Safe to upgrade anytime (minor version)
-- **If on 4.x:** Wait until after image optimization work
-- **Best timing:** After completing core features, before deployment
-
-**Status:** ⏳ Not Started  
-**Effort:** 30 minutes (upgrade + testing)  
-**Priority:** P1 (High - do before image optimization work)
+**Status:** ✅ Complete
+**Completed:** Already at Astro 5.17.3 — no upgrade needed
+**Effort:** N/A
+**Priority:** P1 (High)
 
 ---
 
@@ -309,8 +227,10 @@ const observer = new IntersectionObserver((entries) => {
 }, { rootMargin: '200px' });
 ```
 
-**Status:** ⏳ Not Started  
-**Effort:** 1-2 hours  
+**Status:** ⚠️ Partially Complete
+**Completed:** HomepageCarousel preloads adjacent slides; OptimizedImage uses eager loading + fetchpriority for above-fold; `<link rel="preload">` for hero AVIF on post pages (EN + FR)
+**Remaining:** No IntersectionObserver preloading in gallery
+**Effort:** 1 hour remaining
 **Priority:** P2 (Medium)
 
 ---
@@ -402,8 +322,9 @@ export async function GET(context) {
 
 **Purpose:** AI search discovery (Perplexity, ChatGPT, Google AI)
 
-**Status:** ⏳ Not Started  
-**Effort:** 1 hour  
+**Status:** ✅ Complete
+**Completed:** WebSite schema on all pages, Article + Photograph on posts, CollectionPage + ImageGallery on gallery, ProfilePage on homepage
+**Effort:** 1 hour
 **Priority:** P1 (High)
 
 ---
@@ -705,15 +626,40 @@ colorData:
 
 ---
 
+### Secondary Color Support
+
+**Goal:** Extract and optionally display a secondary accent color for richer visual effects.
+
+**Current State:**
+- `extractDominantColor()` in extractColors.ts returns single average color (normalized for glow)
+- `extractColorPalette()` exists for basic palette extraction
+- `secondaryColor` field added to content schema (optional hex string)
+- `secondaryColor` field added to CMS configs
+- Gallery passes `secondaryColorFamily` data attribute to GalleryImage for filtering
+- **Not yet used visually** — glow effects in PostCard, feed, Base layout only use primary `glowColor`
+
+**Remaining Work:**
+1. **Improve extraction** — upgrade to k-means clustering for better multi-color detection (current averaging misses secondary tones)
+2. **Auto-extract secondary color** at build time instead of manual CMS picker
+3. **Use both colors in glow effects** — dual-tone glow in PostCard, feed, and Base layout background
+
+**Status:** ⚠️ Partially Complete
+**Completed:** Schema field, CMS integration, filtering support, basic palette extraction, dual-tone glow in PostCard/feed/post pages
+**Remaining:** Better extraction algorithm (k-means), auto-extract secondary color at build time
+**Effort:** 2-3 hours remaining
+**Priority:** P2 (Medium)
+
+---
+
 ## 📋 Phase 2.5: Mobile CMS & Offline Support
 
-### Mobile-Optimized Decap CMS
+### Mobile-Optimized Sveltia CMS
 
-**Problem:** 
-- Current CMS interface not optimized for mobile
-- Hard to post from phone
-- No offline support
-- Too many fields for quick posting
+**Status:** ✅ Partially Complete - Sveltia CMS has built-in mobile support
+
+**Problem:**
+- Too many fields for quick posting from phone
+- Need simpler workflow for mobile
 
 **Solution: Multi-tier CMS configuration**
 
@@ -796,60 +742,28 @@ collections:
 
 ---
 
-### Offline Support
+### Local Development & Offline Support
 
-**Three approaches:**
+**Status:** ✅ Complete - Sveltia CMS uses File System Access API
 
-**1. Editorial Workflow (Built-in):**
-```yaml
-publish_mode: editorial_workflow
-# Creates Draft → Review → Ready workflow
-# Saves drafts to localStorage when offline
-```
+**Sveltia CMS Local Workflow:**
+1. Run `npm run dev` (Astro dev server)
+2. Open `/admin/en/index.html` in Chrome/Edge
+3. Click "Work with Local Repository"
+4. Select project root folder
+5. Edit locally - changes save directly to files
 
-**Workflow:**
-- Create post offline → Saved as Draft
-- Internet reconnects → Move to Ready
-- Publish → Commits to Git
+**No proxy server needed** - Sveltia uses browser's File System Access API.
 
-**2. Progressive Web App (PWA):**
-```javascript
-// Service Worker for offline CMS
-const CACHE_NAME = 'decap-cms-v1';
-const urlsToCache = ['/admin/', '/admin/index.html'];
+**Browser Requirements:**
+- Chrome, Edge, or Chromium-based browsers
+- Brave requires enabling File System Access API flag
+- Firefox/Safari not supported for local editing
 
-// Cache CMS files for offline use
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-  );
-});
-```
-
-**PWA Manifest:**
-```json
-{
-  "name": "Photography CMS",
-  "short_name": "Photo CMS",
-  "start_url": "/admin/",
-  "display": "standalone",
-  "icons": [...]
-}
-```
-
-**Result:** Install CMS as app on phone home screen, works offline
-
-**3. Local Backend (Testing):**
-```yaml
-local_backend: true
-# Run: npx decap-server
-# CMS works 100% offline on local network
-```
-
-**Status:** ⏳ Not Started  
-**Effort:** 3-4 hours  
-**Priority:** P1 (High - critical for mobile)
+**Online Workflow:**
+- GitHub OAuth via Cloudflare Pages Functions
+- Direct commits to main branch
+- GitHub Actions auto-deploys on push
 
 ---
 
@@ -996,27 +910,20 @@ media_library:
 
 ### Mobile Workflow Testing Checklist
 
-```
-✅ Access https://gphoto.pages.dev/admin/ on phone
-✅ Login with GitHub
-✅ Create quick post with photo from camera roll
-✅ Test offline mode (airplane mode)
-✅ Verify draft saves locally
-✅ Reconnect, move draft to Ready
-✅ Publish and verify on site
-✅ Toggle feature in settings
-✅ Verify feature appears/disappears on site
-✅ Test navigation editing
-✅ Add to home screen (PWA)
-✅ Test offline posting from installed app
-```
+**Completed:**
+- ✅ Access https://gphoto.pages.dev/admin/ on phone
+- ✅ Login with GitHub OAuth
+- ✅ Create post with photo from camera roll
+- ✅ Publish and verify auto-deploy via GitHub Actions
 
-**Expected Results:**
-- Post from phone in <2 minutes
-- Works offline, syncs when online
-- Toggle features without code
-- Edit navigation without code
-- Install as native app
+**Sveltia Mobile Features:**
+- Native mobile-optimized UI
+- Touch-friendly interface
+- Camera roll access for uploads
+
+**Local Development:**
+- ✅ "Work with Local Repository" in Chrome/Edge
+- ✅ Direct file editing without server
 
 ---
 
@@ -1172,7 +1079,8 @@ h1, h2, .post-title {
 
 ---
 
-**Status:** ⏳ Not Started
+**Status:** ✅ Complete
+**Completed:** All quick wins implemented - text-wrap: balance, independent transforms, aspect-ratio, object-fit, dvh, inset
 **Effort:** 2-3 hours
 **Priority:** P1 (High - easy wins, immediate impact)
 
@@ -1396,8 +1304,8 @@ Tooltips with proper speech bubble arrows:
 - [x] Replace aspect ratio hacks with native aspect-ratio (PostCard.astro)
 - [x] Update to object-fit for all gallery images (PostCard.astro, feed.astro)
 - [x] Use 100dvh for lightbox and hero sections (Base.astro)
-- [ ] Add text-wrap: balance to headings
-- [ ] Replace transform with independent scale/translate
+- [x] Add text-wrap: balance to headings (global.css)
+- [x] Replace transform with independent scale/translate/rotate (global.css, PostCard, GalleryImage, Header, ShareButton)
 - [x] Use inset: 0 for overlays and positioned elements (PostCard.astro)
 ```
 
@@ -1427,6 +1335,267 @@ Tooltips with proper speech bubble arrows:
 
 ## 📋 Phase 3: Visual Enhancements
 
+### 3D Depth Parallax Effect
+
+**Feature:** AI-generated depth maps enable a mouse-following 3D parallax hover effect on gallery images.
+
+**Implementation:**
+- **Opt-in:** `depth3d: true` in post frontmatter
+- **Build-time:** Python script (`scripts/generate-depth-maps.py`) generates depth maps using Depth Anything V2 Small (ONNX)
+  - Model auto-downloads to `scripts/models/` (~98MB)
+  - Output: `public/images/depth/{name}.depth.png` (800px wide grayscale)
+  - Manifest: `src/data/depth-manifest.json`
+  - Part of `prebuild` npm script (gracefully skips if no Python venv)
+- **Client-side:** `src/components/DepthImage.astro` — raw WebGL shader
+  - Proximity-based activation (80px zone around image)
+  - Cover-crop UV mapping matches CSS object-fit: cover
+  - Mouse-following parallax with smooth lerp
+  - Zoom scales 0–2% with proximity
+  - Fallback: static OptimizedImage if no WebGL/JS/reduced-motion
+- **Utility:** `src/utils/depthMap.ts` — manifest lookup
+- **Deployment:** Depth maps committed to git (needed for Cloudflare). Generation is local-only.
+- **Workflow:** Toggle depth3d in CMS → pull locally → build (runs generation) → commit → push
+
+**Status:** ✅ Complete
+**Completed:** Full implementation with proximity-based activation, WebGL shader, cover-crop UV mapping, lazy init, crossfade
+**Effort:** 8-10 hours
+**Priority:** P2 (Medium - differentiator feature)
+
+---
+
+### Feed Timeline Sidebar Polish
+
+**Current State:** Timeline sidebar fully implemented with liquid glass styling
+
+**Completed:**
+1. **Max-width constraint** — timeline doesn't overlap image content
+2. **Liquid glass styling** — backdrop-filter blur+saturate, layered box-shadows, ::before shimmer gradient, ::after illumination layer, compact typography
+3. **Year/month navigation** — click-to-scroll, IntersectionObserver tracking
+4. **Responsive** — hidden on mobile
+
+**References:**
+- https://codepen.io/mj-watts/pen/YPWBrqE (Glass displacement effect)
+- https://dev.to/kevinbism/recreating-apples-liquid-glass-effect-with-pure-css-3gpl
+- https://blog.logrocket.com/how-create-liquid-glass-effects-css-and-svg/
+- https://css-tricks.com/getting-clarity-on-apples-liquid-glass/
+
+---
+
+### Feed Color Crossfade
+
+**Feature:** Ambient glow that smoothly crossfades between post colors as you scroll through the feed.
+
+**Implementation:** Two-layer opacity crossfade pattern — CSS can't interpolate `radial-gradient()` with changing CSS custom properties, so two pseudo-elements (`::before`/`::after`) alternate opacity via `transition: opacity 1s ease`. JS swaps colors on the hidden layer, then toggles visibility.
+
+**Key Files:**
+- `src/pages/feed.astro` — glow div, JS crossfade logic, CSS for two layers
+- `src/components/PostCard.astro` — per-card glow removed in feed mode
+
+**Status:** ✅ Complete
+**Completed:** Full two-layer crossfade with IntersectionObserver tracking, `mix-blend-mode: screen`, `filter: blur(80px)`
+**Effort:** 2 hours
+**Priority:** P1 (High - major visual improvement)
+
+---
+
+### FilterBar Tag System & Search Expansion
+
+**Feature:** Unified filter bar with multi-select tags, color filters, and expanded search.
+
+**Completed:**
+1. Tags pill in filter row opens sidebar overlay for multi-select
+2. Selected tags appear as dynamic pills in the filter row
+3. Search matches: title, tag slugs, localized tag labels, dates (month name + year + day)
+4. Multi-color filter with secondary color support
+5. URL params for deep linking (`?tag=`, `?colors=`)
+
+**Key Files:**
+- `src/components/FilterBar.astro` — all filter state, sidebar, search logic
+- `src/components/GalleryImage.astro` — `data-date`, `data-tags`, `data-color-family` attributes
+- `src/pages/gallery.astro` / `src/pages/fr/gallery.astro` — pass tags + labels to FilterBar
+
+**Status:** ✅ Complete
+**Effort:** 6-8 hours (across multiple sessions)
+**Priority:** P1 (High - core UX feature)
+
+---
+
+## Liquid Glass Implementation Guide
+
+### Approach 1: Pure CSS (Recommended - Broad Browser Support)
+
+Apple's liquid glass has 3 visual layers: **highlight**, **shadow**, and **illumination**.
+
+```css
+.feed__timeline {
+  position: fixed;
+  /* ... existing positioning ... */
+
+  /* Base glass layer */
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(2px) saturate(180%);
+
+  /* Liquid border - semi-transparent white */
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: var(--border-radius);
+
+  /* Shadow layering: external depth + inset glow */
+  box-shadow:
+    0 8px 32px rgba(31, 38, 135, 0.2),
+    inset 0 4px 20px rgba(255, 255, 255, 0.3);
+
+  /* Safe positioning - don't overlap too much */
+  max-width: 80px;
+  right: var(--space-sm);
+}
+
+/* Pseudo-element shine effect (illumination layer) */
+.feed__timeline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: inherit;
+  backdrop-filter: blur(1px);
+
+  /* Inner light reflections */
+  box-shadow:
+    inset -10px -8px 0px -11px rgba(255, 255, 255, 1),
+    inset 0px -9px 0px -8px rgba(255, 255, 255, 1);
+
+  opacity: 0.6;
+  z-index: -1;
+  filter: blur(1px) drop-shadow(10px 4px 6px black) brightness(115%);
+  pointer-events: none;
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+.feed__timeline::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 70%
+  );
+  border-radius: inherit;
+  animation: shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+```
+
+**Key Property Breakdown:**
+- `rgba(255, 255, 255, 0.15)` - Base transparency
+- `backdrop-filter: blur(2px) saturate(180%)` - Blur + color boost
+- `border: 1px solid rgba(255, 255, 255, 0.8)` - Bright edge highlight
+- `brightness(115%)` - Enhances luminous quality
+- Dual `inset` box-shadows create inner light reflections
+
+---
+
+### Approach 2: SVG Filter (Advanced Refraction - Chromium Only)
+
+For true distortion/refraction effect like Apple's implementation:
+
+```html
+<!-- Add to page once, hidden -->
+<svg style="display: none">
+  <defs>
+    <filter id="liquid-glass-timeline">
+      <!-- Base blur -->
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blurred" />
+
+      <!-- Noise for organic distortion -->
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.01"
+        numOctaves="3"
+        result="noise"
+      />
+
+      <!-- Displacement creates refraction -->
+      <feDisplacementMap
+        in="blurred"
+        in2="noise"
+        scale="15"
+        xChannelSelector="R"
+        yChannelSelector="G"
+        result="displaced"
+      />
+
+      <!-- Boost saturation -->
+      <feColorMatrix
+        in="displaced"
+        type="saturate"
+        values="1.5"
+        result="saturated"
+      />
+
+      <!-- Specular highlight -->
+      <feSpecularLighting
+        in="noise"
+        surfaceScale="2"
+        specularConstant="0.8"
+        specularExponent="20"
+        result="specular"
+      >
+        <fePointLight x="100" y="-50" z="200" />
+      </feSpecularLighting>
+
+      <!-- Blend specular with content -->
+      <feComposite in="specular" in2="saturated" operator="arithmetic" k1="0" k2="1" k3="0.3" k4="0" />
+    </filter>
+  </defs>
+</svg>
+```
+
+```css
+/* Apply SVG filter with CSS fallback */
+.feed__timeline {
+  /* Fallback for Safari/Firefox */
+  backdrop-filter: blur(2px) saturate(180%);
+
+  /* Chromium: use SVG filter */
+  @supports (filter: url(#liquid-glass-timeline)) {
+    filter: url(#liquid-glass-timeline) brightness(150%);
+  }
+}
+```
+
+**SVG Filter Parameters:**
+- `baseFrequency="0.01"` - Controls noise scale (lower = larger distortion)
+- `numOctaves="3"` - Complexity of noise pattern
+- `scale="15"` - Displacement intensity (15-55 range)
+- `xChannelSelector="R", yChannelSelector="G"` - Use red/green for X/Y displacement
+
+---
+
+### Browser Support
+
+| Feature | Chrome | Firefox | Safari | Edge |
+|---------|--------|---------|--------|------|
+| backdrop-filter | ✅ | ✅ v103+ | ✅ | ✅ |
+| SVG feDisplacementMap | ✅ | ⚠️ Limited | ❌ | ✅ |
+| feTurbulence | ✅ | ✅ | ✅ | ✅ |
+
+**Recommendation:** Use Approach 1 (pure CSS) for production. Add SVG filter as progressive enhancement for Chromium users.
+
+---
+
+**Status:** ✅ Complete
+**Completed:** Liquid glass styling applied - backdrop-filter blur+saturate, layered box-shadows, ::before shimmer gradient, ::after illumination layer, max-width constraint, compact typography
+**Effort:** 1-2 hours
+**Priority:** P1 (High - polish for recently added feature)
+
+---
+
 ### Glass Effect (Cross-Browser)
 
 **Decision:** Skip liquid glass SVG (Chrome-only), use enhanced CSS
@@ -1442,7 +1611,7 @@ Tooltips with proper speech bubble arrows:
   backdrop-filter: blur(16px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
-  box-shadow: 
+  box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 10px 40px rgba(0, 0, 0, 0.2);
 }
@@ -1475,9 +1644,71 @@ Tooltips with proper speech bubble arrows:
 
 **Research Note:** Liquid glass SVG documented at https://kube.io/blog/liquid-glass-css-svg/ (Chrome-only, skip for now)
 
-**Status:** ⏳ Not Started  
-**Effort:** 3-4 hours  
+**Status:** ✅ Complete
+**Completed:** Glass effect applied to Header (full liquid glass with shimmer, illumination, glass-dot logo), Feed timeline sidebar, HomepageCarousel controls, ShareButton
+**Effort:** 3-4 hours
 **Priority:** P2 (Medium)
+
+---
+
+### CMS Color Preview & Adjustment
+
+**Goal:** Preview and optionally adjust extracted colors directly in Sveltia CMS, without needing to build locally.
+
+**Current State:**
+- Colors are auto-extracted at build time from cover images (extractColors.ts)
+- `glowColor` (RGB) and `secondaryColor` (hex) stored in frontmatter
+- No visual feedback in CMS — you only see the result after deploying
+
+**Planned:**
+1. Add a CMS preview widget or custom field showing the extracted glow color as a swatch
+2. Allow manual override of `glowColor` RGB values via color picker
+3. Show how the color will look as a glow effect (small preview)
+
+**Status:** ⏳ Not Started
+**Effort:** 3-4 hours
+**Priority:** P2 (Medium - quality of life for content editing)
+
+---
+
+### Gradient Position Control
+
+**Goal:** Per-post control over where the ambient glow gradients sit on screen.
+
+**Current State:**
+- Glow gradients use fixed positions (35% 30% for primary, 65% 70% for secondary)
+- Same layout for every post regardless of image composition
+
+**Planned:**
+1. Add optional `glowPosition` frontmatter field (e.g., `top-left`, `center`, `bottom-right`, or custom x/y percentages)
+2. CMS dropdown or coordinate picker
+3. Feed crossfade and post page glow respect the position values
+4. Default falls back to current positions if not specified
+
+**Status:** ⏳ Not Started
+**Effort:** 2-3 hours
+**Priority:** P3 (Low - fine-tuning, not critical)
+
+---
+
+### Gallery Mosaic Curation
+
+**Goal:** Control the first 6-12 tiles in the gallery grid via CMS, so the initial view is always curated.
+
+**Current State:**
+- Gallery shows all images sorted by date
+- No control over which images appear first or how they're arranged
+- Masonry grid auto-fills based on orientation metadata
+
+**Planned:**
+1. Add a "Featured Gallery" file collection in CMS with ordered image references
+2. Gallery pages render featured images first, then remaining by date
+3. Optional: featured images get special sizing (e.g., always landscape-span or hero-size)
+4. Drag-and-drop ordering in CMS if Sveltia supports it
+
+**Status:** ⏳ Not Started
+**Effort:** 4-6 hours
+**Priority:** P2 (Medium - important for first impressions)
 
 ---
 
@@ -1567,34 +1798,21 @@ npx create-photo-portfolio
 
 ### CMS for Non-Technical Users
 
-**Decap CMS Configuration:**
-```yaml
-# /public/admin/config.yml
-backend:
-  name: git-gateway
-  branch: main
+**Status:** ✅ Complete - Sveltia CMS deployed with GitHub OAuth
 
-media_folder: "public/images/uploads"
-public_folder: "/images/uploads"
+**Current Configuration:**
+- Backend: GitHub OAuth via Cloudflare Pages Functions
+- Bilingual interface: English (`/admin/en/`) and French (`/admin/fr/`)
+- Image uploads to `public/images/uploads`
+- Auto-deploy on commit via GitHub Actions
 
-collections:
-  - name: "posts"
-    label: "Photos"
-    folder: "src/content/posts"
-    create: true
-    fields:
-      - {label: "Title (English)", name: "title_en", widget: "string"}
-      - {label: "Title (Français)", name: "title_fr", widget: "string"}
-      - {label: "Cover Image", name: "coverImage", widget: "image"}
-      - {label: "Description (EN)", name: "description_en", widget: "text"}
-      - {label: "Description (FR)", name: "description_fr", widget: "text"}
-      - {label: "Location", name: "location", widget: "string"}
-      - {label: "Tags", name: "tags", widget: "list"}
-```
-
-**Status:** ⏳ Not Started  
-**Effort:** 1 week  
-**Priority:** P3 (Low - after validation)
+**Key Features Working:**
+- Create/edit/delete posts from browser or mobile
+- GitHub authentication (no Netlify Identity needed)
+- Bilingual field support (en/fr objects)
+- Tag management
+- Image focal point control
+- Homepage carousel and featured flags
 
 ---
 
@@ -1691,9 +1909,9 @@ Commerce API (hosted service, optional $49/mo)
 
 **Current:**
 - Astro 5 (static generation)
-- Decap CMS (Git-based editing)
+- Sveltia CMS (Git-based editing via GitHub OAuth)
 - Sharp (image processing)
-- Cloudflare Pages (hosting)
+- Cloudflare Pages (hosting + OAuth Functions)
 - TypeScript (type safety)
 - Tailwind CSS (styling)
 
@@ -1710,7 +1928,7 @@ Commerce API (hosted service, optional $49/mo)
 **Development:**
 - Astro Docs: https://docs.astro.build
 - Sharp: https://sharp.pixelplumbing.com
-- Decap CMS: https://decapcms.org
+- Sveltia CMS: https://github.com/sveltia/sveltia-cms
 
 **Distribution:**
 - Buttondown: https://buttondown.email
@@ -1751,6 +1969,21 @@ When we discuss new features/changes:
 - 2026-02-25: Status audit - marked completed items (image opt, OG tags, security headers, RSS, newsletter, view transitions)
 - 2026-02-25: Updated sprint priorities - Schema.org and Modern CSS now current focus
 - 2026-02-25: Implemented Color-Based Filtering (extractColors.ts, FilterBar.astro, GalleryImage.astro, gallery.astro)
+- 2026-02-26: **Migrated from Decap CMS to Sveltia CMS** - GitHub OAuth via Cloudflare Pages Functions, updated all CMS references
+- 2026-02-26: Updated local development workflow - Sveltia uses File System Access API (no proxy server needed)
+- 2026-02-26: Marked CMS setup as complete with bilingual support and auto-deploy
+- 2026-03-01: Added Feed Timeline Sidebar Polish task (limit overlap + liquid glass styling)
+- 2026-03-03: Implemented 3D Depth Parallax effect (DepthImage.astro, generate-depth-maps.py, depthMap.ts, depth-manifest.json)
+- 2026-03-03: Status audit — marked complete: Astro upgrade (5.17.3), Glass Effect (Header/Feed/Carousel), Feed Timeline Sidebar
+- 2026-03-03: Updated Secondary Color Support — schema/CMS done, visual glow effects still pending
+- 2026-03-03: Updated Preloading Strategy — partially complete (carousel preload done, hero preload missing)
+- 2026-03-04: Added Feed Color Crossfade (completed) — two-layer opacity crossfade for ambient glow
+- 2026-03-04: Added FilterBar Tag System & Search Expansion (completed) — multi-select tags, date/label search
+- 2026-03-04: Added CMS Color Preview & Adjustment task (Phase 3)
+- 2026-03-04: Added Gradient Position Control task (Phase 3)
+- 2026-03-04: Added Gallery Mosaic Curation task (Phase 3)
+- 2026-03-04: Enhanced Liquid Glass header — scroll-reactive blur (12→24px), dynamic shimmer animation, prismatic edge refraction, edge dissolution fade zone
+- 2026-03-04: Applied liquid glass styling to FilterBar — glass pills with backdrop-blur, inset highlights, color-tinted glass for color swatches, glass search input, glass tag sidebar
 
 ---
 

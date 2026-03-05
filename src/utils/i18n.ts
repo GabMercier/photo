@@ -26,6 +26,7 @@ const translations: Record<string, Record<Locale, string>> = {
 
   // Gallery / Filters
   'gallery.all': { en: 'All', fr: 'Tout' },
+  'gallery.tags': { en: 'tags', fr: 'étiquettes' },
   'gallery.filter': { en: 'Filter', fr: 'Filtrer' },
   'gallery.search': { en: 'Search...', fr: 'Rechercher...' },
   'gallery.noResults': { en: 'No photos found.', fr: 'Aucune photo trouvée.' },

@@ -15,4 +15,6 @@ private: false
 featured: false
 homepageCarousel: false
 homepageDefault: false
+depth3d: true
+secondaryColor: '#9a7a54'
 ---

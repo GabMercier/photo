@@ -10,7 +10,7 @@ import HomepageCarousel from '@components/HomepageCarousel.astro';
 import HomepageHero from '@components/HomepageHero.astro';
 import { getCollection } from 'astro:content';
 import { getLocaleFromUrl } from '@utils/i18n';
-import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
+import { extractDominantColor } from '@utils/extractColors';
 
 const locale = getLocaleFromUrl(Astro.url);
 
@@ -50,17 +50,29 @@ const carouselPosts = postsWithColors.sort((a, b) =>
 const defaultPost = carouselPosts.find(p => p.data.homepageDefault);
 const defaultSlug = defaultPost?.slug;
 
-// Get initial accent from default post or first post
-const initialPost = defaultPost || carouselPosts[0];
-const initialGlow = initialPost?.data.glowColor || { r: 58, g: 68, b: 71 };
-const initialAccent = deriveAccentFromGlow(initialGlow.r, initialGlow.g, initialGlow.b);
+// Note: We don't pass accent colors to Base on the homepage
+// This ensures the header looks consistent with other pages (uses CSS defaults)
+// The carousel handles its own glow effects per-slide
+
+// Structured data (Schema.org) - Person + photographer portfolio
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const homepageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfilePage',
+  mainEntity: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+    jobTitle: 'Photographer',
+    knowsAbout: ['Photography', 'Landscape Photography', 'Nature Photography'],
+  },
+};
 ---
 
-<Base
-  accentHue={carouselPosts.length > 0 ? initialAccent.hue : undefined}
-  accentSaturation={carouselPosts.length > 0 ? initialAccent.saturation : undefined}
-  accentLightness={carouselPosts.length > 0 ? initialAccent.lightness : undefined}
->
+<Base>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(homepageSchema)} />
+  </Fragment>
   {carouselPosts.length > 0 ? (
     <HomepageCarousel
       carouselPosts={carouselPosts}

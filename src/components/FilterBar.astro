@@ -2,22 +2,25 @@
 /**
  * FilterBar Component
  *
- * Unified filter bar with search, color swatches, and tag pills.
- * Single "All" button resets both color and tag filters.
- * Colors shown as subtle swatches (no labels).
+ * Unified filter bar with search, color swatches, and tag toggle.
+ * "Tags" pill opens a sidebar overlay for multi-tag selection.
+ * Selected tags appear as pills in the filter row.
+ * Single "All" button resets all filters.
  */
 import { getLocaleFromUrl, t } from '@utils/i18n';
 import type { ColorFamily } from '@utils/extractColors';
 
 interface Props {
-  /** All unique tags across posts */
-  tags: string[];
   /** All unique color families present in gallery (optional) */
   colorFamilies?: ColorFamily[];
+  /** All unique tag slugs */
+  tags?: string[];
+  /** Slug → localized label mapping */
+  tagLabels?: Record<string, string>;
 }
 
 const locale = getLocaleFromUrl(Astro.url);
-const { tags, colorFamilies = [] } = Astro.props;
+const { colorFamilies = [], tags = [], tagLabels = {} } = Astro.props;
 
 // Color family config with short labels
 const colorConfig: Record<ColorFamily, { label: string; color: string }> = {
@@ -50,7 +53,7 @@ const showColorFilters = colorFamilies.length > 1;
     />
   </div>
 
-  <!-- Unified filter row: All + Colors + Tags -->
+  <!-- Unified filter row: All + Colors + Tags toggle -->
   <div class="filter-bar__filters" id="filter-pills">
     <!-- Single "All" button that resets everything -->
     <button class="filter-pill filter-pill--all filter-pill--active" data-filter="all" data-type="reset">
@@ -69,17 +72,17 @@ const showColorFilters = colorFamilies.length > 1;
       />
     ))}
 
-    <!-- Separator if we have both colors and tags -->
-    {showColorFilters && tags.length > 0 && (
-      <span class="filter-bar__separator" aria-hidden="true" />
+    <!-- Tags toggle pill -->
+    {tags.length > 0 && (
+      <button class="filter-pill filter-pill--tags-toggle" id="tags-toggle" aria-label={t('gallery.tags', locale)}>
+        {t('gallery.tags', locale)}
+        <svg class="filter-pill__chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
     )}
 
-    <!-- Tag pills -->
-    {tags.map(tag => (
-      <button class="filter-pill filter-pill--tag" data-filter={tag} data-type="tag">
-        {tag}
-      </button>
-    ))}
+    <!-- Dynamic selected-tag pills inserted here by JS -->
   </div>
 
   <!-- Active filter count -->
@@ -88,12 +91,38 @@ const showColorFilters = colorFamilies.length > 1;
   </div>
 </div>
 
+<!-- Tag sidebar overlay -->
+{tags.length > 0 && (
+  <div class="tag-sidebar" id="tag-sidebar">
+    <div class="tag-sidebar__backdrop" id="tag-sidebar-backdrop"></div>
+    <div class="tag-sidebar__panel">
+      <div class="tag-sidebar__header">
+        <span class="tag-sidebar__title">{t('gallery.tags', locale)}</span>
+        <button class="tag-sidebar__close" id="tag-sidebar-close" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="tag-sidebar__list">
+        {tags.map(tag => (
+          <button class="filter-pill filter-pill--tag" data-filter={tag} data-type="tag">
+            {tagLabels[tag] || tag}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
 <script>
   /**
    * Gallery Filter Logic
    *
    * Unified filtering with single "All" reset button.
    * Colors and tags are independent filters that combine (AND logic).
+   * Tags use multi-select via sidebar overlay.
    */
   function initFilters() {
     const filterBar = document.getElementById('filter-bar');
@@ -105,42 +134,130 @@ const showColorFilters = colorFamilies.length > 1;
 
     const allButton = filterPillsContainer.querySelector<HTMLButtonElement>('[data-type="reset"]');
     const colorButtons = filterPillsContainer.querySelectorAll<HTMLButtonElement>('[data-type="color"]');
-    const tagButtons = filterPillsContainer.querySelectorAll<HTMLButtonElement>('[data-type="tag"]');
 
-    let activeTag = 'all';
-    let activeColor = 'all';
+    // Sidebar elements
+    const sidebar = document.getElementById('tag-sidebar');
+    const sidebarBackdrop = document.getElementById('tag-sidebar-backdrop');
+    const sidebarClose = document.getElementById('tag-sidebar-close');
+    const tagsToggle = document.getElementById('tags-toggle');
+    const tagButtons = sidebar?.querySelectorAll<HTMLButtonElement>('[data-type="tag"]') || [];
+
+    let activeTags: Set<string> = new Set(); // Multi-select tags
+    let activeColors: Set<string> = new Set(); // Multi-select colors
+
+    // Build tag slug → localized label map for search matching
+    const tagLabelMap = new Map<string, string>();
+    tagButtons.forEach(btn => {
+      const slug = btn.dataset.filter || '';
+      const label = (btn.textContent?.trim() || '').toLowerCase();
+      if (slug && label) tagLabelMap.set(slug, label);
+    });
 
     // Check URL for pre-selected filters
     const urlParams = new URLSearchParams(window.location.search);
     const urlTag = urlParams.get('tag');
-    const urlColor = urlParams.get('color');
+    const urlColors = urlParams.get('colors');
 
     if (urlTag) {
       const decodedTag = decodeURIComponent(urlTag);
       const matchingBtn = Array.from(tagButtons).find(btn => btn.dataset.filter === decodedTag);
       if (matchingBtn) {
-        activeTag = decodedTag;
+        activeTags.add(decodedTag);
         allButton?.classList.remove('filter-pill--active');
         matchingBtn.classList.add('filter-pill--active');
       }
     }
 
-    if (urlColor && colorButtons.length > 0) {
-      const decodedColor = decodeURIComponent(urlColor);
-      const matchingBtn = Array.from(colorButtons).find(btn => btn.dataset.filter === decodedColor);
-      if (matchingBtn) {
-        activeColor = decodedColor;
-        allButton?.classList.remove('filter-pill--active');
-        matchingBtn.classList.add('filter-pill--active');
-      }
+    if (urlColors && colorButtons.length > 0) {
+      const colors = decodeURIComponent(urlColors).split(',');
+      colors.forEach(color => {
+        const matchingBtn = Array.from(colorButtons).find(btn => btn.dataset.filter === color);
+        if (matchingBtn) {
+          activeColors.add(color);
+          allButton?.classList.remove('filter-pill--active');
+          matchingBtn.classList.add('filter-pill--active');
+        }
+      });
     }
 
     function updateAllButtonState() {
-      if (activeTag === 'all' && activeColor === 'all') {
+      if (activeTags.size === 0 && activeColors.size === 0) {
         allButton?.classList.add('filter-pill--active');
       } else {
         allButton?.classList.remove('filter-pill--active');
       }
+    }
+
+    // --- Sidebar open/close ---
+    function openSidebar() {
+      sidebar?.classList.add('tag-sidebar--open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSidebar() {
+      sidebar?.classList.remove('tag-sidebar--open');
+      document.body.style.overflow = '';
+      syncRowPills();
+    }
+
+    tagsToggle?.addEventListener('click', () => {
+      if (sidebar?.classList.contains('tag-sidebar--open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+
+    sidebarBackdrop?.addEventListener('click', closeSidebar);
+    sidebarClose?.addEventListener('click', closeSidebar);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sidebar?.classList.contains('tag-sidebar--open')) {
+        closeSidebar();
+      }
+    });
+
+    // --- Dynamic row pills for selected tags ---
+    function syncRowPills() {
+      // Remove existing dynamic tag pills
+      filterPillsContainer.querySelectorAll('.tag-row-pill').forEach(el => el.remove());
+
+      // Add pill for each active tag
+      activeTags.forEach(tag => {
+        const label = Array.from(tagButtons).find(b => b.dataset.filter === tag)?.textContent?.trim() || tag;
+        const pill = document.createElement('button');
+        pill.className = 'tag-row-pill';
+        pill.textContent = label;
+        pill.dataset.tag = tag;
+        pill.addEventListener('click', () => {
+          deselectTag(tag);
+        });
+        filterPillsContainer.appendChild(pill);
+      });
+
+      // Update toggle pill appearance
+      if (tagsToggle) {
+        if (activeTags.size > 0) {
+          tagsToggle.classList.add('filter-pill--active');
+        } else {
+          tagsToggle.classList.remove('filter-pill--active');
+        }
+      }
+    }
+
+    function deselectTag(tag: string) {
+      activeTags.delete(tag);
+      // Update sidebar button
+      const sidebarBtn = Array.from(tagButtons).find(b => b.dataset.filter === tag);
+      sidebarBtn?.classList.remove('filter-pill--active');
+      updateAllButtonState();
+      syncRowPills();
+      applyFilters();
+    }
+
+    // Build initial row pills if URL had pre-selected tags
+    if (activeTags.size > 0) {
+      syncRowPills();
     }
 
     /**
@@ -154,16 +271,28 @@ const showColorFilters = colorFamilies.length > 1;
       let visibleCount = 0;
       let totalCount = 0;
 
+      // Helper: check if any tag label matches search text
+      function tagLabelsMatch(tagsStr: string, search: string): boolean {
+        const slugs = tagsStr.split(',');
+        return slugs.some(slug => {
+          const label = tagLabelMap.get(slug.trim());
+          return label && label.includes(search);
+        });
+      }
+
       // Filter PostCard elements (used in feed)
       postCards.forEach(card => {
         totalCount++;
         const cardTags = (card.dataset.tags || '').toLowerCase();
         const cardTitle = card.querySelector('.post-card__title')?.textContent?.toLowerCase() || '';
+        const cardDate = (card.dataset.date || '').toLowerCase();
 
-        const matchesTag = activeTag === 'all' || cardTags.includes(activeTag);
+        const matchesTag = activeTags.size === 0 || Array.from(activeTags).some(t => cardTags.includes(t));
         const matchesSearch = !searchText ||
           cardTags.includes(searchText) ||
-          cardTitle.includes(searchText);
+          cardTitle.includes(searchText) ||
+          cardDate.includes(searchText) ||
+          tagLabelsMatch(cardTags, searchText);
 
         const isVisible = matchesTag && matchesSearch;
 
@@ -176,19 +305,37 @@ const showColorFilters = colorFamilies.length > 1;
       });
 
       // Filter GalleryImage elements (used in gallery)
+      const galleryItemsWithScore: { item: HTMLElement; colorMatchCount: number; visible: boolean }[] = [];
+
       galleryImages.forEach(item => {
         totalCount++;
         const itemTags = (item.dataset.tags || '').toLowerCase();
         const itemTitle = (item.dataset.title || '').toLowerCase();
+        const itemDate = (item.dataset.date || '').toLowerCase();
         const itemColorFamily = item.dataset.colorFamily || '';
+        const itemSecondaryColorFamily = item.dataset.secondaryColorFamily || '';
 
-        const matchesTag = activeTag === 'all' || itemTags.includes(activeTag);
-        const matchesColor = activeColor === 'all' || itemColorFamily === activeColor;
+        const matchesTag = activeTags.size === 0 || Array.from(activeTags).some(t => itemTags.includes(t));
+
+        // Multi-color matching
+        let colorMatchCount = 0;
+        if (activeColors.size === 0) {
+          colorMatchCount = 1;
+        } else {
+          if (activeColors.has(itemColorFamily)) colorMatchCount++;
+          if (itemSecondaryColorFamily && activeColors.has(itemSecondaryColorFamily)) colorMatchCount++;
+        }
+        const matchesColor = activeColors.size === 0 || colorMatchCount > 0;
+
         const matchesSearch = !searchText ||
           itemTags.includes(searchText) ||
-          itemTitle.includes(searchText);
+          itemTitle.includes(searchText) ||
+          itemDate.includes(searchText) ||
+          tagLabelsMatch(itemTags, searchText);
 
         const isVisible = matchesTag && matchesColor && matchesSearch;
+
+        galleryItemsWithScore.push({ item, colorMatchCount, visible: isVisible });
 
         if (isVisible) {
           item.classList.remove('gallery-image--hidden');
@@ -197,6 +344,24 @@ const showColorFilters = colorFamilies.length > 1;
           item.classList.add('gallery-image--hidden');
         }
       });
+
+      // Sort gallery by color match count
+      if (activeColors.size > 1) {
+        const galleryGrid = document.getElementById('gallery-grid');
+        if (galleryGrid) {
+          const sortedItems = galleryItemsWithScore
+            .filter(x => x.visible)
+            .sort((a, b) => b.colorMatchCount - a.colorMatchCount);
+
+          sortedItems.forEach(({ item }) => {
+            galleryGrid.appendChild(item);
+          });
+
+          galleryItemsWithScore
+            .filter(x => !x.visible)
+            .forEach(({ item }) => galleryGrid.appendChild(item));
+        }
+      }
 
       countDisplay.textContent = `${visibleCount} / ${totalCount}`;
 
@@ -214,8 +379,8 @@ const showColorFilters = colorFamilies.length > 1;
 
       sessionStorage.setItem('galleryContext', JSON.stringify({
         slugs: slugs,
-        tag: activeTag,
-        color: activeColor,
+        tags: Array.from(activeTags),
+        colors: Array.from(activeColors),
         search: searchInput.value
       }));
 
@@ -230,28 +395,27 @@ const showColorFilters = colorFamilies.length > 1;
 
     // "All" button resets everything
     allButton?.addEventListener('click', () => {
-      activeTag = 'all';
-      activeColor = 'all';
+      activeTags.clear();
+      activeColors.clear();
       tagButtons.forEach(b => b.classList.remove('filter-pill--active'));
       colorButtons.forEach(b => b.classList.remove('filter-pill--active'));
       allButton.classList.add('filter-pill--active');
+      closeSidebar();
+      syncRowPills();
       applyFilters();
     });
 
-    // Color button click - toggle behavior
+    // Color button click - multi-select toggle
     colorButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        const clickedColor = btn.dataset.filter || 'all';
+        const clickedColor = btn.dataset.filter || '';
 
         if (btn.classList.contains('filter-pill--active')) {
-          // Clicking active color deselects it
           btn.classList.remove('filter-pill--active');
-          activeColor = 'all';
+          activeColors.delete(clickedColor);
         } else {
-          // Select new color
-          colorButtons.forEach(b => b.classList.remove('filter-pill--active'));
           btn.classList.add('filter-pill--active');
-          activeColor = clickedColor;
+          activeColors.add(clickedColor);
         }
 
         updateAllButtonState();
@@ -259,20 +423,17 @@ const showColorFilters = colorFamilies.length > 1;
       });
     });
 
-    // Tag button click - toggle behavior
+    // Tag button click (in sidebar) - multi-select toggle
     tagButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        const clickedTag = btn.dataset.filter || 'all';
+        const clickedTag = btn.dataset.filter || '';
 
         if (btn.classList.contains('filter-pill--active')) {
-          // Clicking active tag deselects it
           btn.classList.remove('filter-pill--active');
-          activeTag = 'all';
+          activeTags.delete(clickedTag);
         } else {
-          // Select new tag
-          tagButtons.forEach(b => b.classList.remove('filter-pill--active'));
           btn.classList.add('filter-pill--active');
-          activeTag = clickedTag;
+          activeTags.add(clickedTag);
         }
 
         updateAllButtonState();
@@ -312,8 +473,10 @@ const showColorFilters = colorFamilies.length > 1;
     left: var(--space-md);
     top: 50%;
     transform: translateY(-50%);
-    color: var(--color-text-subtle);
+    color: var(--color-text-muted);
     pointer-events: none;
+    z-index: 1;
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.1));
   }
 
   .filter-bar__search {
@@ -324,13 +487,19 @@ const showColorFilters = colorFamilies.length > 1;
     font-family: var(--font-body);
     font-size: var(--text-sm);
     color: var(--color-text);
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--border-radius);
     outline: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 4px rgba(0, 0, 0, 0.1);
     transition:
       border-color var(--transition-fast),
-      background-color var(--transition-fast);
+      background var(--transition-fast),
+      box-shadow var(--transition-fast);
   }
 
   .filter-bar__search::placeholder {
@@ -338,8 +507,11 @@ const showColorFilters = colorFamilies.length > 1;
   }
 
   .filter-bar__search:focus {
-    border-color: var(--color-accent);
-    background-color: var(--color-bg-elevated);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   /* Unified filter row */
@@ -351,15 +523,7 @@ const showColorFilters = colorFamilies.length > 1;
     margin-bottom: var(--space-md);
   }
 
-  /* Separator between colors and tags */
-  .filter-bar__separator {
-    width: 1px;
-    height: 16px;
-    background-color: var(--color-border);
-    margin: 0 var(--space-xs);
-  }
-
-  /* Base filter pill styles */
+  /* Base filter pill styles — liquid glass */
   .filter-pill {
     display: inline-flex;
     align-items: center;
@@ -368,49 +532,200 @@ const showColorFilters = colorFamilies.length > 1;
     font-family: var(--font-body);
     font-size: var(--text-xs);
     color: var(--color-text-muted);
-    background-color: transparent;
-    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
     cursor: pointer;
+    position: relative;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+      0 1px 4px rgba(0, 0, 0, 0.12);
     transition:
-      background-color var(--transition-fast),
+      background var(--transition-fast),
       border-color var(--transition-fast),
       color var(--transition-fast),
-      opacity var(--transition-fast);
+      box-shadow var(--transition-fast);
   }
 
   .filter-pill:hover {
-    border-color: var(--color-text-subtle);
+    border-color: rgba(255, 255, 255, 0.2);
     color: var(--color-text);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+      0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .filter-pill--active {
-    border-color: var(--color-text);
+    border-color: rgba(255, 255, 255, 0.25);
     color: var(--color-text);
-    background-color: var(--color-surface);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+      0 2px 10px rgba(0, 0, 0, 0.18);
   }
 
-  /* Color pills - tinted pills matching "All" button height */
+  /* Color pills — glass with color tint */
   .filter-pill--color {
     width: 48px;
     min-height: 30px;
-    border-color: color-mix(in srgb, var(--pill-color) 30%, var(--color-border));
-    background-color: color-mix(in srgb, var(--pill-color) 8%, transparent);
+    border-color: color-mix(in srgb, var(--pill-color) 25%, rgba(255, 255, 255, 0.1));
+    background: color-mix(in srgb, var(--pill-color) 8%, rgba(255, 255, 255, 0.03));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--pill-color) 15%, rgba(255, 255, 255, 0.08)),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+      0 1px 4px rgba(0, 0, 0, 0.12);
   }
 
   .filter-pill--color:hover {
-    border-color: color-mix(in srgb, var(--pill-color) 60%, var(--color-border));
-    background-color: color-mix(in srgb, var(--pill-color) 15%, transparent);
+    border-color: color-mix(in srgb, var(--pill-color) 50%, rgba(255, 255, 255, 0.15));
+    background: color-mix(in srgb, var(--pill-color) 15%, rgba(255, 255, 255, 0.05));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--pill-color) 25%, rgba(255, 255, 255, 0.12)),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+      0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .filter-pill--color.filter-pill--active {
-    border-color: var(--pill-color);
-    background-color: color-mix(in srgb, var(--pill-color) 25%, transparent);
+    border-color: color-mix(in srgb, var(--pill-color) 70%, rgba(255, 255, 255, 0.2));
+    background: color-mix(in srgb, var(--pill-color) 22%, rgba(255, 255, 255, 0.06));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--pill-color) 30%, rgba(255, 255, 255, 0.15)),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+      0 2px 10px color-mix(in srgb, var(--pill-color) 20%, rgba(0, 0, 0, 0.15));
   }
 
-  /* Tag pills */
+  /* Tags toggle pill */
+  .filter-pill--tags-toggle {
+    gap: 4px;
+    text-transform: lowercase;
+  }
+
+  .filter-pill__chevron {
+    transition: transform var(--transition-fast);
+  }
+
+  /* Tag pills in sidebar */
   .filter-pill--tag {
     text-transform: lowercase;
+  }
+
+  /* Dynamic tag pills in filter row (created by JS, need :global) — glass */
+  :global(.tag-row-pill) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 20px;
+    cursor: pointer;
+    text-transform: lowercase;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+      0 2px 10px rgba(0, 0, 0, 0.18);
+    transition:
+      background 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  :global(.tag-row-pill:hover) {
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--color-text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+      0 1px 6px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Tag sidebar overlay */
+  .tag-sidebar {
+    display: none;
+  }
+
+  .tag-sidebar--open {
+    display: block;
+  }
+
+  .tag-sidebar__backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: var(--z-overlay);
+  }
+
+  .tag-sidebar__panel {
+    position: fixed;
+    left: 0;
+    top: var(--header-height);
+    bottom: 0;
+    width: 200px;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      4px 0 24px rgba(0, 0, 0, 0.3),
+      inset 1px 0 0 rgba(255, 255, 255, 0.06);
+    z-index: calc(var(--z-overlay) + 1);
+    padding: var(--space-lg) var(--space-md);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .tag-sidebar__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+  }
+
+  .tag-sidebar__title {
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .tag-sidebar__close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast);
+  }
+
+  .tag-sidebar__close:hover {
+    color: var(--color-text);
+  }
+
+  .tag-sidebar__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
   }
 
   /* Count */

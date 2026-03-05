@@ -87,61 +87,61 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
     })}
   </div>
 
-  <!-- Navigation Controls -->
+  <!-- Navigation Controls — compact strip in bottom-right corner -->
   <div class="carousel__controls">
-    <!-- Previous/Next Arrows -->
-    <button class="carousel__arrow carousel__arrow--prev" aria-label="Previous image">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <button class="carousel__btn carousel__arrow--prev" aria-label="Previous image">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="15 18 9 12 15 6"></polyline>
       </svg>
     </button>
 
-    <button class="carousel__arrow carousel__arrow--next" aria-label="Next image">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="9 18 15 12 9 6"></polyline>
-      </svg>
-    </button>
-
-    <!-- Pause Button -->
-    <button class="carousel__pause" aria-label="Pause auto-rotation" aria-pressed="false">
-      <svg class="carousel__pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <button class="carousel__btn carousel__pause" aria-label="Pause auto-rotation" aria-pressed="false">
+      <svg class="carousel__pause-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
         <rect x="6" y="4" width="4" height="16"></rect>
         <rect x="14" y="4" width="4" height="16"></rect>
       </svg>
-      <svg class="carousel__play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" hidden>
+      <svg class="carousel__play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" hidden>
         <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+    </button>
+
+    <button class="carousel__btn carousel__arrow--next" aria-label="Next image">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
       </svg>
     </button>
   </div>
 </section>
 
 <style>
-  /* Full viewport carousel */
+  /* Carousel - starts from top, glow extends behind header */
   .homepage-carousel {
     position: relative;
     width: 100%;
-    height: 100vh; /* Full viewport to extend under header */
-    overflow: hidden;
+    height: calc(100vh - 80px); /* Full height minus footer breathing room */
+    overflow: visible; /* Allow glow to extend beyond bounds */
     background: var(--color-bg);
   }
 
-  /* Track holds all slides */
+  /* Track holds all slides - positioned below header */
   .carousel__track {
     position: relative;
     width: 100%;
     height: 100%;
+    padding-top: var(--header-height); /* Push image content below header */
+    box-sizing: border-box;
+    overflow: visible; /* Allow glow to extend beyond track */
   }
 
-  /* Individual slides - positioned to avoid header/footer */
+  /* Individual slides - fill the carousel area */
   .carousel__slide {
     position: absolute;
+    inset: 0;
     top: var(--header-height); /* Start below header */
-    bottom: 80px; /* Space for footer */
-    left: 0;
-    right: 0;
     opacity: 0;
     transition: opacity 800ms var(--ease-out-smooth);
     pointer-events: none;
+    overflow: visible; /* Allow glow to extend beyond slide bounds */
   }
 
   .carousel__slide--active {
@@ -150,23 +150,25 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
     z-index: 1;
   }
 
-  /* Ambient glow (adapted from PostCard feed mode) */
+  /* Ambient glow - extends behind header */
   .carousel__glow {
     position: absolute;
-    inset: -250px;
+    /* Extend upward to cover header area */
+    top: calc(-1 * var(--header-height) - 150px);
+    left: -150px;
+    right: -150px;
+    bottom: -150px;
     background: radial-gradient(
-      ellipse 120% 100% at center,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.15) 10%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 20%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.09) 30%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.03) 60%,
-      transparent 80%
+      ellipse 100% 100% at center,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.15) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 15%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.08) 30%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.04) 50%,
+      transparent 70%
     );
     z-index: 0;
     pointer-events: none;
-    filter: blur(60px);
+    filter: blur(50px);
     mix-blend-mode: screen;
     opacity: 0;
     transition: opacity 1.2s ease;
@@ -185,6 +187,7 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
     justify-content: center;
     width: 100%;
     height: 100%;
+    overflow: hidden; /* Clip images to link bounds */
   }
 
   /* Handle picture element from OptimizedImage */
@@ -199,92 +202,56 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
     display: block;
   }
 
-  /* Controls container */
+  /* Controls — compact strip tucked in bottom-right corner */
   .carousel__controls {
     position: absolute;
-    inset: 0;
-    pointer-events: none;
+    bottom: var(--space-lg);
+    right: var(--space-lg);
     z-index: 10;
-  }
-
-  .carousel__arrow,
-  .carousel__dot,
-  .carousel__pause {
-    pointer-events: auto;
-  }
-
-  /* Navigation arrows - hidden by default, visible on interaction */
-  .carousel__arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    opacity: 0; /* Hidden by default */
-    transition: all var(--transition-fast);
-  }
-
-  /* Show controls on carousel hover/focus or when interacted */
-  .homepage-carousel:hover .carousel__arrow,
-  .homepage-carousel:focus-within .carousel__arrow,
-  .homepage-carousel.controls-visible .carousel__arrow,
-  .carousel__arrow:focus-visible {
-    opacity: 1;
-  }
-
-  .carousel__arrow:hover {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.4);
-  }
-
-  .carousel__arrow--prev {
-    left: var(--space-xl);
-  }
-
-  .carousel__arrow--next {
-    right: var(--space-xl);
-  }
-
-  /* Pause button - positioned on right side */
-  .carousel__pause {
-    position: absolute;
-    bottom: var(--space-2xl);
-    right: var(--space-xl);
-    background: rgba(255, 255, 255, 0.1);
+    gap: 2px;
+    background: rgba(0, 0, 0, 0.25);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    opacity: 0; /* Hidden by default */
-    transition: all var(--transition-fast);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 3px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
   }
 
-  /* Show pause button on interaction */
-  .homepage-carousel:hover .carousel__pause,
-  .homepage-carousel:focus-within .carousel__pause,
-  .homepage-carousel.controls-visible .carousel__pause,
-  .carousel__pause:focus-visible {
+  /* Show on hover/focus/touch */
+  .homepage-carousel:hover .carousel__controls,
+  .homepage-carousel:focus-within .carousel__controls,
+  .homepage-carousel.controls-visible .carousel__controls,
+  .carousel__controls:focus-within {
     opacity: 1;
   }
 
-  .carousel__pause:hover {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.4);
+  /* Individual control buttons */
+  .carousel__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .carousel__btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+
+  .carousel__btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: -2px;
   }
 
   .carousel__pause[aria-pressed="true"] .carousel__pause-icon {
@@ -310,28 +277,13 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
 
   /* Responsive adjustments */
   @media (max-width: 768px) {
-    .carousel__slide {
-      bottom: 60px; /* Smaller space for footer on mobile */
+    .homepage-carousel {
+      height: calc(100vh - 60px);
     }
 
-    .carousel__arrow {
-      width: 40px;
-      height: 40px;
-    }
-
-    .carousel__arrow--prev {
-      left: var(--space-md);
-    }
-
-    .carousel__arrow--next {
+    .carousel__controls {
+      bottom: var(--space-md);
       right: var(--space-md);
-    }
-
-    .carousel__pause {
-      bottom: var(--space-lg);
-      right: var(--space-md);
-      width: 40px;
-      height: 40px;
     }
   }
 

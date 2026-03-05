@@ -71,7 +71,7 @@ async function needsRegeneration(
   imagePath: string,
   existingManifest: ImageManifest
 ): Promise<boolean> {
-  const relativePath = imagePath.replace('public', '');
+  const relativePath = imagePath.replace('public', '').toLowerCase();
   const existing = existingManifest[relativePath];
 
   if (!existing || !existing.mtime) {
@@ -121,7 +121,8 @@ async function processImage(
   outputDir: string
 ): Promise<{ variants: ImageVariant[]; metadata: sharp.Metadata }> {
   const variants: ImageVariant[] = [];
-  const { name } = parse(inputPath);
+  const { name: rawName } = parse(inputPath);
+  const name = rawName.toLowerCase();
 
   // Get original image metadata
   const metadata = await sharp(inputPath).metadata();
@@ -213,8 +214,9 @@ async function main() {
   let skipped = 0;
 
   for (const imagePath of images) {
-    const relativePath = imagePath.replace('public', '');
-    const { name } = parse(imagePath);
+    const relativePath = imagePath.replace('public', '').toLowerCase();
+    const { name: rawName } = parse(imagePath);
+    const name = rawName.toLowerCase();
 
     // Check if image needs regeneration
     const needsRegen = await needsRegeneration(imagePath, existingManifest);
@@ -253,8 +255,13 @@ async function main() {
     }
   }
 
-  // Clean up manifest entries for deleted source images
+  // Clean up manifest: remove deleted source images and non-lowercase duplicate keys
   for (const key of Object.keys(manifest)) {
+    // Remove duplicate uppercase keys (we now normalize to lowercase)
+    if (key !== key.toLowerCase() && manifest[key.toLowerCase()]) {
+      delete manifest[key];
+      continue;
+    }
     const sourcePath = join('public', key);
     if (!existsSync(sourcePath)) {
       console.log(`🗑️  Removing from manifest: ${key} (source deleted)`);

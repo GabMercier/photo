@@ -1,0 +1,4 @@
+---
+en: "Architecture"
+fr: "Architecture"
+---

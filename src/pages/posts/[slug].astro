@@ -11,7 +11,7 @@ import OptimizedImage from '@components/OptimizedImage.astro';
 import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
 import { getCollection, render } from 'astro:content';
 import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
-import { extractColorMetadata, deriveAccentFromGlow } from '@utils/extractColors';
+import { extractColorMetadata, deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
 
 // Generate static paths for all posts at build time
 export async function getStaticPaths() {
@@ -59,13 +59,16 @@ export async function getStaticPaths() {
 
 const locale = getLocaleFromUrl(Astro.url);
 const { post } = Astro.props;
-const { title, coverImage, images, tags, date, postType, description, glowColor } = post.data;
+const { title, coverImage, images, tags, date, postType, description, glowColor, secondaryColor } = post.data;
 
 // Get display title (may be empty if no title provided)
 const displayTitle = localized(title, locale);
 
 // Fallback to cool blue-gray if no color extracted
 const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+
+// Secondary color for dual-tone glow (falls back to primary)
+const glow2 = secondaryColor ? hexToRgb(secondaryColor) : { r: glow.r, g: glow.g, b: glow.b };
 
 // Get image data to determine if landscape (for mobile cropping)
 const heroImageData = await getOptimizedImage(coverImage.src);
@@ -90,25 +93,99 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   day: 'numeric',
 });
 
+// OG image: use optimized 1200px JPEG for fast social preview loading
+// heroImageData.src is the 1200px WebP; swap to JPEG for broad social crawler support
+const ogImageVariant = heroImageData.src.endsWith('.webp')
+  ? heroImageData.src.replace(/\.webp$/, '.jpg')
+  : heroImageData.src;
+const ogImageWidth = heroImageData.width ? Math.min(heroImageData.width, 1200) : undefined;
+const ogImageHeight = heroImageData.height && heroImageData.width
+  ? Math.round(Math.min(heroImageData.width, 1200) * (heroImageData.height / heroImageData.width))
+  : undefined;
+
+// Structured data (Schema.org)
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const postUrl = new URL(Astro.url.pathname, siteUrl).href;
+const imageUrl = ogImageVariant.startsWith('http') ? ogImageVariant : new URL(ogImageVariant, siteUrl).href;
+
+const postSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: displayTitle || undefined,
+  description: localized(description, locale) || undefined,
+  image: imageUrl,
+  datePublished: date.toISOString(),
+  ...(post.data.updatedDate && { dateModified: post.data.updatedDate.toISOString() }),
+  url: postUrl,
+  author: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+  },
+  publisher: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+  },
+  ...(tags.length > 0 && { keywords: tags.join(', ') }),
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': postUrl,
+  },
+};
+
+const photographSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Photograph',
+  name: displayTitle || localized(coverImage.alt, locale) || undefined,
+  image: imageUrl,
+  dateCreated: date.toISOString(),
+  creator: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+  },
+  copyrightHolder: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+  },
+};
+
 // Gallery navigation - always render, show/hide with JavaScript
 ---
 
 <Base
   title={displayTitle || t('post.single', locale)}
   description={localized(description, locale)}
-  ogImage={coverImage.src}
+  ogImage={ogImageVariant}
   ogImageAlt={localized(coverImage.alt, locale) || displayTitle || t('post.single', locale)}
+  ogImageWidth={ogImageWidth}
+  ogImageHeight={ogImageHeight}
   ogType="article"
   accentHue={accent.hue}
   accentSaturation={accent.saturation}
   accentLightness={accent.lightness}
 >
+  <Fragment slot="head">
+    {/* Preload hero image for faster LCP */}
+    {heroImageData.srcset.avif && (
+      <link rel="preload" as="image" type="image/avif"
+        imagesrcset={heroImageData.srcset.avif}
+        imagesizes={imageSizes.hero} />
+    )}
+    <script type="application/ld+json" set:html={JSON.stringify(postSchema)} />
+    <script type="application/ld+json" set:html={JSON.stringify(photographSchema)} />
+  </Fragment>
+
   <article
     class="post"
     style={{
       '--glow-r': glow.r,
       '--glow-g': glow.g,
       '--glow-b': glow.b,
+      '--glow2-r': glow2.r,
+      '--glow2-g': glow2.g,
+      '--glow2-b': glow2.b,
     }}
   >
     <!-- Hero image - full viewport -->
@@ -279,19 +356,33 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
       });
     }
 
-    // Hero expand button - opens slideshow starting at hero (index 0)
+    // Hero expand - opens slideshow starting at hero (index 0)
+    // Clickable on all devices (hero div + expand button)
     function initHeroExpand() {
       const expandBtn = document.querySelector('.post__hero-expand');
-      if (!expandBtn) return;
+      const heroDiv = document.querySelector('.post__hero');
 
-      expandBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const allImages = getAllPostImages();
+      if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const allImages = getAllPostImages();
+          if (window.openSlideshow && allImages.length > 0) {
+            window.openSlideshow(allImages, 0);
+          }
+        });
+      }
 
-        if (window.openSlideshow && allImages.length > 0) {
-          window.openSlideshow(allImages, 0);
-        }
-      });
+      if (heroDiv) {
+        heroDiv.addEventListener('click', (e) => {
+          // Don't double-trigger from expand button or gallery nav
+          if (e.target.closest('.post__hero-expand') || e.target.closest('.gallery-nav')) return;
+          const allImages = getAllPostImages();
+          if (window.openSlideshow && allImages.length > 0) {
+            window.openSlideshow(allImages, 0);
+          }
+        });
+      }
     }
 
     // Initialize on load
@@ -408,7 +499,7 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
 </Base>
 
 <style>
-  /* Full viewport hero */
+  /* Full viewport hero — clickable to open slideshow */
   .post__hero {
     position: relative;
     width: 100%;
@@ -419,6 +510,7 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     animation: fadeIn var(--transition-gallery) forwards;
     padding: var(--space-2xl);
     box-sizing: border-box;
+    cursor: pointer;
   }
 
   /* Handle picture element from OptimizedImage - use :global for child component */
@@ -443,21 +535,26 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     overflow: visible;
   }
 
-  /* Page-wide ambient glow - matches homepage carousel style */
+  /* Page-wide ambient glow - dual-tone using primary + secondary colors */
   .post::before {
     content: '';
     position: fixed;
     inset: -250px;
-    background: radial-gradient(
-      ellipse 120% 100% at center,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.15) 10%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 20%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.09) 30%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
-      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.03) 60%,
-      transparent 80%
-    );
+    background:
+      radial-gradient(
+        ellipse 110% 90% at 40% 35%,
+        rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
+        rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 20%,
+        rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 110% 90% at 60% 65%,
+        rgba(var(--glow2-r), var(--glow2-g), var(--glow2-b), 0.14) 0%,
+        rgba(var(--glow2-r), var(--glow2-g), var(--glow2-b), 0.09) 20%,
+        rgba(var(--glow2-r), var(--glow2-g), var(--glow2-b), 0.04) 45%,
+        transparent 70%
+      );
     z-index: -1;
     pointer-events: none;
     filter: blur(60px);
@@ -735,6 +832,7 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
       object-fit: cover;
       object-position: var(--focal-point, center center);
     }
+
   }
 
   /* Mobile landscape - natural image display */

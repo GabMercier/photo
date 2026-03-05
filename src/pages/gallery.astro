@@ -13,8 +13,10 @@ import GalleryImage, { type ImageOrientation } from '@components/GalleryImage.as
 import FilterBar from '@components/FilterBar.astro';
 import { getCollection } from 'astro:content';
 import { getLocaleFromUrl, t, localized, localePath } from '@utils/i18n';
-import { extractColorMetadata, getColorMetadataFromRgb, type ColorFamily, type ColorMood } from '@utils/extractColors';
+import { extractColorMetadata, getColorMetadataFromRgb, getColorFamilyFromHex, type ColorFamily, type ColorMood } from '@utils/extractColors';
 import { getOptimizedImage } from '@utils/optimizedImage';
+import { getDepthMap } from '@utils/depthMap';
+import { loadTags } from '@utils/tags';
 
 /**
  * Determine image orientation from gallerySize setting or aspect ratio
@@ -54,8 +56,11 @@ interface GalleryImageData {
   tags: string[];
   focalPoint: 'left' | 'center' | 'right';
   colorFamily: ColorFamily;
+  secondaryColorFamily?: ColorFamily;
   mood: ColorMood;
   orientation: ImageOrientation;
+  depthSrc?: string;
+  date: string;
 }
 
 const allImages: GalleryImageData[] = [];
@@ -69,6 +74,9 @@ for (const post of posts) {
   const postUrl = localePath(`/posts/${slug}`, locale);
   const postTitle = localized(post.data.title, locale) || t('slideshow.viewPost', locale);
   const tags = post.data.tags;
+  const searchDate = post.data.date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  }).toLowerCase();
 
   // Get color metadata: use existing glowColor if available, otherwise extract from image
   let colorMeta: { colorFamily: ColorFamily; mood: ColorMood; lightness: number };
@@ -86,9 +94,22 @@ for (const post of posts) {
   }
   colorFamiliesSet.add(colorMeta.colorFamily);
 
+  // Get secondary color family if manually specified in CMS
+  let secondaryColorFamily: ColorFamily | undefined;
+  if (post.data.secondaryColor) {
+    secondaryColorFamily = getColorFamilyFromHex(post.data.secondaryColor);
+    // Only add to filter if different from primary
+    if (secondaryColorFamily !== colorMeta.colorFamily) {
+      colorFamiliesSet.add(secondaryColorFamily);
+    }
+  }
+
   // Get aspect ratio for hero image (for masonry layout)
   const heroImageData = await getOptimizedImage(post.data.coverImage.src);
   const heroOrientation = getImageOrientation(heroImageData.aspectRatio, post.data.gallerySize);
+
+  // Look up depth map if depth3d is enabled for this post
+  const depthEntry = post.data.depth3d ? await getDepthMap(post.data.coverImage.src) : null;
 
   // Add hero image (with focal point for cropping)
   allImages.push({
@@ -99,8 +120,11 @@ for (const post of posts) {
     tags,
     focalPoint: (post.data.coverImage.focalPoint || 'center') as 'left' | 'center' | 'right',
     colorFamily: colorMeta.colorFamily,
+    secondaryColorFamily,
     mood: colorMeta.mood,
     orientation: heroOrientation,
+    depthSrc: depthEntry?.depthMap,
+    date: searchDate,
   });
 
   // Add series images if present (inherit color from parent post)
@@ -117,8 +141,10 @@ for (const post of posts) {
         tags,
         focalPoint: (img.focalPoint || 'center') as 'left' | 'center' | 'right',
         colorFamily: colorMeta.colorFamily,
+        secondaryColorFamily,
         mood: colorMeta.mood,
         orientation: seriesOrientation,
+        date: searchDate,
       });
     }
   }
@@ -126,18 +152,51 @@ for (const post of posts) {
 
 // Convert to sorted array for consistent filter ordering
 const colorFamilies = Array.from(colorFamiliesSet).sort();
+
+// Load localized tag labels
+const tagData = loadTags();
+
+// Structured data (Schema.org) - CollectionPage with ImageGallery
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const gallerySchema = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: t('nav.gallery', locale),
+  description: locale === 'fr'
+    ? 'Galerie photographique de Gabriel Mercier — paysages, nature et moments capturés.'
+    : 'Photography gallery by Gabriel Mercier — landscapes, nature, and captured moments.',
+  url: new URL(Astro.url.pathname, siteUrl).href,
+  author: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+  },
+  mainEntity: {
+    '@type': 'ImageGallery',
+    name: t('nav.gallery', locale),
+    numberOfItems: allImages.length,
+  },
+};
 ---
 
 <Base title={t('nav.gallery', locale)}>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(gallerySchema)} />
+  </Fragment>
+
   <section class="gallery container">
     <header class="gallery__header">
       <h1 class="gallery__title">{t('nav.gallery', locale)}</h1>
     </header>
 
-    <!-- Filter bar with search, tag pills, and color filters -->
-    <FilterBar tags={allTags} colorFamilies={colorFamilies} />
+    <FilterBar
+      colorFamilies={colorFamilies}
+      tags={allTags}
+      tagLabels={Object.fromEntries(
+        Object.entries(tagData).map(([k, v]) => [k, v.en])
+      )}
+    />
 
-    <!-- Gallery grid of individual images (masonry on desktop) -->
     <div class="gallery__grid" id="gallery-grid">
       {allImages.map((img, i) => (
         <GalleryImage
@@ -149,8 +208,11 @@ const colorFamilies = Array.from(colorFamiliesSet).sort();
           index={i}
           focalPoint={img.focalPoint}
           colorFamily={img.colorFamily}
+          secondaryColorFamily={img.secondaryColorFamily}
           mood={img.mood}
           orientation={img.orientation}
+          depthSrc={img.depthSrc}
+          date={img.date}
         />
       ))}
     </div>
@@ -330,7 +392,7 @@ const colorFamilies = Array.from(colorFamiliesSet).sort();
     }
   }
 
-  /* Desktop: Masonry layout with dense packing */
+  /* Desktop masonry grid */
   @media (min-width: 1024px) {
     .gallery__grid {
       grid-template-columns: repeat(4, 1fr);

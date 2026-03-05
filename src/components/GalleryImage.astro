@@ -6,6 +6,7 @@
  * Shows hover overlay with post title and link to full post.
  */
 import OptimizedImage from '@components/OptimizedImage.astro';
+import DepthImage from '@components/DepthImage.astro';
 import { imageSizes } from '@utils/optimizedImage';
 
 import type { ColorFamily, ColorMood } from '@utils/extractColors';
@@ -23,10 +24,16 @@ interface Props {
   focalPoint?: 'left' | 'center' | 'right';
   /** Color family for filtering (red, orange, yellow, green, blue, purple, neutral) */
   colorFamily?: ColorFamily;
+  /** Secondary color family for multi-color filtering (shows in both filters) */
+  secondaryColorFamily?: ColorFamily;
   /** Color mood for filtering (light, dark, balanced) */
   mood?: ColorMood;
   /** Image orientation for masonry grid (portrait spans 2 rows, landscape spans 2 cols) */
   orientation?: ImageOrientation;
+  /** Depth map path for 3D parallax effect */
+  depthSrc?: string;
+  /** Formatted date string for search matching */
+  date?: string;
 }
 
 const {
@@ -38,8 +45,11 @@ const {
   index = 0,
   focalPoint = 'center',
   colorFamily = 'neutral',
+  secondaryColorFamily,
   mood = 'balanced',
   orientation = 'square',
+  depthSrc,
+  date,
 } = Astro.props;
 
 // Build class list for masonry layout
@@ -64,18 +74,29 @@ const objectPosition = focalPointMap[focalPoint] || 'center center';
   data-post-url={postUrl}
   data-post-title={postTitle}
   data-color-family={colorFamily}
+  data-secondary-color-family={secondaryColorFamily || ''}
   data-mood={mood}
+  data-date={date || ''}
 >
   <button class="gallery-image__button" type="button" aria-label={`View ${alt || postTitle}`}>
     <div class="gallery-image__wrap">
-      <OptimizedImage
-        src={src}
-        alt={alt}
-        class="gallery-image__img"
-        loading="lazy"
-        decoding="async"
-        sizes={imageSizes.gallery}
-      />
+      {depthSrc ? (
+        <DepthImage
+          src={src}
+          depthSrc={depthSrc}
+          alt={alt}
+          focalPoint={objectPosition}
+        />
+      ) : (
+        <OptimizedImage
+          src={src}
+          alt={alt}
+          class="gallery-image__img"
+          loading="lazy"
+          decoding="async"
+          sizes={imageSizes.gallery}
+        />
+      )}
     </div>
   </button>
 </article>
@@ -116,25 +137,19 @@ const objectPosition = focalPointMap[focalPoint] || 'center center';
     height: 100%;
     object-fit: cover;
     object-position: var(--focal-point, center center);
-    transition: transform var(--transition-gallery);
-  }
-
-  .gallery-image:hover .gallery-image__img,
-  .gallery-image:hover :global(img) {
-    transform: scale(1.03);
   }
 
   /* Animation */
   .animate-in {
     opacity: 0;
-    transform: translateY(12px);
+    translate: 0 12px;
     animation: fadeInUp 0.4s var(--ease-out-smooth) forwards;
   }
 
   @keyframes fadeInUp {
     to {
       opacity: 1;
-      transform: translateY(0);
+      translate: 0 0;
     }
   }
 

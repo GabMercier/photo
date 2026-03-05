@@ -9,7 +9,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "optimize-images": "tsx scripts/optimize-images.ts",
-    "prebuild": "npm run optimize-images"
+    "generate-depth-maps": "test -f scripts/.venv/bin/python && scripts/.venv/bin/python scripts/generate-depth-maps.py || echo 'Skipping depth maps (no Python venv)'",
+    "prebuild": "npm run optimize-images && npm run generate-depth-maps"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",

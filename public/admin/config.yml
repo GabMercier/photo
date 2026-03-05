@@ -1,5 +1,5 @@
 # =============================================================================
-# Decap CMS Configuration
+# Sveltia CMS Configuration
 # =============================================================================
 # Bilingual CMS for photography portfolio (EN/FR)
 # Fields mirror the Astro content collection schema in src/content.config.ts
@@ -42,7 +42,7 @@ collections:
     identifier_field: "date"
     summary: "{{date}} — {{title.en}}"
     sortable_fields: ["date", "title.en"]
-    media_preview: true
+    thumbnail: "coverImage.src"
 
     view_filters:
       - label: "🏠 Homepage Carousel"
@@ -94,6 +94,13 @@ collections:
                 value: "center"
               - label: "Right / Droite"
                 value: "right"
+
+      # --- Secondary Color (next to image for easy picking) ---
+      - label: "🎨 Secondary Accent Color / Couleur d'accent secondaire"
+        name: "secondaryColor"
+        widget: "color"
+        required: false
+        hint: "Optional accent color for dual-tone glow effects. Pick from your image or choose manually. / Couleur d'accent optionnelle pour effets de lueur bicolore."
 
       # --- Title / Titre (OPTIONAL) ---
       - label: "Title / Titre"
@@ -183,10 +190,13 @@ collections:
       # --- Classification ---
       - label: "Tags / Étiquettes"
         name: "tags"
-        widget: "list"
+        widget: "relation"
+        collection: "tags"
+        search_fields: ["en", "fr"]
+        value_field: "{{slug}}"
+        display_fields: ["en"]
+        multiple: true
         required: false
-        default: []
-        hint: "street, macro, portrait, landscape, etc."
 
       - label: "Post Type / Type"
         name: "postType"
@@ -229,12 +239,38 @@ collections:
         default: false
         hint: "Start carousel here / Commencer le carrousel ici"
 
+      - label: "3D Depth Effect / Effet de profondeur 3D"
+        name: "depth3d"
+        widget: "boolean"
+        default: false
+        hint: "Enable parallax depth effect on post page / Activer l'effet de parallaxe sur la page du post"
+
       # --- Body / Contenu (optional) ---
       - label: "Body / Contenu"
         name: "body"
         widget: "markdown"
         required: false
         hint: "Optional text content / Contenu textuel optionnel"
+
+  # ==========================================================================
+  # Tags / Étiquettes
+  # ==========================================================================
+  - name: "tags"
+    label: "🏷️ Tags / Étiquettes"
+    label_singular: "Tag / Étiquette"
+    folder: "src/data/tags"
+    create: true
+    slug: "{{slug}}"
+    extension: "md"
+    identifier_field: "en"
+    summary: "{{en}} / {{fr}}"
+    fields:
+      - label: "🇬🇧 English"
+        name: "en"
+        widget: "string"
+      - label: "🇫🇷 Français"
+        name: "fr"
+        widget: "string"
 
   # ==========================================================================
   # About Page / Page À propos

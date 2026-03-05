@@ -1,5 +1,5 @@
 # =============================================================================
-# Configuration Decap CMS (Français)
+# Configuration Sveltia CMS (Français)
 # =============================================================================
 # CMS bilingue pour portfolio photo (EN/FR)
 # Les champs correspondent au schéma Astro dans src/content.config.ts
@@ -38,7 +38,7 @@ collections:
     identifier_field: "date"
     summary: "{{date}} — {{title.fr}}"
     sortable_fields: ["date", "title.fr"]
-    media_preview: true
+    thumbnail: "coverImage.src"
 
     view_filters:
       - label: "Carrousel d'accueil"
@@ -109,6 +109,13 @@ collections:
               - label: "Droite"
                 value: "right"
 
+      # --- Couleur secondaire (à côté de l'image pour faciliter le choix) ---
+      - label: "Couleur d'accent secondaire"
+        name: "secondaryColor"
+        widget: "color"
+        required: false
+        hint: "Couleur d'accent optionnelle pour effets de lueur bicolore. Choisissez depuis votre image ou manuellement."
+
       # --- Description ---
       - label: "Description"
         name: "description"
@@ -176,10 +183,13 @@ collections:
       # --- Classification ---
       - label: "Étiquettes"
         name: "tags"
-        widget: "list"
+        widget: "relation"
+        collection: "tags"
+        search_fields: ["en", "fr"]
+        value_field: "{{slug}}"
+        display_fields: ["fr"]
+        multiple: true
         required: false
-        default: []
-        hint: "rue, macro, portrait, paysage, etc."
 
       - label: "Type de publication"
         name: "postType"
@@ -241,11 +251,37 @@ collections:
         default: false
         hint: "Commencer le carrousel ici"
 
+      - label: "Effet de profondeur 3D"
+        name: "depth3d"
+        widget: "boolean"
+        default: false
+        hint: "Activer l'effet de parallaxe sur la page du post"
+
       # --- Contenu (optionnel) ---
       - label: "Contenu"
         name: "body"
         widget: "markdown"
         required: false
+
+  # ==========================================================================
+  # Étiquettes
+  # ==========================================================================
+  - name: "tags"
+    label: "Étiquettes"
+    label_singular: "Étiquette"
+    folder: "src/data/tags"
+    create: true
+    slug: "{{slug}}"
+    extension: "md"
+    identifier_field: "en"
+    summary: "{{fr}} / {{en}}"
+    fields:
+      - label: "English"
+        name: "en"
+        widget: "string"
+      - label: "Français"
+        name: "fr"
+        widget: "string"
 
   # ==========================================================================
   # Page À propos

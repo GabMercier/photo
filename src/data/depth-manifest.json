@@ -1,0 +1,14 @@
+{
+  "/images/uploads/_dsc4288.jpg": {
+    "depthMap": "/images/depth/_dsc4288.depth.png",
+    "width": 800,
+    "height": 449,
+    "mtime": 1771267190841.982
+  },
+  "/images/uploads/_DSC4420.jpg": {
+    "depthMap": "/images/depth/_DSC4420.depth.png",
+    "width": 800,
+    "height": 1198,
+    "mtime": 1772517977589.9033
+  }
+}

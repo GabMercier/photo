@@ -90,6 +90,10 @@ const posts = defineCollection({
       b: z.number().min(0).max(255),
       hex: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
     }).optional(),
+    // Secondary accent color for dual-tone effects
+    // Manually picked in CMS or extracted from image palette
+    secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional()
+      .or(z.literal('').transform(() => null)),
     // Additional images for series posts
     images: z.array(
       z.object({
@@ -123,6 +127,8 @@ const posts = defineCollection({
     // Homepage carousel selection
     homepageCarousel: z.boolean().nullable().optional().transform(val => val ?? false),
     homepageDefault: z.boolean().nullable().optional().transform(val => val ?? false),
+    // Enable 3D depth parallax effect on post detail page
+    depth3d: z.boolean().nullable().optional().transform(val => val ?? false),
   }),
 });
 

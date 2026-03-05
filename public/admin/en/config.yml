@@ -1,5 +1,5 @@
 # =============================================================================
-# Decap CMS Configuration (English)
+# Sveltia CMS Configuration (English)
 # =============================================================================
 
 backend:
@@ -29,7 +29,7 @@ collections:
     identifier_field: "date"
     summary: "{{date}} — {{title.en}}"
     sortable_fields: ["date", "title.en"]
-    media_preview: true
+    thumbnail: "coverImage.src"
 
     view_filters:
       - label: "Homepage Carousel"
@@ -100,6 +100,13 @@ collections:
               - label: "Right"
                 value: "right"
 
+      # --- Secondary Color (next to image for easy picking) ---
+      - label: "Secondary Accent Color"
+        name: "secondaryColor"
+        widget: "color"
+        required: false
+        hint: "Optional accent color for dual-tone glow effects. Pick from your image or choose manually."
+
       - label: "Description"
         name: "description"
         widget: "object"
@@ -158,9 +165,13 @@ collections:
 
       - label: "Tags"
         name: "tags"
-        widget: "list"
+        widget: "relation"
+        collection: "tags"
+        search_fields: ["en", "fr"]
+        value_field: "{{slug}}"
+        display_fields: ["en"]
+        multiple: true
         required: false
-        default: []
 
       - label: "Post Type"
         name: "postType"
@@ -216,10 +227,36 @@ collections:
         widget: "boolean"
         default: false
 
+      - label: "3D Depth Effect"
+        name: "depth3d"
+        widget: "boolean"
+        default: false
+        hint: "Enable parallax depth effect on post page"
+
       - label: "Body"
         name: "body"
         widget: "markdown"
         required: false
+
+  # ==========================================================================
+  # Tags
+  # ==========================================================================
+  - name: "tags"
+    label: "Tags"
+    label_singular: "Tag"
+    folder: "src/data/tags"
+    create: true
+    slug: "{{slug}}"
+    extension: "md"
+    identifier_field: "en"
+    summary: "{{en}} / {{fr}}"
+    fields:
+      - label: "English"
+        name: "en"
+        widget: "string"
+      - label: "Français"
+        name: "fr"
+        widget: "string"
 
   # ==========================================================================
   # About

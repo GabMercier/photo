@@ -77,7 +77,9 @@ export async function getOptimizedImage(
   sizes: string = DEFAULT_SIZES
 ): Promise<OptimizedImageData> {
   const imageManifest = await loadManifest();
-  const imageData = imageManifest[imagePath];
+  // Case-insensitive lookup: CMS may store paths with different case than filesystem
+  const imageData = imageManifest[imagePath]
+    || imageManifest[imagePath.toLowerCase()];
 
   if (!imageData) {
     // Fallback to original image if not in manifest
@@ -128,7 +130,8 @@ export function getOptimizedImageSync(
     };
   }
 
-  const imageData = manifest[imagePath];
+  const imageData = manifest[imagePath]
+    || manifest[imagePath.toLowerCase()];
 
   if (!imageData) {
     return {

@@ -157,8 +157,8 @@
   .slideshow__image-wrap {
     position: relative;
     z-index: 5;
-    max-width: 90vw;
-    max-height: 85vh;
+    max-width: 96vw;
+    max-height: 96vh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -166,7 +166,7 @@
 
   .slideshow__image {
     max-width: 100%;
-    max-height: 85vh;
+    max-height: 96vh;
     object-fit: contain;
     transition: opacity var(--transition-fast);
   }
@@ -353,6 +353,9 @@
 
     setTimeout(() => {
       overlay.setAttribute('hidden', '');
+      // Clear image to prevent stale flash on next open
+      const img = document.getElementById('slideshow-image');
+      if (img) { img.removeAttribute('src'); img.alt = ''; }
     }, 200);
 
     // Remove keyboard listener

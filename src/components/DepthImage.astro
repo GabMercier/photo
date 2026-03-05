@@ -1,0 +1,493 @@
+---
+/**
+ * DepthImage Component
+ *
+ * Gallery-sized 2.5D parallax effect using WebGL depth displacement.
+ * Proximity-driven: the effect fades in as the cursor approaches the image,
+ * reaches full intensity on hover, and fades out as the cursor moves away.
+ *
+ * Fallback chain:
+ * 1. No JS → standard <picture> renders (via OptimizedImage)
+ * 2. No WebGL → canvas stays hidden, fallback visible
+ * 3. prefers-reduced-motion → static image
+ */
+import OptimizedImage from '@components/OptimizedImage.astro';
+import { getOptimizedImage, imageSizes } from '@utils/optimizedImage';
+
+interface Props {
+  /** Original image path */
+  src: string;
+  /** Depth map path */
+  depthSrc: string;
+  /** Alt text */
+  alt: string;
+  /** Focal point for CSS fallback */
+  focalPoint?: string;
+}
+
+const { src, depthSrc, alt, focalPoint = 'center center' } = Astro.props;
+
+// Get optimized image data for the WebGL texture
+const imageData = await getOptimizedImage(src);
+const jpgEntries = imageData.srcset.jpg ? imageData.srcset.jpg.split(', ') : [];
+const textureSrc = jpgEntries.find(s => s.includes('800w'))?.split(' ')[0]
+  || jpgEntries.find(s => s.includes('1200w'))?.split(' ')[0]
+  || src;
+
+// Compute focal point X for cover-crop UV offset (left=0, center=0.5, right=1)
+const focalHorizontal = focalPoint.split(' ')[0] || 'center';
+const focalXMap: Record<string, number> = { left: 0, center: 0.5, right: 1 };
+const focalX = focalXMap[focalHorizontal] ?? 0.5;
+---
+
+<div
+  class="depth-image"
+  data-depth-src={depthSrc}
+  data-texture-src={textureSrc}
+  data-image-aspect={imageData.aspectRatio}
+  data-focal-x={focalX}
+  style={{ '--focal-point': focalPoint }}
+>
+  <canvas class="depth-image__canvas" aria-hidden="true"></canvas>
+
+  <div class="depth-image__fallback">
+    <OptimizedImage
+      src={src}
+      alt={alt}
+      class="gallery-image__img"
+      loading="lazy"
+      decoding="async"
+      sizes={imageSizes.gallery}
+    />
+  </div>
+</div>
+
+<style>
+  .depth-image {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .depth-image__canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .depth-image--active .depth-image__canvas {
+    display: block;
+  }
+
+  .depth-image__fallback {
+    width: 100%;
+    height: 100%;
+  }
+
+  .depth-image__fallback :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .depth-image__fallback :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--focal-point, center center);
+  }
+</style>
+
+<script>
+  /**
+   * Depth Parallax — Proximity-Driven Effect
+   *
+   * The effect activates gradually as the cursor approaches the image:
+   * - ~80px away: effect begins fading in, zoom starts
+   * - On image: full intensity, cursor drives displacement
+   * - Moving away: smooth fade out back to neutral
+   *
+   * Proximity drives everything: canvas opacity, cover zoom, displacement.
+   * This eliminates the jarring "pop" of a hard hover boundary.
+   */
+
+  const VERT_SRC = `
+    attribute vec2 a_position;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
+    void main() {
+      v_texCoord = a_texCoord;
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  `;
+
+  const FRAG_SRC = `
+    precision mediump float;
+    varying vec2 v_texCoord;
+    uniform sampler2D u_image;
+    uniform sampler2D u_depth;
+    uniform vec2 u_mouse;
+    uniform float u_intensity;
+    uniform vec2 u_coverScale;
+    uniform vec2 u_coverOffset;
+
+    void main() {
+      vec2 uv = v_texCoord * u_coverScale + u_coverOffset;
+      float depth = texture2D(u_depth, uv).r;
+      vec2 displaced = uv - u_mouse * depth * u_intensity;
+      displaced = clamp(displaced, 0.001, 0.999);
+      gl_FragColor = texture2D(u_image, displaced);
+    }
+  `;
+
+  /** Proximity zone in pixels outside the image where the effect starts */
+  const PROXIMITY_ZONE = 80;
+  /** Max zoom factor (2% at full proximity) */
+  const MAX_ZOOM = 0.02;
+
+  class DepthParallax {
+    private gl: WebGLRenderingContext;
+    private program: WebGLProgram;
+    private currentX = 0;
+    private currentY = 0;
+    private targetX = 0;
+    private targetY = 0;
+    private proximity = 0;
+    private targetProximity = 0;
+    private animId: number | null = null;
+    private container: HTMLElement;
+    private canvas: HTMLCanvasElement;
+    private destroyed = false;
+    private resizeObserver: ResizeObserver | null = null;
+    private uMouse: WebGLUniformLocation | null = null;
+    private uCoverScale: WebGLUniformLocation | null = null;
+    private uCoverOffset: WebGLUniformLocation | null = null;
+    private imageAspect: number;
+    private focalX: number;
+
+    constructor(
+      private options: {
+        canvas: HTMLCanvasElement;
+        container: HTMLElement;
+        imageSrc: string;
+        depthSrc: string;
+        imageAspect: number;
+        focalX: number;
+        intensity?: number;
+      }
+    ) {
+      this.canvas = options.canvas;
+      this.container = options.container;
+      this.imageAspect = options.imageAspect;
+      this.focalX = options.focalX;
+      this.gl = null!;
+      this.program = null!;
+    }
+
+    async init(): Promise<boolean> {
+      try {
+        const gl = this.canvas.getContext('webgl', {
+          alpha: false,
+          antialias: false,
+          premultipliedAlpha: false,
+        });
+        if (!gl) return false;
+        this.gl = gl;
+
+        const vs = this.compileShader(gl.VERTEX_SHADER, VERT_SRC);
+        const fs = this.compileShader(gl.FRAGMENT_SHADER, FRAG_SRC);
+        if (!vs || !fs) return false;
+
+        this.program = gl.createProgram()!;
+        gl.attachShader(this.program, vs);
+        gl.attachShader(this.program, fs);
+        gl.linkProgram(this.program);
+        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) return false;
+        gl.useProgram(this.program);
+
+        this.setupGeometry();
+
+        const [imgTex, depthTex] = await Promise.all([
+          this.loadTexture(this.options.imageSrc),
+          this.loadTexture(this.options.depthSrc),
+        ]);
+        if (!imgTex || !depthTex) return false;
+
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_image'), 0);
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_depth'), 1);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, imgTex);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, depthTex);
+
+        gl.uniform1f(
+          gl.getUniformLocation(this.program, 'u_intensity'),
+          this.options.intensity ?? 0.025
+        );
+
+        this.uMouse = gl.getUniformLocation(this.program, 'u_mouse');
+        this.uCoverScale = gl.getUniformLocation(this.program, 'u_coverScale');
+        this.uCoverOffset = gl.getUniformLocation(this.program, 'u_coverOffset');
+
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(this.container);
+
+        this.resize();
+        this.updateCoverUniforms();
+
+        // Render one frame at neutral so canvas isn't blank
+        this.gl.uniform2f(this.uMouse, 0, 0);
+        this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    private compileShader(type: number, source: string): WebGLShader | null {
+      const gl = this.gl;
+      const shader = gl.createShader(type);
+      if (!shader) return null;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    private setupGeometry(): void {
+      const gl = this.gl;
+      const positions = new Float32Array([
+        -1, -1,  1, -1,  -1, 1,
+        -1,  1,  1, -1,   1, 1,
+      ]);
+      const texCoords = new Float32Array([
+        0, 1,  1, 1,  0, 0,
+        0, 0,  1, 1,  1, 0,
+      ]);
+
+      const posBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+      const aPos = gl.getAttribLocation(this.program, 'a_position');
+      gl.enableVertexAttribArray(aPos);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+      const texBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, texBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+      const aTex = gl.getAttribLocation(this.program, 'a_texCoord');
+      gl.enableVertexAttribArray(aTex);
+      gl.vertexAttribPointer(aTex, 2, gl.FLOAT, false, 0, 0);
+    }
+
+    private loadTexture(src: string): Promise<WebGLTexture | null> {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const gl = this.gl;
+          const tex = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          resolve(tex);
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      });
+    }
+
+    /**
+     * Compute cover-crop UV uniforms that replicate CSS object-fit: cover.
+     * Zoom scales with current proximity (0% when far, MAX_ZOOM when on image).
+     */
+    private updateCoverUniforms(): void {
+      const rect = this.container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
+      const containerAspect = rect.width / rect.height;
+      let scaleX = 1;
+      let scaleY = 1;
+
+      if (this.imageAspect > containerAspect) {
+        scaleX = containerAspect / this.imageAspect;
+      } else {
+        scaleY = this.imageAspect / containerAspect;
+      }
+
+      // Zoom scales with proximity: no zoom when far, MAX_ZOOM when on image
+      const zoom = 1 - MAX_ZOOM * this.proximity;
+      scaleX *= zoom;
+      scaleY *= zoom;
+
+      const offsetX = (1 - scaleX) * this.focalX;
+      const offsetY = (1 - scaleY) * 0.5;
+
+      this.gl.uniform2f(this.uCoverScale, scaleX, scaleY);
+      this.gl.uniform2f(this.uCoverOffset, offsetX, offsetY);
+    }
+
+    /** Update from cursor position — computes proximity and mouse offset */
+    updateFromMouse(clientX: number, clientY: number): void {
+      const rect = this.container.getBoundingClientRect();
+
+      // Distance from cursor to closest edge of the image
+      const dx = Math.max(0, rect.left - clientX, clientX - rect.right);
+      const dy = Math.max(0, rect.top - clientY, clientY - rect.bottom);
+      const edgeDist = Math.sqrt(dx * dx + dy * dy);
+
+      // Proximity: 1 when on image, fades to 0 at PROXIMITY_ZONE distance
+      this.targetProximity = edgeDist >= PROXIMITY_ZONE ? 0 : 1 - edgeDist / PROXIMITY_ZONE;
+
+      // Mouse offset relative to image center (clamped -1..1)
+      this.targetX = Math.max(-1, Math.min(1, ((clientX - rect.left) / rect.width - 0.5) * 2));
+      this.targetY = Math.max(-1, Math.min(1, ((clientY - rect.top) / rect.height - 0.5) * 2));
+
+      // Start render loop if not running
+      if (!this.animId && this.targetProximity > 0) this.render();
+    }
+
+    private resize(): void {
+      const rect = this.container.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      this.canvas.width = rect.width * dpr;
+      this.canvas.height = rect.height * dpr;
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    private render = (): void => {
+      if (this.destroyed) return;
+
+      // Smooth lerp proximity, mouse offset
+      this.proximity += (this.targetProximity - this.proximity) * 0.1;
+      this.currentX += (this.targetX - this.currentX) * 0.08;
+      this.currentY += (this.targetY - this.currentY) * 0.08;
+
+      // Canvas opacity driven by proximity
+      this.canvas.style.opacity = String(this.proximity);
+
+      // Update cover uniforms (zoom scales with proximity)
+      this.updateCoverUniforms();
+
+      // Displacement scaled by proximity
+      this.gl.uniform2f(this.uMouse, this.currentX * this.proximity, this.currentY * this.proximity);
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+
+      // Stop when fully settled at zero
+      const settled = this.proximity < 0.005
+        && Math.abs(this.currentX) < 0.005
+        && Math.abs(this.currentY) < 0.005;
+
+      if (settled) {
+        this.proximity = 0;
+        this.currentX = 0;
+        this.currentY = 0;
+        this.canvas.style.opacity = '0';
+        this.animId = null;
+      } else {
+        this.animId = requestAnimationFrame(this.render);
+      }
+    };
+
+    destroy(): void {
+      this.destroyed = true;
+      if (this.animId) cancelAnimationFrame(this.animId);
+      if (this.resizeObserver) this.resizeObserver.disconnect();
+      const ext = this.gl.getExtension('WEBGL_lose_context');
+      if (ext) ext.loseContext();
+    }
+  }
+
+  // --- Proximity-driven init ---
+
+  const instances = new Map<HTMLElement, DepthParallax>();
+  let depthContainers: HTMLElement[] = [];
+
+  async function initInstance(container: HTMLElement, mouseX: number, mouseY: number) {
+    if (instances.has(container) || container.dataset.depthInit === 'loading') return;
+
+    container.dataset.depthInit = 'loading';
+
+    const canvas = container.querySelector<HTMLCanvasElement>('.depth-image__canvas');
+    const depthSrc = container.dataset.depthSrc;
+    const textureSrc = container.dataset.textureSrc;
+    const imageAspect = parseFloat(container.dataset.imageAspect || '1');
+    const focalX = parseFloat(container.dataset.focalX || '0.5');
+    if (!canvas || !depthSrc || !textureSrc) return;
+
+    const parallax = new DepthParallax({
+      canvas,
+      container,
+      imageSrc: textureSrc,
+      depthSrc,
+      imageAspect,
+      focalX,
+      intensity: 0.025,
+    });
+
+    const success = await parallax.init();
+    if (success) {
+      container.classList.add('depth-image--active');
+      instances.set(container, parallax);
+      // Immediately update with current mouse position
+      parallax.updateFromMouse(mouseX, mouseY);
+    }
+    delete container.dataset.depthInit;
+  }
+
+  function onMouseMove(e: MouseEvent) {
+    const mx = e.clientX;
+    const my = e.clientY;
+
+    for (const container of depthContainers) {
+      const instance = instances.get(container);
+
+      if (instance) {
+        // Already initialized — just update
+        instance.updateFromMouse(mx, my);
+      } else {
+        // Check if cursor is close enough to trigger init
+        const rect = container.getBoundingClientRect();
+        const dx = Math.max(0, rect.left - mx, mx - rect.right);
+        const dy = Math.max(0, rect.top - my, my - rect.bottom);
+        if (Math.sqrt(dx * dx + dy * dy) < PROXIMITY_ZONE) {
+          initInstance(container, mx, my);
+        }
+      }
+    }
+  }
+
+  function initDepthProximity() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    depthContainers = Array.from(document.querySelectorAll<HTMLElement>('.depth-image'));
+    if (depthContainers.length === 0) return;
+
+    document.addEventListener('mousemove', onMouseMove, { passive: true });
+  }
+
+  function destroyAll() {
+    document.removeEventListener('mousemove', onMouseMove);
+    instances.forEach((parallax) => parallax.destroy());
+    instances.clear();
+    depthContainers = [];
+    document.querySelectorAll('.depth-image--active').forEach(el => {
+      el.classList.remove('depth-image--active');
+    });
+  }
+
+  initDepthProximity();
+  document.addEventListener('astro:after-swap', initDepthProximity);
+  document.addEventListener('astro:before-swap', destroyAll, { once: false });
+</script>

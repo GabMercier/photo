@@ -1,6 +1,9 @@
 ---
 /**
  * Feed Page — Chronological listing of all public posts
+ * Features:
+ * - Scroll-snap for immersive viewing
+ * - Timeline sidebar for date navigation
  */
 import Base from '@layouts/Base.astro';
 import PostCard from '@components/PostCard.astro';
@@ -13,6 +16,47 @@ const locale = getLocaleFromUrl(Astro.url);
 const allPosts = (await getCollection('posts', ({ data }) => {
   return !data.draft && !data.private;
 })).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+// Build timeline data: group posts by year and month
+interface TimelineEntry {
+  year: number;
+  months: { month: number; label: string; count: number; firstPostIndex: number }[];
+}
+
+const monthLabels = locale === 'fr'
+  ? ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+  : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const timeline: TimelineEntry[] = [];
+const yearMap = new Map<number, Map<number, { count: number; firstPostIndex: number }>>();
+
+allPosts.forEach((post, index) => {
+  const date = post.data.date;
+  const year = date.getFullYear();
+  const month = date.getMonth();
+
+  if (!yearMap.has(year)) {
+    yearMap.set(year, new Map());
+  }
+  const monthMap = yearMap.get(year)!;
+  if (!monthMap.has(month)) {
+    monthMap.set(month, { count: 0, firstPostIndex: index });
+  }
+  monthMap.get(month)!.count++;
+});
+
+// Convert to array sorted by year descending, months descending
+for (const [year, monthMap] of Array.from(yearMap.entries()).sort((a, b) => b[0] - a[0])) {
+  const months = Array.from(monthMap.entries())
+    .sort((a, b) => b[0] - a[0])
+    .map(([month, data]) => ({
+      month,
+      label: monthLabels[month],
+      count: data.count,
+      firstPostIndex: data.firstPostIndex,
+    }));
+  timeline.push({ year, months });
+}
 
 // Extract glow colors for posts that don't have them in frontmatter
 // Also check for grayscale images to use neutral color
@@ -51,9 +95,50 @@ const posts = await Promise.all(
 
 <Base title={t('nav.feed', locale)}>
   <section class="feed container">
+    <!-- Ambient glow that crossfades to match the current post -->
+    <div class="feed__glow" id="feed-glow"></div>
+
+    <!-- Timeline sidebar -->
+    <nav class="feed__timeline" id="feed-timeline" aria-label="Timeline navigation">
+      {timeline.map((entry) => (
+        <div class="timeline__year" data-year={entry.year}>
+          <button class="timeline__year-btn" data-scroll-to={entry.months[0].firstPostIndex}>
+            {entry.year}
+          </button>
+          <div class="timeline__months">
+            {entry.months.map((m) => (
+              <button
+                class="timeline__month"
+                data-scroll-to={m.firstPostIndex}
+                data-year={entry.year}
+                data-month={m.month}
+                title={`${m.label} ${entry.year} (${m.count})`}
+              >
+                <span class="timeline__month-label">{m.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </nav>
+
     <div class="feed__content" id="feed-content">
-      {posts.map((post) => (
-        <PostCard post={post} layout="feed" />
+      {posts.map((post, index) => (
+        <div
+          class="feed__post-wrap"
+          data-index={index}
+          data-year={post.data.date.getFullYear()}
+          data-month={post.data.date.getMonth()}
+        >
+          <PostCard
+            post={post}
+            layout="feed"
+            hasContent={
+              (post.data.images && post.data.images.length > 0)
+              || !!(post.body && post.body.trim().length > 0)
+            }
+          />
+        </div>
       ))}
     </div>
 
@@ -64,33 +149,150 @@ const posts = await Promise.all(
 </Base>
 
 <script>
-  // Fade-in animation with IntersectionObserver
-  document.addEventListener('astro:page-load', () => {
+  function initFeed() {
+    const feed = document.querySelector('.feed') as HTMLElement;
+    const timeline = document.getElementById('feed-timeline');
+    const postWraps = document.querySelectorAll<HTMLElement>('.feed__post-wrap');
+
+    if (!feed || !timeline || postWraps.length === 0) return;
+
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Fade-in animation
     if (prefersReducedMotion) {
       document.querySelectorAll('.post-card--feed').forEach(card => {
         card.classList.add('visible');
       });
-      return;
+    } else {
+      const fadeObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.querySelector('.post-card--feed')?.classList.add('visible');
+            fadeObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.3, rootMargin: '0px' });
+
+      postWraps.forEach(wrap => fadeObserver.observe(wrap));
     }
 
-    const observer = new IntersectionObserver((entries) => {
+    // Ambient glow crossfade: two layers, toggle opacity
+    const feedGlow = document.getElementById('feed-glow');
+    let glowLayer = 1; // 1 = ::before visible, 2 = ::after visible
+    let isFirstGlow = true;
+
+    function getGlowColors(wrap: HTMLElement) {
+      const card = wrap.querySelector<HTMLElement>('.post-card');
+      if (!card) return null;
+      const s = card.style;
+      return {
+        r: s.getPropertyValue('--glow-r'),
+        g: s.getPropertyValue('--glow-g'),
+        b: s.getPropertyValue('--glow-b'),
+        r2: s.getPropertyValue('--glow2-r'),
+        g2: s.getPropertyValue('--glow2-g'),
+        b2: s.getPropertyValue('--glow2-b'),
+      };
+    }
+
+    function setLayerColors(layer: string, c: ReturnType<typeof getGlowColors>) {
+      if (!feedGlow || !c) return;
+      feedGlow.style.setProperty(`--glow-r${layer}`, c.r);
+      feedGlow.style.setProperty(`--glow-g${layer}`, c.g);
+      feedGlow.style.setProperty(`--glow-b${layer}`, c.b);
+      feedGlow.style.setProperty(`--glow2-r${layer}`, c.r2);
+      feedGlow.style.setProperty(`--glow2-g${layer}`, c.g2);
+      feedGlow.style.setProperty(`--glow2-b${layer}`, c.b2);
+    }
+
+    function updateFeedGlow(wrap: HTMLElement) {
+      if (!feedGlow) return;
+      const colors = getGlowColors(wrap);
+      if (!colors) return;
+
+      if (isFirstGlow) {
+        // Set both layers to the same color on init (no crossfade)
+        setLayerColors('1', colors);
+        setLayerColors('2', colors);
+        isFirstGlow = false;
+        return;
+      }
+
+      // Set colors on the hidden layer, then swap visibility
+      const target = glowLayer === 1 ? '2' : '1';
+      setLayerColors(target, colors);
+
+      feedGlow.style.setProperty('--layer1-opacity', target === '1' ? '1' : '0');
+      feedGlow.style.setProperty('--layer2-opacity', target === '2' ? '1' : '0');
+      glowLayer = parseInt(target);
+    }
+
+    // Track current visible post and update timeline + glow
+    let currentYear: number | null = null;
+    let currentMonth: number | null = null;
+    let currentIndex: number | null = null;
+
+    const scrollObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+          const wrap = entry.target as HTMLElement;
+          const year = parseInt(wrap.dataset.year || '0');
+          const month = parseInt(wrap.dataset.month || '0');
+          const index = parseInt(wrap.dataset.index || '-1');
+
+          if (index !== currentIndex) {
+            currentIndex = index;
+            updateFeedGlow(wrap);
+          }
+
+          if (year !== currentYear || month !== currentMonth) {
+            currentYear = year;
+            currentMonth = month;
+            updateTimelineHighlight(year, month);
+          }
         }
       });
-    }, {
-      threshold: 0.3,
-      rootMargin: '0px'
+    }, { threshold: 0.5, root: feed });
+
+    postWraps.forEach(wrap => scrollObserver.observe(wrap));
+
+    function updateTimelineHighlight(year: number, month: number) {
+      // Remove all active states
+      timeline.querySelectorAll('.timeline__year--active, .timeline__month--active')
+        .forEach(el => el.classList.remove('timeline__year--active', 'timeline__month--active'));
+
+      // Add active to current year
+      const yearEl = timeline.querySelector(`[data-year="${year}"]`);
+      yearEl?.classList.add('timeline__year--active');
+
+      // Add active to current month
+      const monthEl = timeline.querySelector(`[data-year="${year}"][data-month="${month}"]`);
+      monthEl?.classList.add('timeline__month--active');
+    }
+
+    // Click to scroll
+    timeline.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('[data-scroll-to]') as HTMLElement;
+      if (!btn) return;
+
+      const index = parseInt(btn.dataset.scrollTo || '0');
+      const targetWrap = postWraps[index];
+      if (targetWrap) {
+        targetWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
 
-    document.querySelectorAll('.post-card--feed').forEach(card => {
-      observer.observe(card);
-    });
-  });
+    // Initialize highlight + glow for first post
+    if (postWraps[0]) {
+      const year = parseInt(postWraps[0].dataset.year || '0');
+      const month = parseInt(postWraps[0].dataset.month || '0');
+      updateTimelineHighlight(year, month);
+      updateFeedGlow(postWraps[0]);
+    }
+  }
+
+  document.addEventListener('astro:page-load', initFeed);
+  document.addEventListener('DOMContentLoaded', initFeed);
 </script>
 
 <style>
@@ -112,16 +314,243 @@ const posts = await Promise.all(
     scroll-padding-top: var(--header-height);
   }
 
+  /* Timeline sidebar - fixed on right side */
+  .feed__timeline {
+    position: fixed;
+    right: var(--space-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    max-width: 72px;
+    max-height: 60vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+
+    /* Liquid glass base */
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 16px;
+
+    /* Shadow layering: external depth + inset illumination */
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .feed__timeline::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Liquid glass illumination layer */
+  .feed__timeline::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.15),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Subtle shimmer highlight */
+  .feed__timeline::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .timeline__year {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .timeline__year-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: var(--space-xs);
+    cursor: pointer;
+    text-align: center;
+    border-radius: 8px;
+    transition: all var(--transition-fast);
+  }
+
+  .timeline__year-btn:hover {
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .timeline__year--active > .timeline__year-btn {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .timeline__months {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height var(--transition-base), opacity var(--transition-base);
+  }
+
+  /* Show months for active year or on hover */
+  .timeline__year--active .timeline__months,
+  .timeline__year:hover .timeline__months {
+    max-height: 300px;
+    opacity: 1;
+  }
+
+  .timeline__month {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.35);
+    font-family: var(--font-body);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px var(--space-xs);
+    cursor: pointer;
+    text-align: center;
+    border-radius: 6px;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .timeline__month:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .timeline__month--active {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .timeline__month--active::before {
+    content: '';
+    width: 3px;
+    height: 3px;
+    background: var(--color-accent, rgba(255, 255, 255, 0.8));
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 4px var(--color-accent, rgba(255, 255, 255, 0.4));
+  }
+
+  /* Ambient glow that crossfades between post colors */
+  .feed__glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(80px);
+    mix-blend-mode: screen;
+  }
+
+  /* Two glow layers for crossfade — JS toggles opacity between them */
+  .feed__glow::before,
+  .feed__glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transition: opacity 1s ease;
+  }
+
+  .feed__glow::before {
+    opacity: var(--layer1-opacity, 1);
+    background:
+      radial-gradient(
+        ellipse 120% 80% at 35% 30%,
+        rgba(var(--glow-r1, 58), var(--glow-g1, 68), var(--glow-b1, 71), 0.18) 0%,
+        rgba(var(--glow-r1, 58), var(--glow-g1, 68), var(--glow-b1, 71), 0.08) 35%,
+        transparent 65%
+      ),
+      radial-gradient(
+        ellipse 120% 80% at 65% 70%,
+        rgba(var(--glow2-r1, 58), var(--glow2-g1, 68), var(--glow2-b1, 71), 0.14) 0%,
+        rgba(var(--glow2-r1, 58), var(--glow2-g1, 68), var(--glow2-b1, 71), 0.06) 35%,
+        transparent 65%
+      );
+  }
+
+  .feed__glow::after {
+    background:
+      radial-gradient(
+        ellipse 120% 80% at 35% 30%,
+        rgba(var(--glow-r2, 58), var(--glow-g2, 68), var(--glow-b2, 71), 0.18) 0%,
+        rgba(var(--glow-r2, 58), var(--glow-g2, 68), var(--glow-b2, 71), 0.08) 35%,
+        transparent 65%
+      ),
+      radial-gradient(
+        ellipse 120% 80% at 65% 70%,
+        rgba(var(--glow2-r2, 58), var(--glow2-g2, 68), var(--glow2-b2, 71), 0.14) 0%,
+        rgba(var(--glow2-r2, 58), var(--glow2-g2, 68), var(--glow2-b2, 71), 0.06) 35%,
+        transparent 65%
+      );
+    opacity: var(--layer2-opacity, 0);
+  }
+
   /* Single-column content area */
   .feed__content {
+    position: relative;
+    z-index: 1;
     width: 100%;
     display: flex;
     flex-direction: column;
+    /* Push first image down so it's visually centered below the header */
+    padding-top: calc(var(--header-height) + var(--space-3xl));
+  }
+
+  .feed__post-wrap {
+    width: 100%;
   }
 
   .feed__empty {
     text-align: center;
     color: var(--color-text-muted);
     padding: var(--space-4xl) 0;
+  }
+
+  /* Hide timeline on mobile - not enough space */
+  @media (max-width: 768px) {
+    .feed__timeline {
+      display: none;
+    }
+  }
+
+  /* Larger screens: more spacing */
+  @media (min-width: 1200px) {
+    .feed__timeline {
+      right: var(--space-lg);
+    }
   }
 </style>

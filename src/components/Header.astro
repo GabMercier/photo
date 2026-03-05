@@ -34,9 +34,7 @@ function isActive(linkPath: string): boolean {
   <div class="header__inner container">
     <!-- Logo / Site name - collapses to dot on scroll -->
     <a href={localePath('/', locale)} class="header__logo" aria-label="Home">
-      <span class="logo__text" aria-hidden="true">gpho</span>
       <span class="logo__dot" aria-hidden="true"></span>
-      <span class="logo__text" aria-hidden="true">to</span>
     </a>
 
     <!-- Desktop navigation -->
@@ -67,6 +65,9 @@ function isActive(linkPath: string): boolean {
       <span class="header__hamburger-line"></span>
     </button>
   </div>
+
+  <!-- Glass edge fade — dissolves content at the header boundary -->
+  <div class="header__edge-fade" aria-hidden="true"></div>
 
   <!-- Mobile menu overlay (full-screen) -->
   <div class="header__mobile-menu" id="mobile-menu" aria-hidden="true">
@@ -155,6 +156,15 @@ function isActive(linkPath: string): boolean {
       } else {
         expand();
       }
+
+      // Scroll-reactive glass: ramp blur 12→24 and bg alpha 0.04→0.08 over first 300px
+      const scrollProgress = Math.min(window.scrollY / 300, 1);
+      const blur = 12 + scrollProgress * 12;
+      const bgAlpha = 0.04 + scrollProgress * 0.04;
+      const refractionOpacity = 0.6 + scrollProgress * 0.4;
+      header.style.setProperty('--header-blur', blur.toString());
+      header.style.setProperty('--header-bg-alpha', bgAlpha.toFixed(3));
+      header.style.setProperty('--refraction-opacity', refractionOpacity.toFixed(2));
     }
 
     // Initial check
@@ -197,12 +207,99 @@ function isActive(linkPath: string): boolean {
     right: 0;
     height: var(--header-height);
     z-index: var(--z-header);
-    background-color: transparent; /* Transparent to show carousel gradient */
-    backdrop-filter: blur(12px); /* Frosted glass effect */
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: none; /* Remove border for seamless gradient effect */
     overflow: visible;
-    transition: background-color var(--transition-base);
+
+    /* Subtle bottom edge highlight */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+    /* Inset illumination — top highlight, bottom fade */
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+      0 2px 16px rgba(0, 0, 0, 0.15);
+
+    /* Scroll-reactive blur: JS sets --header-blur (12-24) and --header-bg-alpha (0.04-0.08) */
+    --header-blur: 12;
+    --header-bg-alpha: 0.04;
+    background: rgba(255, 255, 255, var(--header-bg-alpha));
+    backdrop-filter: blur(calc(var(--header-blur) * 1px)) saturate(180%);
+    -webkit-backdrop-filter: blur(calc(var(--header-blur) * 1px)) saturate(180%);
+
+    transition: box-shadow var(--transition-base);
+  }
+
+  /* Shimmer highlight — slow diagonal light sweep */
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 30%,
+      transparent 70%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .header::before {
+      animation: header-shimmer 8s ease-in-out infinite;
+    }
+  }
+
+  @keyframes header-shimmer {
+    0%, 100% {
+      opacity: 1;
+      background-position: 0% 0%;
+    }
+    50% {
+      opacity: 0.5;
+      background-position: 100% 100%;
+    }
+  }
+
+  /* Prismatic edge refraction — rainbow gradient along bottom border */
+  .header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsla(0, 70%, 60%, 0.2) 10%,
+      hsla(30, 80%, 60%, 0.25) 20%,
+      hsla(60, 70%, 60%, 0.2) 30%,
+      hsla(120, 60%, 55%, 0.2) 40%,
+      hsla(200, 70%, 60%, 0.25) 55%,
+      hsla(260, 60%, 60%, 0.2) 70%,
+      hsla(300, 60%, 60%, 0.2) 85%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+    opacity: var(--refraction-opacity, 0.6);
+    transition: opacity 0.3s ease;
+  }
+
+  /* Glass edge fade — content dissolves at the header boundary */
+  .header__edge-fade {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 16px;
+    pointer-events: none;
+    z-index: 0;
+    backdrop-filter: blur(calc(var(--header-blur) * 0.6px)) saturate(140%);
+    -webkit-backdrop-filter: blur(calc(var(--header-blur) * 0.6px)) saturate(140%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
   }
 
   /* When mobile menu is open, solid background */
@@ -210,6 +307,14 @@ function isActive(linkPath: string): boolean {
     background-color: var(--color-bg);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    box-shadow: none;
+    border-bottom-color: transparent;
+  }
+
+  .header--menu-open::before,
+  .header--menu-open::after,
+  .header--menu-open .header__edge-fade {
+    display: none;
   }
 
   .header__inner {
@@ -224,62 +329,26 @@ function isActive(linkPath: string): boolean {
     padding-inline: var(--space-md);
   }
 
-  /* Logo - full text that collapses to dot on scroll */
+  /* Logo - glass dot only */
   .header__logo {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: center;
     text-decoration: none;
     padding: var(--space-xs);
-    font-family: 'Urbanist', sans-serif;
-    font-weight: 600;
-    font-size: clamp(2rem, 5vw, 2.5rem);
-    letter-spacing: 0.06em;
-    line-height: 1;
     overflow: visible;
-    transition: all var(--transition-base);
   }
 
-  /* Glass text effect - translucent with crisp edge
-   * Saturation scales with --saturation-raw (0 for B&W images) */
-  .logo__text {
-    display: inline;
-    background: linear-gradient(
-      165deg,
-      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 82%, 0.08) 0%,
-      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 78%, 0.03) 50%,
-      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 82%, 0.08) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 72%, 0.85);
-    text-shadow:
-      0 0 6px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.5%), 70%, 0.15),
-      -0.5px 0 0 hsla(0, calc(var(--saturation-raw, 12) * 4.2%), 62%, 0.18),
-      0.5px 0 0 hsla(180, calc(var(--saturation-raw, 12) * 4.2%), 62%, 0.18);
-    opacity: 1;
-    max-width: 120px;
-    overflow: visible;
-    transition:
-      opacity var(--transition-base),
-      max-width var(--transition-base),
-      margin var(--transition-base);
-  }
-
-  /* Glass dot - positioned at baseline like a URL period
+  /* Glass dot — the sole logo mark
    * Saturation scales with --saturation-raw (0 for B&W images) */
   .logo__dot {
-    --dot-size: 0.22em;
-
-    display: inline-block;
-    width: var(--dot-size);
-    height: var(--dot-size);
+    display: block;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
     position: relative;
     border-radius: 50%;
-    vertical-align: baseline;
-    margin: 0 0.02em;
+    overflow: hidden;
 
     /* Hollow glass - subtle translucent center */
     background: radial-gradient(
@@ -294,108 +363,115 @@ function isActive(linkPath: string): boolean {
 
     /* Subtle glow */
     box-shadow:
-      inset 0 0 3px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 100%, 0.1),
-      0 0 4px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.5%), 70%, 0.15);
+      inset 0 0 4px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 100%, 0.1),
+      0 0 6px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.5%), 70%, 0.15);
 
     transition:
-      width var(--transition-base),
-      height var(--transition-base),
-      transform var(--transition-base),
       box-shadow var(--transition-base),
       border-color var(--transition-base);
   }
 
-  /* Dot highlight arc */
+  /* Highlight arc — rotates slowly like light catching glass */
   .logo__dot::before {
-    content: '';
-    position: absolute;
-    inset: 1px;
-    border-radius: 50%;
-    background: linear-gradient(
-      160deg,
-      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 100%, 0.3) 0%,
-      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 100%, 0.1) 25%,
-      transparent 50%
-    );
-    pointer-events: none;
-  }
-
-  /* Dot chromatic aberration - scales with saturation */
-  .logo__dot::after {
     content: '';
     position: absolute;
     inset: -1px;
     border-radius: 50%;
-    box-shadow:
-      -0.5px 0 0 hsla(0, calc(var(--saturation-raw, 12) * 4.6%), 60%, 0.2),
-      0.5px 0 0 hsla(180, calc(var(--saturation-raw, 12) * 4.6%), 60%, 0.2);
+    background: linear-gradient(
+      160deg,
+      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 100%, 0.35) 0%,
+      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 100%, 0.12) 20%,
+      transparent 45%
+    );
     pointer-events: none;
-    opacity: 0.7;
   }
 
-  /* Hover state - saturation scales with --saturation-raw */
-  .header__logo:hover .logo__text {
-    -webkit-text-stroke: 1px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.25%), 80%, 0.95);
-    text-shadow:
-      0 0 10px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.83%), 70%, 0.25),
-      -0.6px 0 0 hsla(0, calc(var(--saturation-raw, 12) * 4.6%), 62%, 0.22),
-      0.6px 0 0 hsla(180, calc(var(--saturation-raw, 12) * 4.6%), 62%, 0.22);
+  /* Lens flare sweep — periodic bright streak across the glass */
+  .logo__dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 38%,
+      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 92%, 0.35) 46%,
+      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.5%), 100%, 0.55) 50%,
+      hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 92%, 0.35) 54%,
+      transparent 62%,
+      transparent 100%
+    );
+    translate: -120% 0;
+    opacity: 0;
+    pointer-events: none;
   }
 
+  /* Hover — brighter rim + glow */
   .header__logo:hover .logo__dot {
     border-color: hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.25%), 80%, 0.9);
     box-shadow:
-      inset 0 0 4px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 100%, 0.15),
-      0 0 8px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.83%), 70%, 0.25);
+      inset 0 0 5px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 100%, 0.15),
+      0 0 10px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.83%), 70%, 0.25);
   }
 
-  .header__logo:hover .logo__dot::after {
-    opacity: 0.9;
-    box-shadow:
-      -0.7px 0 0 hsla(0, calc(var(--saturation-raw, 12) * 5%), 60%, 0.25),
-      0.7px 0 0 hsla(180, calc(var(--saturation-raw, 12) * 5%), 60%, 0.25);
-  }
-
-  /* ========================== */
-  /* Scrolled state - dot only  */
-  /* ========================== */
-  .header--scrolled .logo__text {
-    opacity: 0;
-    max-width: 0;
-    margin: 0;
-  }
-
-  .header--scrolled .logo__dot {
-    width: 28px;
-    height: 28px;
-  }
-
-  /* Subtle shimmer animation on dot when collapsed */
+  /* Animations — flare sweep + breathing glow */
   @media (prefers-reduced-motion: no-preference) {
-    .header--scrolled .logo__dot {
-      animation: dot-shimmer 6s ease-in-out infinite;
+    .logo__dot {
+      animation: dot-breathe 6s ease-in-out infinite;
+    }
+
+    .logo__dot::after {
+      animation: flare-sweep 8s ease-in-out infinite;
+      animation-delay: 3s;
     }
 
     .header__logo:hover .logo__dot {
       animation: none;
     }
+
+    .header__logo:hover .logo__dot::after {
+      animation: none;
+      opacity: 0;
+    }
   }
 
-  @keyframes dot-shimmer {
+  /* Gentle breathing glow */
+  @keyframes dot-breathe {
     0%, 100% {
       box-shadow:
-        inset 0 0 3px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 100%, 0.1),
-        0 0 4px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.5%), 70%, 0.15);
+        inset 0 0 4px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 0.83%), 100%, 0.1),
+        0 0 6px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.5%), 70%, 0.15);
     }
     50% {
       box-shadow:
-        inset 0 0 4px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 100%, 0.14),
-        0 0 6px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.67%), 70%, 0.2);
+        inset 0 0 5px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1%), 100%, 0.14),
+        0 0 8px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.67%), 70%, 0.22);
+    }
+  }
+
+  /* Lens flare — bright streak sweeps across every 8s */
+  @keyframes flare-sweep {
+    0%, 82% {
+      translate: -120% 0;
+      opacity: 0;
+    }
+    86% {
+      opacity: 0.7;
+    }
+    92% {
+      translate: 120% 0;
+      opacity: 0.7;
+    }
+    96%, 100% {
+      translate: 120% 0;
+      opacity: 0;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .logo__dot {
+    .logo__dot,
+    .logo__dot::after {
       animation: none !important;
     }
   }
@@ -552,7 +628,7 @@ function isActive(linkPath: string): boolean {
     box-shadow:
       0 0 4px hsla(var(--color-accent-hue), calc(var(--saturation-raw, 12) * 1.25%), 70%, 0.15);
 
-    transition: transform var(--transition-base), opacity var(--transition-fast), background var(--transition-fast);
+    transition: translate var(--transition-base), rotate var(--transition-base), opacity var(--transition-fast), background var(--transition-fast);
   }
 
   .header__hamburger:hover .header__hamburger-line {
@@ -567,11 +643,13 @@ function isActive(linkPath: string): boolean {
   }
 
   .header__hamburger--open .header__hamburger-line:first-child {
-    transform: translateY(4px) rotate(45deg);
+    translate: 0 4px;
+    rotate: 45deg;
   }
 
   .header__hamburger--open .header__hamburger-line:last-child {
-    transform: translateY(-4px) rotate(-45deg);
+    translate: 0 -4px;
+    rotate: -45deg;
   }
 
   /* ================================== */
@@ -636,10 +714,10 @@ function isActive(linkPath: string): boolean {
 
     /* Staggered animation setup */
     opacity: 0;
-    transform: translateY(20px);
+    translate: 0 20px;
     transition:
       opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+      translate 0.4s cubic-bezier(0.4, 0, 0.2, 1),
       -webkit-text-stroke var(--transition-fast),
       text-shadow var(--transition-fast);
     transition-delay: calc(var(--link-index, 0) * 0.08s);
@@ -647,7 +725,7 @@ function isActive(linkPath: string): boolean {
 
   .header__mobile-menu--open .header__mobile-link {
     opacity: 1;
-    transform: translateY(0);
+    translate: 0 0;
   }
 
   .header__mobile-link::after {
@@ -684,16 +762,16 @@ function isActive(linkPath: string): boolean {
   .header__mobile-controls {
     margin-top: var(--space-2xl);
     opacity: 0;
-    transform: translateY(20px);
+    translate: 0 20px;
     transition:
       opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      translate 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     transition-delay: calc(var(--link-index, 3) * 0.08s);
   }
 
   .header__mobile-menu--open .header__mobile-controls {
     opacity: 1;
-    transform: translateY(0);
+    translate: 0 0;
   }
 
   .header__mobile-lang {
@@ -740,7 +818,7 @@ function isActive(linkPath: string): boolean {
     .header__mobile-link,
     .header__mobile-controls {
       transition: color 0.15s, opacity 0.15s;
-      transform: none !important;
+      translate: none !important;
       transition-delay: 0s !important;
     }
   }

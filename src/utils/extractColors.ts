@@ -159,6 +159,10 @@ function normalizeGlowColor(r: number, g: number, b: number): DominantColor {
   return { r: rgb.r, g: rgb.g, b: rgb.b, hex };
 }
 
+// In-memory caches to avoid re-processing images within a dev server session
+const dominantColorCache = new Map<string, DominantColor>();
+const colorMetadataCache = new Map<string, ColorMetadata>();
+
 /**
  * Extract the dominant color from an image using Sharp
  * Returns RGB values and hex string
@@ -169,6 +173,8 @@ function normalizeGlowColor(r: number, g: number, b: number): DominantColor {
  * Supports both local files and remote URLs.
  */
 export async function extractDominantColor(imagePath: string): Promise<DominantColor> {
+  const cached = dominantColorCache.get(imagePath);
+  if (cached) return cached;
   try {
     let sharpInstance: sharp.Sharp;
 
@@ -212,6 +218,7 @@ export async function extractDominantColor(imagePath: string): Promise<DominantC
     // Convert to HSL, boost saturation, normalize lightness
     const normalized = normalizeGlowColor(r, g, b);
 
+    dominantColorCache.set(imagePath, normalized);
     return normalized;
   } catch (error) {
     console.error(`Error extracting color from ${imagePath}:`, error);
@@ -265,6 +272,9 @@ export async function extractColorPalette(
  * For colored images: uses normalized color for classification
  */
 export async function extractColorMetadata(imagePath: string): Promise<ColorMetadata> {
+  const cached = colorMetadataCache.get(imagePath);
+  if (cached) return cached;
+
   // Check if image is truly grayscale (most pixels have R≈G≈B)
   const grayscale = await isImageGrayscale(imagePath);
 
@@ -272,13 +282,16 @@ export async function extractColorMetadata(imagePath: string): Promise<ColorMeta
   const dominantColor = await extractDominantColor(imagePath);
   const normalizedHsl = rgbToHsl(dominantColor.r, dominantColor.g, dominantColor.b);
 
-  return {
+  const result: ColorMetadata = {
     ...dominantColor,
     // True grayscale → neutral, otherwise use normalized color's hue/saturation
     colorFamily: grayscale ? 'neutral' : getColorFamily(normalizedHsl.h, normalizedHsl.s),
     mood: getMood(normalizedHsl.l),
     lightness: Math.round(normalizedHsl.l),
   };
+
+  colorMetadataCache.set(imagePath, result);
+  return result;
 }
 
 /**
@@ -341,5 +354,32 @@ export function getColorMetadataFromRgb(r: number, g: number, b: number): { colo
     colorFamily: getColorFamily(hsl.h, hsl.s),
     mood: getMood(hsl.l),
     lightness: Math.round(hsl.l),
+  };
+}
+
+/**
+ * Get color family from a hex color string
+ * Useful for manually-specified secondary colors from CMS
+ */
+export function getColorFamilyFromHex(hex: string): ColorFamily {
+  // Parse hex to RGB
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+
+  const hsl = rgbToHsl(r, g, b);
+  return getColorFamily(hsl.h, hsl.s);
+}
+
+/**
+ * Parse hex color to RGB values
+ */
+export function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const cleanHex = hex.replace('#', '');
+  return {
+    r: parseInt(cleanHex.substring(0, 2), 16),
+    g: parseInt(cleanHex.substring(2, 4), 16),
+    b: parseInt(cleanHex.substring(4, 6), 16),
   };
 }

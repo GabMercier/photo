@@ -1,0 +1,4 @@
+---
+en: "Travel"
+fr: "Voyage"
+---
