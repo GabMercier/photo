@@ -70,7 +70,7 @@ function isActive(linkPath: string): boolean {
   <div class="header__edge-fade" aria-hidden="true"></div>
 
   <!-- Mobile menu overlay (full-screen) -->
-  <div class="header__mobile-menu" id="mobile-menu" aria-hidden="true">
+  <div class="header__mobile-menu" id="mobile-menu" inert>
     <nav class="header__mobile-nav">
       {navLinks.map((link, index) => (
         <a
@@ -104,7 +104,7 @@ function isActive(linkPath: string): boolean {
     toggle.addEventListener('click', () => {
       const isOpen = toggle.getAttribute('aria-expanded') === 'true';
       toggle.setAttribute('aria-expanded', String(!isOpen));
-      menu.setAttribute('aria-hidden', String(isOpen));
+      menu.inert = isOpen; // inert when closed
       menu.classList.toggle('header__mobile-menu--open');
       toggle.classList.toggle('header__hamburger--open');
       header.classList.toggle('header--menu-open');
@@ -117,7 +117,7 @@ function isActive(linkPath: string): boolean {
     menu.querySelectorAll('a').forEach(link => {
       link.addEventListener('click', () => {
         toggle.setAttribute('aria-expanded', 'false');
-        menu.setAttribute('aria-hidden', 'true');
+        menu.inert = true;
         menu.classList.remove('header__mobile-menu--open');
         toggle.classList.remove('header__hamburger--open');
         header.classList.remove('header--menu-open');
