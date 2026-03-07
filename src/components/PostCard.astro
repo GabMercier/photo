@@ -156,6 +156,11 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     color: inherit;
   }
 
+  /* Feed mode: no link cursor */
+  .post-card--feed .post-card__link {
+    cursor: default;
+  }
+
   /* Image */
   .post-card__image-wrap {
     position: relative;
@@ -434,30 +439,47 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     }
   }
 
-  /* Expand button - hidden by default */
+  /* Expand button — liquid glass, hidden until hover (desktop) or always visible (mobile) */
   .post-card__expand {
-    display: none;
+    display: flex;
     position: absolute;
-    bottom: var(--space-md);
-    right: var(--space-md);
+    bottom: 12px;
+    right: 12px;
     z-index: 10;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border: none;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
-    transition: background var(--transition-fast), scale var(--transition-fast);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 2px 8px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transition:
+      opacity var(--transition-fast),
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast),
+      scale var(--transition-fast);
+  }
+
+  /* Desktop: show on image hover */
+  .post-card__image-wrap:hover .post-card__expand {
+    opacity: 1;
   }
 
   .post-card__expand:hover,
   .post-card__expand:focus {
-    background: rgba(0, 0, 0, 0.7);
-    scale: 1.05;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: white;
+    scale: 1.08;
   }
 
   .post-card__expand:active {
@@ -465,15 +487,14 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   }
 
   .post-card__expand svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
-  /* Mobile - shared styles */
+  /* Mobile: always visible */
   @media (max-width: 768px) {
-    /* Show expand button on mobile */
     .post-card__expand {
-      display: flex;
+      opacity: 1;
     }
   }
 
@@ -542,21 +563,66 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     return { src, alt, postUrl, postTitle };
   }
 
-  // Feed cards: click image → open slideshow (instead of navigating to post)
+  // Feed cards: block link navigation, image is not clickable
   function initFeedSlideshow() {
     document.querySelectorAll('.post-card--feed .post-card__link').forEach((link) => {
       link.addEventListener('click', (e) => {
-        if (e.target.closest('.post-card__expand')) return;
         e.preventDefault();
-        const card = link.closest('.post-card--feed');
-        if (!card || !window.openSlideshow) return;
-        const img = getSlideshowImage(card);
-        if (img.src) window.openSlideshow([img], 0);
       });
     });
   }
 
-  // Expand button (mobile): also opens slideshow with post context
+  // Position expand buttons relative to the actual rendered image
+  // Get the actual visible image area (accounting for object-fit: contain)
+  function getVisibleImageRect(img) {
+    const elemRect = img.getBoundingClientRect();
+    const natW = img.naturalWidth;
+    const natH = img.naturalHeight;
+    if (!natW || !natH) return elemRect;
+
+    const elemRatio = elemRect.width / elemRect.height;
+    const natRatio = natW / natH;
+    let w, h;
+
+    if (natRatio > elemRatio) {
+      w = elemRect.width;
+      h = elemRect.width / natRatio;
+    } else {
+      h = elemRect.height;
+      w = elemRect.height * natRatio;
+    }
+
+    return {
+      bottom: elemRect.top + (elemRect.height + h) / 2,
+      right: elemRect.left + (elemRect.width + w) / 2,
+    };
+  }
+
+  function initExpandPosition() {
+    function position() {
+      document.querySelectorAll('.post-card--feed').forEach((card) => {
+        const button = card.querySelector('.post-card__expand');
+        const img = card.querySelector('img');
+        const wrap = card.querySelector('.post-card__image-wrap');
+        if (!button || !img || !wrap) return;
+
+        const visRect = getVisibleImageRect(img);
+        const wrapRect = wrap.getBoundingClientRect();
+
+        button.style.bottom = (wrapRect.bottom - visRect.bottom + 12) + 'px';
+        button.style.right = (wrapRect.right - visRect.right + 12) + 'px';
+      });
+    }
+
+    document.querySelectorAll('.post-card--feed img').forEach((img) => {
+      if (img.complete) return;
+      img.addEventListener('load', position, { once: true });
+    });
+    position();
+    window.addEventListener('resize', position);
+  }
+
+  // Expand button: opens slideshow with post context
   function initExpandButtons() {
     document.querySelectorAll('.post-card__expand').forEach((button) => {
       button.addEventListener('click', (e) => {
@@ -577,6 +643,7 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
 
   function initPostCard() {
     initFeedSlideshow();
+    initExpandPosition();
     initExpandButtons();
   }
 

@@ -1,0 +1,86 @@
+---
+/**
+ * HomePage Component
+ *
+ * Shared homepage template used by both EN and FR routes.
+ * Full-screen carousel showcasing selected photography posts.
+ */
+import Base from '@layouts/Base.astro';
+import HomepageCarousel from '@components/HomepageCarousel.astro';
+import HomepageHero from '@components/HomepageHero.astro';
+import { getCollection } from 'astro:content';
+import { getLocaleFromUrl } from '@utils/i18n';
+import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
+
+const locale = getLocaleFromUrl(Astro.url);
+
+// Fetch posts marked for carousel
+const allPosts = await getCollection('posts', ({ data }) => {
+  return data.homepageCarousel && !data.draft && !data.private;
+});
+
+// Extract glow colors for posts that don't have them
+const postsWithColors = await Promise.all(
+  allPosts.map(async (post) => {
+    if (post.data.glowColor) return post;
+
+    const imagePath = post.data.coverImage.src;
+    const glowColor = await extractDominantColor(imagePath);
+
+    return {
+      ...post,
+      data: {
+        ...post.data,
+        glowColor,
+      },
+    };
+  })
+);
+
+// Sort by date (newest first)
+const carouselPosts = postsWithColors.sort((a, b) =>
+  b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+// Find default post
+const defaultPost = carouselPosts.find(p => p.data.homepageDefault);
+const defaultSlug = defaultPost?.slug;
+
+// Get initial accent from default post or first post
+const initialPost = defaultPost || carouselPosts[0];
+const initialGlow = initialPost?.data.glowColor || { r: 58, g: 68, b: 71 };
+const initialAccent = deriveAccentFromGlow(initialGlow.r, initialGlow.g, initialGlow.b);
+
+// Structured data (Schema.org)
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const homepageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfilePage',
+  mainEntity: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+    jobTitle: 'Photographer',
+    knowsAbout: ['Photography', 'Landscape Photography', 'Nature Photography'],
+  },
+};
+---
+
+<Base
+  accentHue={carouselPosts.length > 0 ? initialAccent.hue : undefined}
+  accentSaturation={carouselPosts.length > 0 ? initialAccent.saturation : undefined}
+  accentLightness={carouselPosts.length > 0 ? initialAccent.lightness : undefined}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(homepageSchema)} />
+  </Fragment>
+  {carouselPosts.length > 0 ? (
+    <HomepageCarousel
+      carouselPosts={carouselPosts}
+      defaultPostSlug={defaultSlug}
+      locale={locale}
+    />
+  ) : (
+    <HomepageHero />
+  )}
+</Base>

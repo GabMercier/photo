@@ -1,6 +1,6 @@
 # Photography Portfolio Development Roadmap
 
-**Last Updated:** March 4, 2026
+**Last Updated:** March 6, 2026
 **Project:** gphoto.pages.dev  
 **Purpose:** Personal portfolio → Template business foundation
 
@@ -1417,6 +1417,101 @@ Tooltips with proper speech bubble arrows:
 **Status:** ✅ Complete
 **Effort:** 6-8 hours (across multiple sessions)
 **Priority:** P1 (High - core UX feature)
+
+---
+
+### Bilingual Page Consolidation
+
+**Problem:** EN/FR pages were fully duplicated (~500+ lines each), causing drift and bugs.
+
+**Solution:** Extract shared components, pages become thin wrappers (~10 lines).
+
+**Consolidated:**
+- FeedPage.astro ← feed.astro + fr/feed.astro
+- GalleryPage.astro ← gallery.astro + fr/gallery.astro
+- HomePage.astro ← index.astro + fr/index.astro (merged: accent colors from FR + Schema.org from EN)
+- AboutPage.astro ← about.astro + fr/about.astro (dropped dead imports from EN)
+- PostPage.astro ← posts/[slug].astro + fr/posts/[slug].astro
+
+**Bugs fixed during consolidation:**
+- FR gallery had hardcoded `'fr-CA'` date locale → now conditional
+- EN homepage missing accent colors, FR missing Schema.org → both included
+
+**Status:** ✅ Complete
+**Completed:** March 6, 2026
+**Priority:** P1 (High - maintainability)
+
+---
+
+### Slideshow Flash Fix
+
+**Problem:** Gallery → slideshow → "View Post" → back → slideshow briefly flashes stale content.
+
+**Solution:**
+- `initSlideshow()` force-resets all state (images, DOM, classes) on every page load/swap
+- `openSlideshow()` updates image BEFORE showing overlay
+- `closeSlideshow()` clears images array, caption, View Post button
+
+**Status:** ✅ Complete
+**Completed:** March 6, 2026
+
+---
+
+### Gallery Back Button Navigation
+
+**Problem:** Post page back button always said "Back to feed" even when coming from gallery.
+
+**Solution:**
+- Slideshow "View Post" click sets `sessionStorage('navigatedFrom', 'gallery')`
+- PostPage reads sessionStorage and adapts back button text/href
+- `document.referrer` unreliable with View Transitions → sessionStorage is robust
+
+**Status:** ✅ Complete
+**Completed:** March 6, 2026
+
+---
+
+### Post Page Sticky Back Button
+
+**Problem:** Back button scrolled away with the hero image.
+
+**Solution:** `position: fixed` with `top: calc(var(--header-height) / 2); transform: translateY(-50%)` — centered in header bar.
+
+**Status:** ✅ Complete
+**Completed:** March 6, 2026
+
+---
+
+### Feed Expand Button Redesign
+
+**Problem:** Clicking anywhere on feed image opened slideshow; button was opaque and mobile-only.
+
+**Solution:**
+- Feed image click blocked via JS `preventDefault` — only expand button triggers slideshow
+- Liquid glass styling (translucent, blur, subtle border)
+- Desktop: hidden, fades in on image hover. Mobile: always visible
+- JS positioning with `getVisibleImageRect()` to handle `object-fit: contain` letterboxing on 16:9 images
+
+**Status:** ✅ Complete
+**Completed:** March 6, 2026
+
+---
+
+## Next Session Tasks
+
+### Priority Tasks
+1. **About page content** — Add bio text, social links, contact info
+2. **Download with attribution** — Download button on post/slideshow with EXIF/credit metadata
+3. **Video post support** — MP4/WebM in posts with autoplay/loop options
+
+### Polish & UX
+4. **Feed scroll position restore** — When returning from a post, scroll back to where you were
+5. **LQIP blur placeholders** — Low-quality image placeholders for progressive loading
+6. **Preloading strategy** — Prefetch next feed images for instant scroll
+
+### Business / Template
+7. **Template abstraction** — Extract site-specific content, make configurable via settings
+8. **Documentation** — Setup guide, CMS usage, deployment instructions
 
 ---
 

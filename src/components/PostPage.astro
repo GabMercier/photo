@@ -1,0 +1,802 @@
+---
+/**
+ * PostPage Component
+ *
+ * Shared post page template used by both EN and FR routes.
+ * Handles locale detection, color extraction, OG metadata,
+ * structured data, and all rendering.
+ */
+import Base from '@layouts/Base.astro';
+import ShareButton from '@components/ShareButton.astro';
+import OptimizedImage from '@components/OptimizedImage.astro';
+import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
+import { render } from 'astro:content';
+import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
+import { deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
+
+interface Props {
+  post: any;
+}
+
+const { post } = Astro.props;
+const locale = getLocaleFromUrl(Astro.url);
+const { title, coverImage, images, tags, date, postType, description, glowColor, secondaryColor } = post.data;
+
+// Get display title (may be empty if no title provided)
+const displayTitle = localized(title, locale);
+
+// Fallback to cool blue-gray if no color extracted
+const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+
+// Secondary color for dual-tone glow (falls back to primary)
+const glow2 = secondaryColor ? hexToRgb(secondaryColor) : { r: glow.r, g: glow.g, b: glow.b };
+
+// Get image data to determine if landscape (for mobile cropping)
+const heroImageData = await getOptimizedImage(coverImage.src);
+const isLandscape = heroImageData.aspectRatio >= 1;
+
+// Focal point for cropping
+const focalPointMap: Record<string, string> = {
+  'left': 'left center',
+  'center': 'center center',
+  'right': 'right center',
+};
+const focalPoint = focalPointMap[coverImage.focalPoint || 'center'] || 'center center';
+
+// Derive accent color from glow for dynamic theming
+const accent = deriveAccentFromGlow(glow.r, glow.g, glow.b);
+
+const { Content } = await render(post);
+
+const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+// OG image: use optimized 1200px JPEG for fast social preview loading
+const ogImageVariant = heroImageData.src.endsWith('.webp')
+  ? heroImageData.src.replace(/\.webp$/, '.jpg')
+  : heroImageData.src;
+const ogImageWidth = heroImageData.width ? Math.min(heroImageData.width, 1200) : undefined;
+const ogImageHeight = heroImageData.height && heroImageData.width
+  ? Math.round(Math.min(heroImageData.width, 1200) * (heroImageData.height / heroImageData.width))
+  : undefined;
+
+// Structured data (Schema.org)
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const postUrl = new URL(Astro.url.pathname, siteUrl).href;
+const imageUrl = ogImageVariant.startsWith('http') ? ogImageVariant : new URL(ogImageVariant, siteUrl).href;
+
+const postSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: displayTitle || undefined,
+  description: localized(description, locale) || undefined,
+  image: imageUrl,
+  datePublished: date.toISOString(),
+  ...(post.data.updatedDate && { dateModified: post.data.updatedDate.toISOString() }),
+  url: postUrl,
+  author: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+  },
+  publisher: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+  },
+  ...(tags.length > 0 && { keywords: tags.join(', ') }),
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': postUrl,
+  },
+};
+
+const photographSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Photograph',
+  name: displayTitle || localized(coverImage.alt, locale) || undefined,
+  image: imageUrl,
+  dateCreated: date.toISOString(),
+  creator: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+    url: siteUrl,
+  },
+  copyrightHolder: {
+    '@type': 'Person',
+    name: 'Gabriel Mercier',
+  },
+};
+---
+
+<Base
+  title={displayTitle || t('post.single', locale)}
+  description={localized(description, locale)}
+  ogImage={ogImageVariant}
+  ogImageAlt={localized(coverImage.alt, locale) || displayTitle || t('post.single', locale)}
+  ogImageWidth={ogImageWidth}
+  ogImageHeight={ogImageHeight}
+  ogType="article"
+  accentHue={accent.hue}
+  accentSaturation={accent.saturation}
+  accentLightness={accent.lightness}
+>
+  <Fragment slot="head">
+    {heroImageData.srcset.avif && (
+      <link rel="preload" as="image" type="image/avif"
+        imagesrcset={heroImageData.srcset.avif}
+        imagesizes={imageSizes.hero} />
+    )}
+    <script type="application/ld+json" set:html={JSON.stringify(postSchema)} />
+    <script type="application/ld+json" set:html={JSON.stringify(photographSchema)} />
+  </Fragment>
+
+  <article
+    class="post"
+    style={{
+      '--glow-r': glow.r,
+      '--glow-g': glow.g,
+      '--glow-b': glow.b,
+      '--glow2-r': glow2.r,
+      '--glow2-g': glow2.g,
+      '--glow2-b': glow2.b,
+    }}
+  >
+    <!-- Back button — fixed glass pill -->
+    <a href={localePath('/feed', locale)} class="post__back" id="post-back-link">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+      <span id="post-back-text">{t('misc.backToFeed', locale)}</span>
+    </a>
+
+    <!-- Hero image - full viewport -->
+    <div
+      class:list={['post__hero', isLandscape && 'post__hero--landscape']}
+      style={{ '--focal-point': focalPoint }}
+    >
+      <OptimizedImage
+        src={coverImage.src}
+        alt={localized(coverImage.alt, locale)}
+        class="post__hero-image"
+        loading="eager"
+        decoding="sync"
+        fetchpriority="high"
+        sizes={imageSizes.hero}
+      />
+
+      {/* Expand button for mobile - shows full image in lightbox */}
+      <button
+        class="post__hero-expand"
+        aria-label={t('feed.viewFull', locale)}
+        data-full-src={coverImage.src}
+        data-full-alt={localized(coverImage.alt, locale)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <polyline points="9 21 3 21 3 15"></polyline>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Gallery navigation (always rendered, shown/hidden by JavaScript) -->
+    <button id="gallery-nav-close" class="gallery-nav gallery-nav--close" aria-label={t('misc.close', locale) || 'Close'} style="display: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <button id="gallery-nav-prev" class="gallery-nav gallery-nav--prev" aria-label={locale === 'fr' ? 'Post précédent' : 'Previous post'} style="display: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <button id="gallery-nav-next" class="gallery-nav gallery-nav--next" aria-label={locale === 'fr' ? 'Post suivant' : 'Next post'} style="display: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
+    <div class="gallery-nav-counter" style="display: none;">
+      <span id="gallery-nav-current">1</span> / <span id="gallery-nav-total">1</span>
+    </div>
+
+    <!-- Post content -->
+    <div class="post__content container container--narrow">
+      <!-- Metadata + title + tags -->
+      <header class="post__header animate-in">
+        <div class="post__meta">
+          <time datetime={date.toISOString()}>{formattedDate}</time>
+          {postType === 'series' && (
+            <span class="post__badge">{t('post.series', locale)}</span>
+          )}
+          <ShareButton
+            title={displayTitle || 'gphoto'}
+            description={localized(description, locale)}
+            locale={locale}
+          />
+        </div>
+        {displayTitle && (
+          <h1 class="post__title">{displayTitle}</h1>
+        )}
+        <div class="post__tags">
+          {tags.map(tag => (
+            <a href={`${localePath('/gallery', locale)}?tag=${encodeURIComponent(tag)}`} class="tag">{tag}</a>
+          ))}
+        </div>
+      </header>
+
+      <!-- Markdown body content -->
+      <div class="post__body prose">
+        <Content />
+      </div>
+
+      <!-- Additional images for series posts -->
+      {images && images.length > 0 && (
+        <div class="post__series">
+          {images.map((img, i) => (
+            <figure
+              class="post__series-item animate-in"
+              style={`animation-delay: ${i * 100}ms`}
+              data-slideshow-src={img.src}
+              data-slideshow-alt={localized(img.alt, locale)}
+              data-slideshow-caption={[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
+              data-slideshow-index={i}
+            >
+              <OptimizedImage
+                src={img.src}
+                alt={localized(img.alt, locale)}
+                class="post__series-image"
+                loading="lazy"
+                decoding="async"
+                sizes="(max-width: 768px) 100vw, 800px"
+              />
+              {img.settings && (
+                <figcaption class="post__series-caption">
+                  {[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      )}
+    </div>
+  </article>
+
+  <script>
+    // Get all images for the slideshow (hero + series images)
+    function getAllPostImages() {
+      const images = [];
+
+      // Add hero image first
+      const expandBtn = document.querySelector('.post__hero-expand');
+      if (expandBtn?.dataset.fullSrc) {
+        images.push({
+          src: expandBtn.dataset.fullSrc,
+          alt: expandBtn.dataset.fullAlt || '',
+          caption: ''
+        });
+      }
+
+      // Add series images
+      document.querySelectorAll('.post__series-item[data-slideshow-src]').forEach(el => {
+        images.push({
+          src: el.dataset.slideshowSrc,
+          alt: el.dataset.slideshowAlt || '',
+          caption: el.dataset.slideshowCaption || ''
+        });
+      });
+
+      return images;
+    }
+
+    // Series slideshow initialization
+    function initSeriesSlideshow() {
+      const seriesItems = document.querySelectorAll('.post__series-item[data-slideshow-src]');
+
+      seriesItems.forEach((figure, i) => {
+        figure.style.cursor = 'pointer';
+        figure.addEventListener('click', () => {
+          const allImages = getAllPostImages();
+          // Series images start at index 1 (hero is index 0)
+          const index = i + 1;
+
+          if (window.openSlideshow) {
+            window.openSlideshow(allImages, index);
+          } else {
+            console.error('openSlideshow function not found');
+          }
+        });
+      });
+    }
+
+    // Hero expand - opens slideshow starting at hero (index 0)
+    // Clickable on all devices (hero div + expand button)
+    function initHeroExpand() {
+      const expandBtn = document.querySelector('.post__hero-expand');
+      const heroDiv = document.querySelector('.post__hero');
+
+      if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const allImages = getAllPostImages();
+          if (window.openSlideshow && allImages.length > 0) {
+            window.openSlideshow(allImages, 0);
+          }
+        });
+      }
+
+      if (heroDiv) {
+        heroDiv.addEventListener('click', (e) => {
+          // Don't double-trigger from expand button or gallery nav
+          if (e.target.closest('.post__hero-expand') || e.target.closest('.gallery-nav')) return;
+          const allImages = getAllPostImages();
+          if (window.openSlideshow && allImages.length > 0) {
+            window.openSlideshow(allImages, 0);
+          }
+        });
+      }
+    }
+
+    // Initialize on load
+    initSeriesSlideshow();
+    initHeroExpand();
+
+    // Re-initialize after View Transitions
+    document.addEventListener('astro:after-swap', () => {
+      initSeriesSlideshow();
+      initHeroExpand();
+    });
+
+    // Gallery navigation initialization
+    function initGalleryNav() {
+      const context = JSON.parse(sessionStorage.getItem('galleryContext') || '{}');
+      const currentSlug = window.location.pathname.split('/').pop();
+      const currentIndex = context.slugs?.indexOf(currentSlug) ?? -1;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const isGalleryMode = urlParams.get('gallery') === 'true';
+
+      // Check sessionStorage (set by gallery page on link click) or URL param
+      const navigatedFrom = sessionStorage.getItem('navigatedFrom');
+      const isFromGallery = isGalleryMode || navigatedFrom === 'gallery';
+
+      const locale = document.documentElement.lang;
+      const galleryPath = locale === 'fr' ? '/fr/gallery' : '/gallery';
+
+      // Update back link when arriving from gallery
+      if (isFromGallery) {
+        const backLink = document.getElementById('post-back-link');
+        const backText = document.getElementById('post-back-text');
+        if (backLink) backLink.href = galleryPath;
+        if (backText) backText.textContent = locale === 'fr' ? 'Retour à la galerie' : 'Back to gallery';
+        // Clear so it doesn't persist if user navigates to feed later
+        sessionStorage.removeItem('navigatedFrom');
+      }
+
+      if (isGalleryMode && currentIndex >= 0 && context.slugs && context.slugs.length > 1) {
+        const closeBtn = document.getElementById('gallery-nav-close');
+        const prevBtn = document.getElementById('gallery-nav-prev');
+        const nextBtn = document.getElementById('gallery-nav-next');
+        const counter = document.querySelector('.gallery-nav-counter');
+
+        // Show navigation
+        closeBtn.style.display = 'flex';
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
+        counter.style.display = 'block';
+
+        // Close button handler
+        closeBtn.onclick = () => {
+          window.location.href = galleryPath;
+        };
+
+        // Update counter
+        document.getElementById('gallery-nav-current').textContent = currentIndex + 1;
+        document.getElementById('gallery-nav-total').textContent = context.slugs.length;
+
+        // Set up navigation
+        const basePath = locale === 'fr' ? '/fr/posts' : '/posts';
+
+        if (currentIndex > 0) {
+          const prevSlug = context.slugs[currentIndex - 1];
+          prevBtn.onclick = () => {
+            window.location.href = `${basePath}/${prevSlug}?gallery=true&pos=${currentIndex - 1}&total=${context.slugs.length}`;
+          };
+          prevBtn.disabled = false;
+          prevBtn.style.opacity = '1';
+        } else {
+          prevBtn.disabled = true;
+          prevBtn.style.opacity = '0.3';
+        }
+
+        if (currentIndex < context.slugs.length - 1) {
+          const nextSlug = context.slugs[currentIndex + 1];
+          nextBtn.onclick = () => {
+            window.location.href = `${basePath}/${nextSlug}?gallery=true&pos=${currentIndex + 1}&total=${context.slugs.length}`;
+          };
+          nextBtn.disabled = false;
+          nextBtn.style.opacity = '1';
+        } else {
+          nextBtn.disabled = true;
+          nextBtn.style.opacity = '0.3';
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowLeft' && !prevBtn.disabled) prevBtn.click();
+          if (e.key === 'ArrowRight' && !nextBtn.disabled) nextBtn.click();
+          if (e.key === 'Escape') {
+            window.location.href = galleryPath;
+          }
+        });
+      } else {
+        // Hide navigation if not in gallery mode
+        const closeBtn = document.getElementById('gallery-nav-close');
+        const prevBtn = document.getElementById('gallery-nav-prev');
+        const nextBtn = document.getElementById('gallery-nav-next');
+        const counter = document.querySelector('.gallery-nav-counter');
+        if (closeBtn) closeBtn.style.display = 'none';
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (counter) counter.style.display = 'none';
+      }
+    }
+
+    // Initialize on load
+    initGalleryNav();
+
+    // Re-initialize after View Transitions
+    document.addEventListener('astro:after-swap', initGalleryNav);
+  </script>
+</Base>
+
+<style>
+  /* Full viewport hero — clickable to open slideshow */
+  .post__hero {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - var(--header-height));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn var(--transition-gallery) forwards;
+    padding: var(--space-2xl);
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+
+  /* Handle picture element from OptimizedImage - use :global for child component */
+  .post__hero :global(picture) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .post__hero :global(.post__hero-image) {
+    display: block;
+    max-width: 90vw;
+    max-height: calc(100vh - var(--header-height) - var(--space-4xl));
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+
+  /* Article with page-wide glow */
+  .post {
+    position: relative;
+    overflow: visible;
+  }
+
+  /* Page-wide ambient glow - dual-tone using primary + secondary colors */
+  .post::before {
+    content: '';
+    position: fixed;
+    inset: -250px;
+    background:
+      radial-gradient(
+        ellipse 110% 90% at 40% 35%,
+        rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.18) 0%,
+        rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.12) 20%,
+        rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 110% 90% at 60% 65%,
+        rgba(var(--glow2-r), var(--glow2-g), var(--glow2-b), 0.14) 0%,
+        rgba(var(--glow2-r), var(--glow2-g), var(--glow2-b), 0.09) 20%,
+        rgba(var(--glow2-r), var(--glow2-g), var(--glow2-b), 0.04) 45%,
+        transparent 70%
+      );
+    z-index: -1;
+    pointer-events: none;
+    filter: blur(60px);
+    mix-blend-mode: screen;
+  }
+
+  /* Back button — fixed glass pill */
+  .post__back {
+    position: fixed;
+    top: calc(var(--header-height) / 2);
+    transform: translateY(-50%);
+    left: var(--space-md);
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 2px 8px rgba(0, 0, 0, 0.2);
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .post__back:hover {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: white;
+  }
+
+  /* Metadata row in content area */
+  .post__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg);
+  }
+
+  .post__badge {
+    padding: 2px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 2px;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-subtle);
+  }
+
+  /* Content area */
+  .post__content {
+    position: relative;
+    z-index: 2;
+    padding-top: var(--space-xl);
+    padding-bottom: var(--space-3xl);
+    background: transparent;
+  }
+
+  /* Header */
+  .post__header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .post__title {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-md);
+  }
+
+  .post__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  /* Prose (rendered Markdown) */
+  .prose {
+    font-size: var(--text-lg);
+    line-height: 1.75;
+    color: var(--color-text-muted);
+  }
+
+  .prose :global(p) {
+    margin-bottom: var(--space-lg);
+  }
+
+  .prose :global(strong) {
+    color: var(--color-text);
+  }
+
+  .prose :global(a) {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Series images */
+  .post__series {
+    margin-top: var(--space-3xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xl);
+  }
+
+  .post__series-item {
+    margin: 0;
+  }
+
+  .post__series-image {
+    width: 100%;
+    border-radius: var(--border-radius);
+  }
+
+  .post__series-caption {
+    margin-top: var(--space-sm);
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  @media (min-width: 1024px) {
+    .post__title {
+      font-size: var(--text-5xl);
+    }
+  }
+
+  /* Gallery navigation */
+  .gallery-nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .gallery-nav:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .gallery-nav:disabled {
+    cursor: not-allowed;
+  }
+
+  .gallery-nav--close {
+    top: var(--space-lg);
+    right: var(--space-lg);
+    transform: none;
+  }
+
+  .gallery-nav--prev {
+    left: var(--space-lg);
+  }
+
+  .gallery-nav--next {
+    right: var(--space-lg);
+  }
+
+  .gallery-nav-counter {
+    position: fixed;
+    bottom: var(--space-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  /* Expand button for hero - hidden by default */
+  .post__hero-expand {
+    display: none;
+    position: absolute;
+    bottom: var(--space-lg);
+    right: var(--space-lg);
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .post__hero-expand:hover,
+  .post__hero-expand:focus {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.05);
+  }
+
+  .post__hero-expand:active {
+    transform: scale(0.95);
+  }
+
+  .post__hero-expand svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Mobile - shared styles */
+  @media (max-width: 768px) {
+    .gallery-nav--prev {
+      left: var(--space-md);
+    }
+
+    .gallery-nav--next {
+      right: var(--space-md);
+    }
+
+    /* Show expand button on mobile for ALL images */
+    .post__hero-expand {
+      display: flex;
+    }
+  }
+
+  /* Mobile portrait - crop to 3:4 */
+  @media (max-width: 768px) and (orientation: portrait) {
+    .post__hero {
+      padding: 0;
+      height: auto;
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+    }
+
+    .post__hero :global(picture) {
+      width: 100%;
+      height: 100%;
+    }
+
+    .post__hero :global(.post__hero-image) {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      object-fit: cover;
+      object-position: var(--focal-point, center center);
+    }
+  }
+
+  /* Mobile landscape - natural image display */
+  @media (max-width: 900px) and (orientation: landscape) {
+    .post__hero {
+      padding: var(--space-md) 0;
+      min-height: auto;
+      height: auto;
+    }
+
+    .post__hero :global(.post__hero-image) {
+      max-width: 100%;
+      max-height: 70vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+  }
+</style>

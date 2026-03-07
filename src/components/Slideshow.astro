@@ -295,9 +295,32 @@
 
     if (!overlay) return;
 
+    // Force reset slideshow state on page load/navigation
+    // (prevents stale open state when returning via back button)
+    state.isOpen = false;
+    state.images = [];
+    state.currentIndex = 0;
+    overlay.classList.remove('slideshow--open');
+    overlay.classList.remove('slideshow--single');
+    overlay.setAttribute('hidden', '');
+    const img = document.getElementById('slideshow-image');
+    if (img) { img.removeAttribute('src'); img.alt = ''; }
+    const caption = document.getElementById('slideshow-caption');
+    if (caption) caption.textContent = '';
+    const viewPost = document.getElementById('slideshow-view-post');
+    if (viewPost) viewPost.setAttribute('hidden', '');
+
     closeBtn?.addEventListener('click', closeSlideshow);
     prevBtn?.addEventListener('click', previousImage);
     nextBtn?.addEventListener('click', nextImage);
+
+    // Track navigation source so post page back button adapts
+    const viewPostBtn = document.getElementById('slideshow-view-post');
+    viewPostBtn?.addEventListener('click', () => {
+      if (window.location.pathname.includes('/gallery')) {
+        sessionStorage.setItem('navigatedFrom', 'gallery');
+      }
+    });
 
     // Click backdrop to close
     overlay.addEventListener('click', (e) => {
@@ -320,20 +343,19 @@
     // Store previous focus
     previousFocus = document.activeElement;
 
+    // Load image BEFORE showing overlay to prevent stale content flash
+    updateImage(startIndex);
+
     // Show overlay
     overlay.removeAttribute('hidden');
     requestAnimationFrame(() => {
       overlay.classList.add('slideshow--open');
-      // Add single-image class to hide nav when only 1 image
       if (images.length === 1) {
         overlay.classList.add('slideshow--single');
       } else {
         overlay.classList.remove('slideshow--single');
       }
     });
-
-    // Load first image
-    updateImage(startIndex);
 
     // Focus close button
     document.getElementById('slideshow-close')?.focus();
@@ -347,15 +369,21 @@
     if (!overlay) return;
 
     state.isOpen = false;
+    state.images = [];
+    state.currentIndex = 0;
 
     overlay.classList.remove('slideshow--open');
     overlay.classList.remove('slideshow--single');
 
     setTimeout(() => {
       overlay.setAttribute('hidden', '');
-      // Clear image to prevent stale flash on next open
+      // Clear all content to prevent stale flash on next open
       const img = document.getElementById('slideshow-image');
       if (img) { img.removeAttribute('src'); img.alt = ''; }
+      const caption = document.getElementById('slideshow-caption');
+      if (caption) caption.textContent = '';
+      const viewPost = document.getElementById('slideshow-view-post');
+      if (viewPost) viewPost.setAttribute('hidden', '');
     }, 200);
 
     // Remove keyboard listener
