@@ -8,7 +8,7 @@ export interface DominantColor {
   hex: string;
 }
 
-export type ColorFamily = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'neutral';
+export type ColorFamily = 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'blue' | 'purple' | 'pink' | 'neutral';
 export type ColorMood = 'light' | 'dark' | 'balanced';
 
 export interface ColorMetadata extends DominantColor {
@@ -23,15 +23,17 @@ export interface ColorMetadata extends DominantColor {
  */
 export function getColorFamily(hue: number, saturation: number): ColorFamily {
   // Low saturation = neutral (grayscale or near-grayscale)
-  if (saturation < 15) return 'neutral';
+  if (saturation < 10) return 'neutral';
 
   // Map hue to color family
   if (hue < 15 || hue >= 345) return 'red';
   if (hue < 45) return 'orange';
   if (hue < 75) return 'yellow';
-  if (hue < 165) return 'green';
+  if (hue < 160) return 'green';
+  if (hue < 195) return 'teal';
   if (hue < 255) return 'blue';
-  if (hue < 345) return 'purple';
+  if (hue < 315) return 'purple';
+  if (hue < 345) return 'pink';
   return 'neutral';
 }
 
@@ -116,24 +118,62 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
 }
 
 /**
- * Derive accent color HSL values from glow RGB
+ * Convert RGB to OKLCH color space
+ * Chain: sRGB → Linear sRGB → OKLab → OKLCH (polar form)
+ * Returns L (0-1), C (0-~0.4), h (0-360)
+ */
+function rgbToOklch(r: number, g: number, b: number): { L: number; C: number; h: number } {
+  // sRGB to linear sRGB
+  let lr = r / 255;
+  let lg = g / 255;
+  let lb = b / 255;
+  lr = lr <= 0.04045 ? lr / 12.92 : Math.pow((lr + 0.055) / 1.055, 2.4);
+  lg = lg <= 0.04045 ? lg / 12.92 : Math.pow((lg + 0.055) / 1.055, 2.4);
+  lb = lb <= 0.04045 ? lb / 12.92 : Math.pow((lb + 0.055) / 1.055, 2.4);
+
+  // Linear sRGB → LMS (Oklab M1 matrix)
+  let l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+  let m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+  let s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+
+  // Cube root
+  l = Math.cbrt(l);
+  m = Math.cbrt(m);
+  s = Math.cbrt(s);
+
+  // LMS → OKLab
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  const a = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const bOk = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+
+  // OKLab → OKLCH (polar)
+  const C = Math.sqrt(a * a + bOk * bOk);
+  let h = Math.atan2(bOk, a) * 180 / Math.PI;
+  if (h < 0) h += 360;
+
+  return { L, C, h };
+}
+
+/**
+ * Derive accent color OKLCH values from glow RGB
  * Used for dynamic theming where UI accent matches image color
  * - Preserves hue
- * - Clamps saturation to readable range (35-60%)
- * - Clamps lightness for good contrast on dark backgrounds (55-70%)
+ * - Clamps chroma to readable accent range (0.03-0.15)
+ * - Clamps lightness for good contrast on dark backgrounds (0.60-0.75)
  */
-export function deriveAccentFromGlow(r: number, g: number, b: number): { hue: number; saturation: number; lightness: number } {
-  const hsl = rgbToHsl(r, g, b);
+export function deriveAccentFromGlow(r: number, g: number, b: number): { hue: number; chroma: number; lightness: number } {
+  const oklch = rgbToOklch(r, g, b);
 
   // Check if input is essentially grayscale (R≈G≈B)
   const maxDiff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
   const isGrayscale = maxDiff < 15;
 
   return {
-    hue: Math.round(hsl.h),
-    // Keep neutral colors neutral (low saturation), otherwise boost to 35-60%
-    saturation: isGrayscale ? 0 : Math.round(Math.max(35, Math.min(60, hsl.s))),
-    lightness: Math.round(Math.max(55, Math.min(70, hsl.l))),
+    hue: Math.round(oklch.h * 10) / 10,
+    // Keep neutral colors at zero chroma, otherwise clamp to 0.03-0.15
+    chroma: isGrayscale ? 0 : Math.round(Math.max(0.03, Math.min(0.15, oklch.C)) * 1000) / 1000,
+    // OKLCH lightness 0-1, clamp for good contrast on dark bg
+    lightness: Math.round(Math.max(0.60, Math.min(0.75, oklch.L)) * 1000) / 1000,
   };
 }
 

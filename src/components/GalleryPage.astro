@@ -10,8 +10,8 @@ import GalleryImage, { type ImageOrientation } from '@components/GalleryImage.as
 import FilterBar from '@components/FilterBar.astro';
 import { getCollection } from 'astro:content';
 import { getLocaleFromUrl, t, localized, localePath } from '@utils/i18n';
-import { extractColorMetadata, getColorMetadataFromRgb, getColorFamilyFromHex, type ColorFamily, type ColorMood } from '@utils/extractColors';
-import { getOptimizedImage } from '@utils/optimizedImage';
+import { extractColorMetadata, getColorMetadataFromRgb, getColorFamilyFromHex, hexToRgb, type ColorFamily, type ColorMood } from '@utils/extractColors';
+import { getOptimizedImage, getOgImageData } from '@utils/optimizedImage';
 import { getDepthMap } from '@utils/depthMap';
 import { loadTags } from '@utils/tags';
 
@@ -51,7 +51,7 @@ interface GalleryImageData {
   tags: string[];
   focalPoint: 'left' | 'center' | 'right';
   colorFamily: ColorFamily;
-  secondaryColorFamily?: ColorFamily;
+  secondaryColorFamilies: ColorFamily[];
   mood: ColorMood;
   orientation: ImageOrientation;
   depthSrc?: string;
@@ -73,11 +73,11 @@ for (const post of posts) {
     year: 'numeric', month: 'long', day: 'numeric',
   }).toLowerCase();
 
-  // Get color metadata: use existing glowColor if available, otherwise extract from image
+  // Get color metadata: use glowColor from frontmatter (populated by prebuild), fallback to extraction
   let colorMeta: { colorFamily: ColorFamily; mood: ColorMood; lightness: number };
   if (post.data.glowColor) {
-    const glow = post.data.glowColor;
-    colorMeta = getColorMetadataFromRgb(glow.r, glow.g, glow.b);
+    const rgb = hexToRgb(post.data.glowColor);
+    colorMeta = getColorMetadataFromRgb(rgb.r, rgb.g, rgb.b);
   } else {
     const extracted = await extractColorMetadata(post.data.coverImage.src);
     colorMeta = {
@@ -88,12 +88,16 @@ for (const post of posts) {
   }
   colorFamiliesSet.add(colorMeta.colorFamily);
 
-  // Get secondary color family if manually specified in CMS
-  let secondaryColorFamily: ColorFamily | undefined;
-  if (post.data.secondaryColor) {
-    secondaryColorFamily = getColorFamilyFromHex(post.data.secondaryColor);
-    if (secondaryColorFamily !== colorMeta.colorFamily) {
-      colorFamiliesSet.add(secondaryColorFamily);
+  // Get secondary color families from CMS-specified colors
+  // Don't allow "neutral" as a secondary when the primary is chromatic
+  const secondaryColorFamilies: ColorFamily[] = [];
+  for (const hex of post.data.secondaryColors) {
+    const family = getColorFamilyFromHex(hex);
+    if (family === 'neutral' && colorMeta.colorFamily !== 'neutral') continue;
+    if (family === colorMeta.colorFamily) continue; // Skip duplicates of primary
+    if (!secondaryColorFamilies.includes(family)) {
+      secondaryColorFamilies.push(family);
+      colorFamiliesSet.add(family);
     }
   }
 
@@ -113,7 +117,7 @@ for (const post of posts) {
     tags,
     focalPoint: (post.data.coverImage.focalPoint || 'center') as 'left' | 'center' | 'right',
     colorFamily: colorMeta.colorFamily,
-    secondaryColorFamily,
+    secondaryColorFamilies,
     mood: colorMeta.mood,
     orientation: heroOrientation,
     depthSrc: depthEntry?.depthMap,
@@ -134,7 +138,7 @@ for (const post of posts) {
         tags,
         focalPoint: (img.focalPoint || 'center') as 'left' | 'center' | 'right',
         colorFamily: colorMeta.colorFamily,
-        secondaryColorFamily,
+        secondaryColorFamilies,
         mood: colorMeta.mood,
         orientation: seriesOrientation,
         date: searchDate,
@@ -148,6 +152,14 @@ const colorFamilies = Array.from(colorFamiliesSet).sort();
 
 // Load localized tag labels
 const tagData = loadTags();
+
+// OG image: use first featured post or latest post
+const featuredOgPost = posts.find(p => p.data.featured);
+const ogPost = featuredOgPost || posts[0];
+const ogData = ogPost ? await getOgImageData(ogPost.data.coverImage.src) : null;
+const ogImageAlt = ogPost
+  ? (localized(ogPost.data.coverImage.alt, locale) || localized(ogPost.data.title, locale) || '')
+  : '';
 
 // Structured data (Schema.org) - CollectionPage with ImageGallery
 const siteUrl = import.meta.env.SITE || Astro.url.origin;
@@ -172,7 +184,13 @@ const gallerySchema = {
 };
 ---
 
-<Base title={t('nav.gallery', locale)}>
+<Base
+  title={t('nav.gallery', locale)}
+  ogImage={ogData?.ogImage}
+  ogImageAlt={ogImageAlt}
+  ogImageWidth={ogData?.ogImageWidth}
+  ogImageHeight={ogData?.ogImageHeight}
+>
   <Fragment slot="head">
     <script type="application/ld+json" set:html={JSON.stringify(gallerySchema)} />
   </Fragment>
@@ -201,7 +219,7 @@ const gallerySchema = {
           index={i}
           focalPoint={img.focalPoint}
           colorFamily={img.colorFamily}
-          secondaryColorFamily={img.secondaryColorFamily}
+          secondaryColorFamilies={img.secondaryColorFamilies}
           mood={img.mood}
           orientation={img.orientation}
           depthSrc={img.depthSrc}

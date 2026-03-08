@@ -1,17 +1,10 @@
 ---
 profileImage:
-  src: /images/uploads/_dsc3665-2.jpg
+  src: /images/uploads/_DSC3665-Modifier.jpg
   alt:
-    en: dlkjs
     fr: dkjfhkjh
-tagline:
-  en: dkjfh
-  fr: fjdhkfjdhu
-contact:
-  email: ""
-  instagram: ""
-  twitter: ""
-bio:
-  en: jhkj
-  fr: kjfdhkfjh
+    en: dlkjs
+tagline: null
+contact: null
+bio: null
 ---

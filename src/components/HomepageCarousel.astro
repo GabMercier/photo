@@ -13,7 +13,7 @@
  * - Circular navigation (wraps around)
  */
 import { localized, localePath } from '@utils/i18n';
-import { deriveAccentFromGlow } from '@utils/extractColors';
+import { deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
 import type { CollectionEntry } from 'astro:content';
 import OptimizedImage from '@components/OptimizedImage.astro';
 import { imageSizes } from '@utils/optimizedImage';
@@ -43,7 +43,7 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
   <div class="carousel__track">
     {carouselPosts.map((post, index) => {
       const { title, coverImage, glowColor } = post.data;
-      const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+      const glow = glowColor ? hexToRgb(glowColor) : { r: 58, g: 68, b: 71 };
       const accent = deriveAccentFromGlow(glow.r, glow.g, glow.b);
       const slug = post.slug || post.id.replace(/\.md$/, '');
       const postUrl = localePath(`/posts/${slug}`, locale);
@@ -54,7 +54,7 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
           class:list={['carousel__slide', { 'carousel__slide--active': isInitial }]}
           data-index={index}
           data-accent-hue={accent.hue}
-          data-accent-saturation={accent.saturation}
+          data-accent-chroma={accent.chroma}
           data-accent-lightness={accent.lightness}
           style={{
             '--glow-r': glow.r,
@@ -427,12 +427,13 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
       // Update body accent color from slide data
       if (activeSlide) {
         const hue = activeSlide.getAttribute('data-accent-hue');
-        const sat = activeSlide.getAttribute('data-accent-saturation');
+        const chroma = activeSlide.getAttribute('data-accent-chroma');
         const light = activeSlide.getAttribute('data-accent-lightness');
-        if (hue && sat && light) {
+        if (hue && chroma && light) {
           document.body.style.setProperty('--color-accent-hue', hue);
-          document.body.style.setProperty('--color-accent-saturation', `${sat}%`);
-          document.body.style.setProperty('--color-accent-lightness', `${light}%`);
+          document.body.style.setProperty('--color-accent-chroma', chroma);
+          document.body.style.setProperty('--color-accent-lightness', light);
+          document.body.style.setProperty('--chroma-raw', chroma);
         }
       }
 

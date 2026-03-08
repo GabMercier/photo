@@ -27,7 +27,7 @@ interface Props {
 
 const locale = getLocaleFromUrl(Astro.url);
 const { post, index = 0, variant = 'auto', layout = 'grid', hasContent = false } = Astro.props;
-const { title, coverImage, tags, date, postType, glowColor, secondaryColor } = post.data;
+const { title, coverImage, tags, date, postType, glowColor, secondaryColors } = post.data;
 
 // Get localized title, or empty string if no title provided
 const displayTitle = localized(title, locale);
@@ -46,10 +46,10 @@ const focalPointMap: Record<string, string> = {
 const focalPoint = focalPointMap[coverImage.focalPoint || 'center'] || 'center center';
 
 // Fallback to cool blue-gray if no color extracted
-const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+const glow = glowColor ? hexToRgb(glowColor) : { r: 58, g: 68, b: 71 };
 
 // Secondary color for dual-tone glow (falls back to primary)
-const glow2 = secondaryColor ? hexToRgb(secondaryColor) : { r: glow.r, g: glow.g, b: glow.b };
+const glow2 = secondaryColors.length > 0 ? hexToRgb(secondaryColors[0]) : { r: glow.r, g: glow.g, b: glow.b };
 
 // Remove .md extension from post ID
 const slug = post.slug || post.id.replace(/\.md$/, '');
@@ -381,10 +381,42 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     height: 100%;
   }
 
-  /* Visible state - triggered by IntersectionObserver */
+  /* Visible state - triggered by IntersectionObserver (Safari fallback) */
   .post-card--feed.visible {
     opacity: 1;
     translate: 0 0;
+  }
+
+  /* Native scroll-linked animation (Chrome/Firefox — replaces JS IntersectionObserver) */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .post-card--feed {
+        animation: feedCardReveal linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 30%;
+        transition: none; /* Prevent transition conflict with scroll animation */
+      }
+    }
+  }
+
+  @keyframes feedCardReveal {
+    from {
+      opacity: 0;
+      translate: 0 30px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  /* Respect reduced motion for feed fade-in */
+  @media (prefers-reduced-motion: reduce) {
+    .post-card--feed {
+      opacity: 1;
+      translate: 0 0;
+      transition: none;
+    }
   }
 
   .post-card--feed .post-card__image-wrap {
@@ -576,6 +608,12 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   // Get the actual visible image area (accounting for object-fit: contain)
   function getVisibleImageRect(img) {
     const elemRect = img.getBoundingClientRect();
+
+    // object-fit: cover fills the entire container — no letterboxing
+    if (getComputedStyle(img).objectFit === 'cover') {
+      return elemRect;
+    }
+
     const natW = img.naturalWidth;
     const natH = img.naturalHeight;
     if (!natW || !natH) return elemRect;

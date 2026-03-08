@@ -12,28 +12,17 @@ import { extractColorMetadata } from '@utils/extractColors';
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
 
+  // glowColor populated by prebuild script; fallback extraction for dev
   const postsWithColors = await Promise.all(
     posts.map(async (post) => {
-      const imagePath = post.data.coverImage.src;
-      const colorMeta = await extractColorMetadata(imagePath);
-
-      if (colorMeta.colorFamily === 'neutral') {
-        return {
-          ...post,
-          data: {
-            ...post.data,
-            glowColor: { r: 90, g: 90, b: 90, hex: '#5A5A5A' },
-          },
-        };
-      }
-
       if (post.data.glowColor) return post;
 
+      const colorMeta = await extractColorMetadata(post.data.coverImage.src);
       return {
         ...post,
         data: {
           ...post.data,
-          glowColor: colorMeta,
+          glowColor: colorMeta.colorFamily === 'neutral' ? '#5A5A5A' : colorMeta.hex,
         },
       };
     })

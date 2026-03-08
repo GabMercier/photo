@@ -21,9 +21,9 @@ interface Props {
   ogImageHeight?: number;
   /** Canonical URL for the page (optional, defaults to current URL) */
   canonicalUrl?: string;
-  /** Dynamic accent color derived from image (optional) */
+  /** Dynamic accent color derived from image (OKLCH) */
   accentHue?: number;
-  accentSaturation?: number;
+  accentChroma?: number;
   accentLightness?: number;
   /** Open Graph type: website (default), article for posts */
   ogType?: 'website' | 'article';
@@ -39,7 +39,7 @@ const {
   ogImageHeight,
   canonicalUrl,
   accentHue,
-  accentSaturation,
+  accentChroma,
   accentLightness,
   ogType = 'website',
 } = Astro.props;
@@ -57,10 +57,9 @@ const ogImageUrl = ogImage
   ? (ogImage.startsWith('http') ? ogImage : new URL(ogImage, siteUrl).href)
   : undefined;
 
-// Build accent style string if values provided
-// Include raw saturation number for calc() usage in CSS
+// Build accent style string if values provided (OKLCH)
 const accentStyle = accentHue !== undefined
-  ? `--color-accent-hue: ${accentHue}; --color-accent-saturation: ${accentSaturation}%; --color-accent-lightness: ${accentLightness}%; --saturation-raw: ${accentSaturation};`
+  ? `--color-accent-hue: ${accentHue}; --color-accent-chroma: ${accentChroma}; --color-accent-lightness: ${accentLightness}; --chroma-raw: ${accentChroma};`
   : undefined;
 
 // Title formatting: "Page Title | Site Name" or just "Site Name" for homepage
@@ -205,9 +204,9 @@ const websiteSchema = {
     inset: -150px;
     background: radial-gradient(
       ellipse 100% 80% at 50% 50%,
-      hsla(var(--color-accent-hue), 25%, 55%, 0.12) 0%,
-      hsla(var(--color-accent-hue), 20%, 50%, 0.08) 25%,
-      hsla(var(--color-accent-hue), 15%, 45%, 0.04) 45%,
+      oklch(0.62 calc(var(--chroma-raw) * 0.6) var(--color-accent-hue) / 0.12) 0%,
+      oklch(0.55 calc(var(--chroma-raw) * 0.5) var(--color-accent-hue) / 0.08) 25%,
+      oklch(0.50 calc(var(--chroma-raw) * 0.4) var(--color-accent-hue) / 0.04) 45%,
       transparent 70%
     );
     z-index: -1;

@@ -1,88 +1,79 @@
 /**
- * Dynamic Color System
+ * Dynamic Color System (OKLCH)
  *
- * Accent color adapts to image content:
+ * Accent color adapts to image content using perceptually uniform OKLCH:
  * - Default: Cool blue-gray (neutral, cold tone)
  * - On pages with images: Accent derived from image's dominant color
  * - Effect is subtle - just a hint of the matching color
  *
- * The accent HSL values can be overridden per-page via body style:
- *   style="--color-accent-hue: 200; --color-accent-saturation: 40%; --color-accent-lightness: 60%;"
+ * The accent OKLCH values can be overridden per-page via body style:
+ *   style="--color-accent-hue: 230; --color-accent-chroma: 0.08; --color-accent-lightness: 0.70; --chroma-raw: 0.08;"
  */
 
 :root {
-  /* Dynamic accent system - these can be overridden per-page via body style */
+  /* Dynamic accent system - overridden per-page via body style */
   /* Default: Cool blue-gray (neutral, cold) */
-  --color-accent-hue: 200;
-  --color-accent-saturation: 12%;
-  --color-accent-lightness: 60%;
-  /* Saturation as raw number (0-100) for calc() - set alongside --color-accent-saturation */
-  --saturation-raw: 12;
+  --color-accent-hue: 230;
+  --color-accent-chroma: 0.02;
+  --color-accent-lightness: 0.70;
+  /* Chroma as raw number for calc() */
+  --chroma-raw: 0.02;
 }
 
 /* Computed accent colors on body level so they respond to body-level variable overrides */
 body {
   /* -------------------------------------------------------------------------
    * PRIMARY ACCENT - Logo, active states, primary buttons
-   * Full saturation as derived from image (still clamped by deriveAccentFromGlow)
+   * Full chroma as derived from image (still clamped by deriveAccentFromGlow)
    * ------------------------------------------------------------------------- */
-  --color-accent: hsl(
-    var(--color-accent-hue),
-    var(--color-accent-saturation),
+  --color-accent: oklch(
     var(--color-accent-lightness)
+    var(--color-accent-chroma)
+    var(--color-accent-hue)
   );
-  --color-accent-hover: hsl(
-    var(--color-accent-hue),
-    var(--color-accent-saturation),
-    calc(var(--color-accent-lightness) + 8%)
-  );
-  --color-accent-subtle: hsla(
-    var(--color-accent-hue),
-    var(--color-accent-saturation),
-    var(--color-accent-lightness),
-    0.12
-  );
+  --color-accent-hover: color-mix(in oklch, var(--color-accent), white 15%);
+  --color-accent-subtle: color-mix(in oklch, var(--color-accent) 12%, transparent);
 
   /* -------------------------------------------------------------------------
    * TINTED TEXT - Secondary text that picks up a subtle hint of accent
-   * Very low saturation for readability, just enough to feel cohesive
-   * Saturation scales with accent saturation (0 for B&W images)
+   * Very low chroma for readability, just enough to feel cohesive
+   * Chroma scales with accent chroma (0 for B&W images)
    * ------------------------------------------------------------------------- */
-  --color-text-tinted: hsl(
-    var(--color-accent-hue),
-    calc(var(--saturation-raw) * 0.67%),
-    75%
+  --color-text-tinted: oklch(
+    0.80
+    calc(var(--chroma-raw) * 0.67)
+    var(--color-accent-hue)
   );
-  --color-text-muted-tinted: hsl(
-    var(--color-accent-hue),
-    var(--color-accent-saturation),
-    60%
+  --color-text-muted-tinted: oklch(
+    0.65
+    var(--color-accent-chroma)
+    var(--color-accent-hue)
   );
-  --color-text-subtle-tinted: hsl(
-    var(--color-accent-hue),
-    calc(var(--saturation-raw) * 0.83%),
-    45%
+  --color-text-subtle-tinted: oklch(
+    0.50
+    calc(var(--chroma-raw) * 0.83)
+    var(--color-accent-hue)
   );
 
   /* -------------------------------------------------------------------------
    * TINTED BORDERS - Borders with subtle accent hint
-   * Saturation scales with accent saturation (0 for B&W images)
+   * Chroma scales with accent chroma (0 for B&W images)
    * ------------------------------------------------------------------------- */
-  --color-border-tinted: hsl(
-    var(--color-accent-hue),
-    calc(var(--saturation-raw) * 0.67%),
-    28%
+  --color-border-tinted: oklch(
+    0.35
+    calc(var(--chroma-raw) * 0.67)
+    var(--color-accent-hue)
   );
-  --color-border-subtle-tinted: hsl(
-    var(--color-accent-hue),
-    calc(var(--saturation-raw) * 0.5%),
-    22%
+  --color-border-subtle-tinted: oklch(
+    0.30
+    calc(var(--chroma-raw) * 0.5)
+    var(--color-accent-hue)
   );
 
   /* -------------------------------------------------------------------------
    * LOGO LENS - Chromatic aberration colors for glass effect
    * Fixed red/cyan provides realistic prismatic fringing
    * ------------------------------------------------------------------------- */
-  --logo-ca-red: hsla(0, 65%, 55%, 0.6);
-  --logo-ca-cyan: hsla(180, 65%, 55%, 0.6);
+  --logo-ca-red: oklch(0.62 0.18 25 / 0.6);
+  --logo-ca-cyan: oklch(0.62 0.18 195 / 0.6);
 }

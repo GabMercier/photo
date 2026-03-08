@@ -13,6 +13,7 @@ import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
 import { render } from 'astro:content';
 import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
 import { deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
+import { getExifData, formatExifSummary, mergeExifWithOverrides, type ExifFieldKey } from '@utils/exifData';
 
 interface Props {
   post: any;
@@ -20,20 +21,28 @@ interface Props {
 
 const { post } = Astro.props;
 const locale = getLocaleFromUrl(Astro.url);
-const { title, coverImage, images, tags, date, postType, description, glowColor, secondaryColor } = post.data;
+const { title, coverImage, images, tags, date, postType, description, glowColor, secondaryColors, showExif, exifFields, exifOverrides } = post.data;
 
 // Get display title (may be empty if no title provided)
 const displayTitle = localized(title, locale);
 
 // Fallback to cool blue-gray if no color extracted
-const glow = glowColor || { r: 58, g: 68, b: 71, hex: '#3A4447' };
+const glow = glowColor ? hexToRgb(glowColor) : { r: 58, g: 68, b: 71 };
 
 // Secondary color for dual-tone glow (falls back to primary)
-const glow2 = secondaryColor ? hexToRgb(secondaryColor) : { r: glow.r, g: glow.g, b: glow.b };
+const glow2 = secondaryColors.length > 0 ? hexToRgb(secondaryColors[0]) : { r: glow.r, g: glow.g, b: glow.b };
 
 // Get image data to determine if landscape (for mobile cropping)
 const heroImageData = await getOptimizedImage(coverImage.src);
 const isLandscape = heroImageData.aspectRatio >= 1;
+
+// EXIF data lookup (auto-extracted, merged with manual overrides)
+const coverExifAuto = showExif ? await getExifData(coverImage.src) : null;
+const coverExif = showExif ? mergeExifWithOverrides(coverExifAuto, exifOverrides) : null;
+const seriesExifData = showExif && images?.length
+  ? await Promise.all(images.map((img: any) => getExifData(img.src)))
+  : [];
+const typedExifFields = (exifFields || []) as ExifFieldKey[];
 
 // Focal point for cropping
 const focalPointMap: Record<string, string> = {
@@ -110,6 +119,25 @@ const photographSchema = {
     name: 'Gabriel Mercier',
   },
 };
+
+const imageObjectSchema = coverExif && (coverExif.cameraModel || coverExif.lens) ? {
+  '@context': 'https://schema.org',
+  '@type': 'ImageObject',
+  contentUrl: imageUrl,
+  name: displayTitle || localized(coverImage.alt, locale) || undefined,
+  ...(coverExif.dateTaken && { dateCreated: coverExif.dateTaken }),
+  creator: { '@type': 'Person', name: 'Gabriel Mercier' },
+  copyrightHolder: { '@type': 'Person', name: 'Gabriel Mercier' },
+  exifData: [
+    coverExif.cameraMake && { '@type': 'PropertyValue', name: 'cameraMake', value: coverExif.cameraMake },
+    coverExif.cameraModel && { '@type': 'PropertyValue', name: 'cameraModel', value: coverExif.cameraModel },
+    coverExif.lens && { '@type': 'PropertyValue', name: 'lens', value: coverExif.lens },
+    coverExif.focalLength && { '@type': 'PropertyValue', name: 'focalLength', value: `${coverExif.focalLength}mm` },
+    coverExif.aperture && { '@type': 'PropertyValue', name: 'fNumber', value: `f/${coverExif.aperture}` },
+    coverExif.shutterSpeed && { '@type': 'PropertyValue', name: 'exposureTime', value: coverExif.shutterSpeed },
+    coverExif.iso && { '@type': 'PropertyValue', name: 'isoSpeedRatings', value: String(coverExif.iso) },
+  ].filter(Boolean),
+} : null;
 ---
 
 <Base
@@ -121,7 +149,7 @@ const photographSchema = {
   ogImageHeight={ogImageHeight}
   ogType="article"
   accentHue={accent.hue}
-  accentSaturation={accent.saturation}
+  accentChroma={accent.chroma}
   accentLightness={accent.lightness}
 >
   <Fragment slot="head">
@@ -132,6 +160,9 @@ const photographSchema = {
     )}
     <script type="application/ld+json" set:html={JSON.stringify(postSchema)} />
     <script type="application/ld+json" set:html={JSON.stringify(photographSchema)} />
+    {imageObjectSchema && (
+      <script type="application/ld+json" set:html={JSON.stringify(imageObjectSchema)} />
+    )}
   </Fragment>
 
   <article
@@ -158,15 +189,34 @@ const photographSchema = {
       class:list={['post__hero', isLandscape && 'post__hero--landscape']}
       style={{ '--focal-point': focalPoint }}
     >
-      <OptimizedImage
-        src={coverImage.src}
-        alt={localized(coverImage.alt, locale)}
-        class="post__hero-image"
-        loading="eager"
-        decoding="sync"
-        fetchpriority="high"
-        sizes={imageSizes.hero}
-      />
+      <div class="post__hero-image-wrap">
+        <OptimizedImage
+          src={coverImage.src}
+          alt={localized(coverImage.alt, locale)}
+          class="post__hero-image"
+          loading="eager"
+          decoding="sync"
+          fetchpriority="high"
+          sizes={imageSizes.hero}
+        />
+
+        {/* Image info line: EXIF · date · share */}
+        <div class="post__image-info">
+          {showExif && coverExif && (coverExif.cameraModel || coverExif.lens) && (
+            <span class="post__exif">
+              {formatExifSummary(coverExif, typedExifFields)}
+            </span>
+          )}
+          <span class="post__image-info-right">
+            <time datetime={date.toISOString()}>{formattedDate}</time>
+            <ShareButton
+              title={displayTitle || 'gphoto'}
+              description={localized(description, locale)}
+              locale={locale}
+            />
+          </span>
+        </div>
+      </div>
 
       {/* Expand button for mobile - shows full image in lightbox */}
       <button
@@ -209,25 +259,19 @@ const photographSchema = {
     <div class="post__content container container--narrow">
       <!-- Metadata + title + tags -->
       <header class="post__header animate-in">
-        <div class="post__meta">
-          <time datetime={date.toISOString()}>{formattedDate}</time>
-          {postType === 'series' && (
-            <span class="post__badge">{t('post.series', locale)}</span>
-          )}
-          <ShareButton
-            title={displayTitle || 'gphoto'}
-            description={localized(description, locale)}
-            locale={locale}
-          />
-        </div>
         {displayTitle && (
           <h1 class="post__title">{displayTitle}</h1>
         )}
-        <div class="post__tags">
-          {tags.map(tag => (
-            <a href={`${localePath('/gallery', locale)}?tag=${encodeURIComponent(tag)}`} class="tag">{tag}</a>
-          ))}
-        </div>
+        {(tags.length > 0 || postType === 'series') && (
+          <div class="post__meta">
+            {postType === 'series' && (
+              <span class="post__badge">{t('post.series', locale)}</span>
+            )}
+            {tags.map(tag => (
+              <a href={`${localePath('/gallery', locale)}?tag=${encodeURIComponent(tag)}`} class="tag">{tag}</a>
+            ))}
+          </div>
+        )}
       </header>
 
       <!-- Markdown body content -->
@@ -238,30 +282,36 @@ const photographSchema = {
       <!-- Additional images for series posts -->
       {images && images.length > 0 && (
         <div class="post__series">
-          {images.map((img, i) => (
-            <figure
-              class="post__series-item animate-in"
-              style={`animation-delay: ${i * 100}ms`}
-              data-slideshow-src={img.src}
-              data-slideshow-alt={localized(img.alt, locale)}
-              data-slideshow-caption={[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
-              data-slideshow-index={i}
-            >
-              <OptimizedImage
-                src={img.src}
-                alt={localized(img.alt, locale)}
-                class="post__series-image"
-                loading="lazy"
-                decoding="async"
-                sizes="(max-width: 768px) 100vw, 800px"
-              />
-              {img.settings && (
-                <figcaption class="post__series-caption">
-                  {[img.camera, img.lens, img.settings].filter(Boolean).join(' · ')}
-                </figcaption>
-              )}
-            </figure>
-          ))}
+          {images.map((img: any, i: number) => {
+            const imgExifAuto = showExif && seriesExifData[i] ? seriesExifData[i] : null;
+            const imgOverrides = { camera: img.camera, lens: img.lens, focalLength: img.focalLength, aperture: img.aperture, shutterSpeed: img.shutterSpeed, iso: img.iso };
+            const imgExif = mergeExifWithOverrides(imgExifAuto, imgOverrides);
+            const caption = imgExif ? formatExifSummary(imgExif, typedExifFields) : '';
+            return (
+              <figure
+                class="post__series-item animate-in"
+                style={`animation-delay: ${i * 100}ms`}
+                data-slideshow-src={img.src}
+                data-slideshow-alt={localized(img.alt, locale)}
+                data-slideshow-caption={caption}
+                data-slideshow-index={i}
+              >
+                <OptimizedImage
+                  src={img.src}
+                  alt={localized(img.alt, locale)}
+                  class="post__series-image"
+                  loading="lazy"
+                  decoding="async"
+                  sizes="(max-width: 768px) 100vw, 800px"
+                />
+                {caption && (
+                  <span class="post__exif">
+                    {caption}
+                  </span>
+                )}
+              </figure>
+            );
+          })}
         </div>
       )}
     </div>
@@ -552,13 +602,12 @@ const photographSchema = {
     color: white;
   }
 
-  /* Metadata row in content area */
+  /* Tags + badge row */
   .post__meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-md);
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
+    gap: var(--space-sm);
     margin-bottom: var(--space-lg);
   }
 
@@ -591,12 +640,6 @@ const photographSchema = {
     margin-bottom: var(--space-md);
   }
 
-  .post__tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-  }
-
   /* Prose (rendered Markdown) */
   .prose {
     font-size: var(--text-lg);
@@ -627,19 +670,13 @@ const photographSchema = {
   }
 
   .post__series-item {
+    position: relative;
     margin: 0;
   }
 
   .post__series-image {
     width: 100%;
     border-radius: var(--border-radius);
-  }
-
-  .post__series-caption {
-    margin-top: var(--space-sm);
-    font-size: var(--text-xs);
-    color: var(--color-text-subtle);
-    letter-spacing: 0.04em;
   }
 
   @media (min-width: 1024px) {
@@ -768,6 +805,12 @@ const photographSchema = {
       overflow: hidden;
     }
 
+    .post__hero-image-wrap {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
     .post__hero :global(picture) {
       width: 100%;
       height: 100%;
@@ -780,6 +823,16 @@ const photographSchema = {
       max-height: none;
       object-fit: cover;
       object-position: var(--focal-point, center center);
+    }
+
+    .post__image-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin-top: 0;
+      padding: var(--space-xl) var(--space-md) var(--space-sm);
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
     }
   }
 
@@ -798,5 +851,45 @@ const photographSchema = {
       height: auto;
       object-fit: contain;
     }
+  }
+
+  /* Hero image wrapper — shrink-wraps the image so info line aligns to it */
+  .post__hero-image-wrap {
+    display: inline-flex;
+    flex-direction: column;
+  }
+
+  /* Info line below image: EXIF left, date + share right */
+  .post__image-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-top: var(--space-xs);
+    min-width: min(90vw, 400px);
+    font-size: var(--text-xs);
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.03em;
+  }
+
+  .post__image-info-right {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+  }
+
+  /* EXIF text */
+  .post__exif {
+    font-size: var(--text-xs);
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.03em;
+  }
+
+  /* Series images: EXIF right-aligned below */
+  .post__series-item .post__exif {
+    display: block;
+    text-align: right;
+    margin-top: var(--space-xs);
   }
 </style>

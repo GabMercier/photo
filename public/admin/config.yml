@@ -95,12 +95,24 @@ collections:
               - label: "Right / Droite"
                 value: "right"
 
-      # --- Secondary Color (next to image for easy picking) ---
-      - label: "🎨 Secondary Accent Color / Couleur d'accent secondaire"
-        name: "secondaryColor"
+      # --- Colors (glow is auto-extracted, secondary is manual) ---
+      - label: "🎨 Glow Color / Couleur de lueur"
+        name: "glowColor"
         widget: "color"
         required: false
-        hint: "Optional accent color for dual-tone glow effects. Pick from your image or choose manually. / Couleur d'accent optionnelle pour effets de lueur bicolore."
+        preview: false
+        hint: "Auto-extracted from image. Override manually if needed. / Extrait de l'image. Modifier au besoin."
+
+      - label: "🎨 Secondary Colors / Couleurs secondaires"
+        name: "secondaryColors"
+        widget: "list"
+        required: false
+        preview: false
+        hint: "Accent colors for glow effects & color filtering. Add as many as needed. / Couleurs d'accent pour effets de lueur et filtrage. Ajoutez autant que nécessaire."
+        field:
+          label: "Color"
+          name: "color"
+          widget: "color"
 
       # --- Title / Titre (OPTIONAL) ---
       - label: "Title / Titre"
@@ -108,6 +120,7 @@ collections:
         widget: "object"
         required: false
         collapsed: true
+        preview: false
         summary: "{{fields.en}}"
         hint: "Optional - if not provided, post displays without title"
         fields:
@@ -126,6 +139,7 @@ collections:
         widget: "object"
         required: false
         collapsed: true
+        preview: false
         hint: "Short description for social media sharing (150-200 chars recommended)"
         fields:
           - label: "🇬🇧 English"
@@ -146,6 +160,178 @@ collections:
         date_format: "YYYY-MM-DD"
         time_format: false
         required: false
+        preview: false
+
+      - label: "Date Taken (EXIF) / Date de prise (EXIF)"
+        name: "dateTaken"
+        widget: "datetime"
+        date_format: "YYYY-MM-DD"
+        time_format: false
+        required: false
+        preview: false
+        hint: "Auto-filled from photo EXIF data. Use to compare against publication date. / Rempli automatiquement depuis les données EXIF. Comparer avec la date de publication."
+
+      # --- Classification ---
+      - label: "Tags / Étiquettes"
+        name: "tags"
+        widget: "relation"
+        preview: false
+        collection: "tags"
+        search_fields: ["en", "fr"]
+        value_field: "{{slug}}"
+        display_fields: ["en"]
+        multiple: true
+        required: false
+
+      - label: "Post Type / Type"
+        name: "postType"
+        widget: "select"
+        preview: false
+        options:
+          - label: "Single Image / Image unique"
+            value: "single"
+          - label: "Series / Série"
+            value: "series"
+        default: "single"
+
+      - label: "Gallery Size / Taille galerie"
+        name: "gallerySize"
+        widget: "select"
+        required: false
+        preview: false
+        default: "auto"
+        hint: "Controls image size in gallery grid (desktop only) / Contrôle la taille dans la grille galerie (bureau uniquement)"
+        options:
+          - label: "Auto (detect from aspect ratio / détecter du ratio)"
+            value: "auto"
+          - label: "Small / Petit (1×1)"
+            value: "small"
+          - label: "Portrait (1×2)"
+            value: "portrait"
+          - label: "Portrait Tall / Portrait grand (1×3)"
+            value: "portrait-tall"
+          - label: "Landscape / Paysage (2×1)"
+            value: "landscape"
+          - label: "Featured / Vedette (2×2)"
+            value: "featured"
+
+      # --- Visibility / Visibilité ---
+      - label: "Draft / Brouillon"
+        name: "draft"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Not published / Non publié"
+
+      - label: "Private / Privé"
+        name: "private"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Protected access / Accès protégé"
+
+      - label: "Featured / En vedette"
+        name: "featured"
+        widget: "boolean"
+        default: false
+        preview: false
+
+      # --- Homepage / Page d'accueil ---
+      - label: "Show in Carousel / Afficher dans le carrousel"
+        name: "homepageCarousel"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Display on homepage / Afficher sur la page d'accueil"
+
+      - label: "Default Carousel Slide / Diapositive par défaut"
+        name: "homepageDefault"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Start carousel here / Commencer le carrousel ici"
+
+      - label: "3D Depth Effect / Effet de profondeur 3D"
+        name: "depth3d"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Enable parallax depth effect on post page / Activer l'effet de parallaxe sur la page du post"
+
+      - label: "EXIF Summary (auto) / Résumé EXIF (auto)"
+        name: "exifSummary"
+        widget: "string"
+        required: false
+        preview: false
+        hint: "Auto-generated from photo EXIF. Do not edit. / Généré depuis l'EXIF de la photo. Ne pas modifier."
+
+      - label: "Show EXIF Data / Afficher les données EXIF"
+        name: "showExif"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Display camera info on post page / Afficher les infos de l'appareil sur la page du post"
+
+      - label: "EXIF Fields / Champs EXIF"
+        name: "exifFields"
+        widget: "select"
+        multiple: true
+        required: false
+        preview: false
+        default: ["camera", "lens", "focalLength", "aperture", "shutterSpeed", "iso"]
+        hint: "Which EXIF fields to show / Quels champs EXIF afficher"
+        options:
+          - label: "Camera / Appareil"
+            value: "camera"
+          - label: "Lens / Objectif"
+            value: "lens"
+          - label: "Focal Length / Focale"
+            value: "focalLength"
+          - label: "Aperture / Ouverture"
+            value: "aperture"
+          - label: "Shutter Speed / Vitesse"
+            value: "shutterSpeed"
+          - label: "ISO"
+            value: "iso"
+          - label: "Date Taken / Date de prise"
+            value: "dateTaken"
+
+      - label: "EXIF Overrides / Remplacements EXIF"
+        name: "exifOverrides"
+        widget: "object"
+        required: false
+        collapsed: true
+        preview: false
+        hint: "Manual overrides for missing EXIF (e.g., manual lenses) / Remplacements manuels pour EXIF manquant (ex: objectifs manuels)"
+        fields:
+          - label: "Camera / Appareil"
+            name: "camera"
+            widget: "string"
+            required: false
+          - label: "Lens / Objectif"
+            name: "lens"
+            widget: "string"
+            required: false
+            hint: "e.g., Nikkor 50mm f/1.4 AI-S"
+          - label: "Focal Length / Focale"
+            name: "focalLength"
+            widget: "string"
+            required: false
+            hint: "e.g., 50mm"
+          - label: "Aperture / Ouverture"
+            name: "aperture"
+            widget: "string"
+            required: false
+            hint: "e.g., f/2.8"
+          - label: "Shutter Speed / Vitesse"
+            name: "shutterSpeed"
+            widget: "string"
+            required: false
+            hint: "e.g., 1/500"
+          - label: "ISO"
+            name: "iso"
+            widget: "string"
+            required: false
 
       # --- Additional Images / Images supplémentaires ---
       - label: "Additional Images / Images supplémentaires"
@@ -153,6 +339,7 @@ collections:
         widget: "list"
         required: false
         collapsed: true
+        preview: false
         label_singular: "Image"
         summary: "Image"
         fields:
@@ -181,75 +368,33 @@ collections:
             name: "lens"
             widget: "string"
             required: false
-          - label: "Settings / Paramètres"
-            name: "settings"
+            hint: "e.g., Nikkor 50mm f/1.4 AI-S"
+          - label: "Focal Length / Focale"
+            name: "focalLength"
             widget: "string"
             required: false
-            hint: "e.g., f/2.8 · 1/500s · ISO 100"
-
-      # --- Classification ---
-      - label: "Tags / Étiquettes"
-        name: "tags"
-        widget: "relation"
-        collection: "tags"
-        search_fields: ["en", "fr"]
-        value_field: "{{slug}}"
-        display_fields: ["en"]
-        multiple: true
-        required: false
-
-      - label: "Post Type / Type"
-        name: "postType"
-        widget: "select"
-        options:
-          - label: "Single Image / Image unique"
-            value: "single"
-          - label: "Series / Série"
-            value: "series"
-        default: "single"
-
-      # --- Visibility / Visibilité ---
-      - label: "Draft / Brouillon"
-        name: "draft"
-        widget: "boolean"
-        default: false
-        hint: "Not published / Non publié"
-
-      - label: "Private / Privé"
-        name: "private"
-        widget: "boolean"
-        default: false
-        hint: "Protected access / Accès protégé"
-
-      - label: "Featured / En vedette"
-        name: "featured"
-        widget: "boolean"
-        default: false
-
-      # --- Homepage / Page d'accueil ---
-      - label: "Show in Carousel / Afficher dans le carrousel"
-        name: "homepageCarousel"
-        widget: "boolean"
-        default: false
-        hint: "Display on homepage / Afficher sur la page d'accueil"
-
-      - label: "Default Carousel Slide / Diapositive par défaut"
-        name: "homepageDefault"
-        widget: "boolean"
-        default: false
-        hint: "Start carousel here / Commencer le carrousel ici"
-
-      - label: "3D Depth Effect / Effet de profondeur 3D"
-        name: "depth3d"
-        widget: "boolean"
-        default: false
-        hint: "Enable parallax depth effect on post page / Activer l'effet de parallaxe sur la page du post"
+            hint: "e.g., 50mm"
+          - label: "Aperture / Ouverture"
+            name: "aperture"
+            widget: "string"
+            required: false
+            hint: "e.g., f/2.8"
+          - label: "Shutter Speed / Vitesse"
+            name: "shutterSpeed"
+            widget: "string"
+            required: false
+            hint: "e.g., 1/500"
+          - label: "ISO"
+            name: "iso"
+            widget: "string"
+            required: false
 
       # --- Body / Contenu (optional) ---
       - label: "Body / Contenu"
         name: "body"
         widget: "markdown"
         required: false
+        preview: false
         hint: "Optional text content / Contenu textuel optionnel"
 
   # ==========================================================================

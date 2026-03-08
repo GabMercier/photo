@@ -169,6 +169,27 @@ export async function preloadManifest(): Promise<void> {
 }
 
 /**
+ * Get OG-ready image data from an optimized image
+ * Converts WebP to JPEG path (better social platform support)
+ * Clamps width to 1200px for fast loading
+ */
+export async function getOgImageData(imagePath: string): Promise<{
+  ogImage: string;
+  ogImageWidth?: number;
+  ogImageHeight?: number;
+}> {
+  const imageData = await getOptimizedImage(imagePath);
+  const ogImage = imageData.src.endsWith('.webp')
+    ? imageData.src.replace(/\.webp$/, '.jpg')
+    : imageData.src;
+  const ogImageWidth = imageData.width ? Math.min(imageData.width, 1200) : undefined;
+  const ogImageHeight = imageData.height && imageData.width
+    ? Math.round(Math.min(imageData.width, 1200) * (imageData.height / imageData.width))
+    : undefined;
+  return { ogImage, ogImageWidth, ogImageHeight };
+}
+
+/**
  * Generate sizes attribute for common use cases
  */
 export const imageSizes = {

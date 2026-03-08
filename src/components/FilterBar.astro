@@ -28,8 +28,10 @@ const colorConfig: Record<ColorFamily, { label: string; color: string }> = {
   orange: { label: 'orange', color: '#e67e22' },
   yellow: { label: locale === 'fr' ? 'jaune' : 'yellow', color: '#f1c40f' },
   green: { label: locale === 'fr' ? 'vert' : 'green', color: '#2ecc71' },
+  teal: { label: locale === 'fr' ? 'sarcelle' : 'teal', color: '#1abc9c' },
   blue: { label: locale === 'fr' ? 'bleu' : 'blue', color: '#3498db' },
   purple: { label: locale === 'fr' ? 'violet' : 'purple', color: '#9b59b6' },
+  pink: { label: locale === 'fr' ? 'rose' : 'pink', color: '#e84393' },
   neutral: { label: locale === 'fr' ? 'neutre' : 'neutral', color: '#95a5a6' },
 };
 
@@ -313,7 +315,7 @@ const showColorFilters = colorFamilies.length > 1;
         const itemTitle = (item.dataset.title || '').toLowerCase();
         const itemDate = (item.dataset.date || '').toLowerCase();
         const itemColorFamily = item.dataset.colorFamily || '';
-        const itemSecondaryColorFamily = item.dataset.secondaryColorFamily || '';
+        const itemSecondaryFamilies = (item.dataset.secondaryColorFamilies || '').split(',').filter(Boolean);
 
         const matchesTag = activeTags.size === 0 || Array.from(activeTags).some(t => itemTags.includes(t));
 
@@ -323,7 +325,9 @@ const showColorFilters = colorFamilies.length > 1;
           colorMatchCount = 1;
         } else {
           if (activeColors.has(itemColorFamily)) colorMatchCount++;
-          if (itemSecondaryColorFamily && activeColors.has(itemSecondaryColorFamily)) colorMatchCount++;
+          for (const sf of itemSecondaryFamilies) {
+            if (activeColors.has(sf)) colorMatchCount++;
+          }
         }
         const matchesColor = activeColors.size === 0 || colorMatchCount > 0;
 

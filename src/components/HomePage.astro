@@ -9,38 +9,16 @@ import Base from '@layouts/Base.astro';
 import HomepageCarousel from '@components/HomepageCarousel.astro';
 import HomepageHero from '@components/HomepageHero.astro';
 import { getCollection } from 'astro:content';
-import { getLocaleFromUrl } from '@utils/i18n';
-import { extractDominantColor, deriveAccentFromGlow } from '@utils/extractColors';
+import { getLocaleFromUrl, localized } from '@utils/i18n';
+import { deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
+import { getOgImageData } from '@utils/optimizedImage';
 
 const locale = getLocaleFromUrl(Astro.url);
 
-// Fetch posts marked for carousel
-const allPosts = await getCollection('posts', ({ data }) => {
+// Fetch posts marked for carousel (glowColor populated by prebuild script)
+const carouselPosts = (await getCollection('posts', ({ data }) => {
   return data.homepageCarousel && !data.draft && !data.private;
-});
-
-// Extract glow colors for posts that don't have them
-const postsWithColors = await Promise.all(
-  allPosts.map(async (post) => {
-    if (post.data.glowColor) return post;
-
-    const imagePath = post.data.coverImage.src;
-    const glowColor = await extractDominantColor(imagePath);
-
-    return {
-      ...post,
-      data: {
-        ...post.data,
-        glowColor,
-      },
-    };
-  })
-);
-
-// Sort by date (newest first)
-const carouselPosts = postsWithColors.sort((a, b) =>
-  b.data.date.valueOf() - a.data.date.valueOf()
-);
+})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
 // Find default post
 const defaultPost = carouselPosts.find(p => p.data.homepageDefault);
@@ -48,8 +26,21 @@ const defaultSlug = defaultPost?.slug;
 
 // Get initial accent from default post or first post
 const initialPost = defaultPost || carouselPosts[0];
-const initialGlow = initialPost?.data.glowColor || { r: 58, g: 68, b: 71 };
+const initialGlow = initialPost?.data.glowColor
+  ? hexToRgb(initialPost.data.glowColor)
+  : { r: 58, g: 68, b: 71 };
 const initialAccent = deriveAccentFromGlow(initialGlow.r, initialGlow.g, initialGlow.b);
+
+// OG image: use featured post, fallback to carousel default, fallback to latest
+const allPostsForOg = (await getCollection('posts', ({ data }) => !data.draft && !data.private))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const featuredPost = allPostsForOg.find(p => p.data.featured);
+const ogPost = featuredPost || initialPost || allPostsForOg[0];
+
+const ogData = ogPost ? await getOgImageData(ogPost.data.coverImage.src) : null;
+const ogImageAlt = ogPost
+  ? (localized(ogPost.data.coverImage.alt, locale) || localized(ogPost.data.title, locale) || 'Gabriel Mercier Photography')
+  : 'Gabriel Mercier Photography';
 
 // Structured data (Schema.org)
 const siteUrl = import.meta.env.SITE || Astro.url.origin;
@@ -67,8 +58,12 @@ const homepageSchema = {
 ---
 
 <Base
+  ogImage={ogData?.ogImage}
+  ogImageAlt={ogImageAlt}
+  ogImageWidth={ogData?.ogImageWidth}
+  ogImageHeight={ogData?.ogImageHeight}
   accentHue={carouselPosts.length > 0 ? initialAccent.hue : undefined}
-  accentSaturation={carouselPosts.length > 0 ? initialAccent.saturation : undefined}
+  accentChroma={carouselPosts.length > 0 ? initialAccent.chroma : undefined}
   accentLightness={carouselPosts.length > 0 ? initialAccent.lightness : undefined}
 >
   <Fragment slot="head">

@@ -8,8 +8,9 @@
 import Base from '@layouts/Base.astro';
 import PostCard from '@components/PostCard.astro';
 import { getCollection } from 'astro:content';
-import { getLocaleFromUrl, t, localePath } from '@utils/i18n';
-import { extractColorMetadata } from '@utils/extractColors';
+import { getLocaleFromUrl, t, localePath, localized } from '@utils/i18n';
+import { extractColorMetadata, hexToRgb } from '@utils/extractColors';
+import { getOgImageData } from '@utils/optimizedImage';
 
 const locale = getLocaleFromUrl(Astro.url);
 
@@ -58,42 +59,39 @@ for (const [year, monthMap] of Array.from(yearMap.entries()).sort((a, b) => b[0]
   timeline.push({ year, months });
 }
 
-// Extract glow colors for posts that don't have them in frontmatter
-// Also check for grayscale images to use neutral color
+// glowColor is populated by prebuild script (extract-glow-colors.ts)
+// Fallback extraction only needed during dev before first prebuild
 const posts = await Promise.all(
   allPosts.map(async (post) => {
-    const imagePath = post.data.coverImage.src;
-    const colorMeta = await extractColorMetadata(imagePath);
+    if (post.data.glowColor) return post;
 
-    // For grayscale images, use neutral gray regardless of frontmatter
-    if (colorMeta.colorFamily === 'neutral') {
-      return {
-        ...post,
-        data: {
-          ...post.data,
-          glowColor: { r: 90, g: 90, b: 90, hex: '#5A5A5A' },
-        },
-      };
-    }
-
-    // Use existing glowColor from frontmatter if present
-    if (post.data.glowColor) {
-      return post;
-    }
-
-    // Otherwise use extracted color
+    // Fallback: extract at runtime if prebuild hasn't populated glowColor
+    const colorMeta = await extractColorMetadata(post.data.coverImage.src);
     return {
       ...post,
       data: {
         ...post.data,
-        glowColor: colorMeta,
+        glowColor: colorMeta.colorFamily === 'neutral' ? '#5A5A5A' : colorMeta.hex,
       },
     };
   })
 );
+
+// OG image: use latest post's cover image
+const ogPost = allPosts[0];
+const ogData = ogPost ? await getOgImageData(ogPost.data.coverImage.src) : null;
+const ogImageAlt = ogPost
+  ? (localized(ogPost.data.coverImage.alt, locale) || localized(ogPost.data.title, locale) || '')
+  : '';
 ---
 
-<Base title={t('nav.feed', locale)}>
+<Base
+  title={t('nav.feed', locale)}
+  ogImage={ogData?.ogImage}
+  ogImageAlt={ogImageAlt}
+  ogImageWidth={ogData?.ogImageWidth}
+  ogImageHeight={ogData?.ogImageHeight}
+>
   <section class="feed container">
     <!-- Ambient glow that crossfades to match the current post -->
     <div class="feed__glow" id="feed-glow"></div>
@@ -163,7 +161,8 @@ const posts = await Promise.all(
       document.querySelectorAll('.post-card--feed').forEach(card => {
         card.classList.add('visible');
       });
-    } else {
+    } else if (!CSS.supports('animation-timeline', 'view()')) {
+      // Safari fallback: IntersectionObserver-based fade-in
       const fadeObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -175,6 +174,7 @@ const posts = await Promise.all(
 
       postWraps.forEach(wrap => fadeObserver.observe(wrap));
     }
+    // else: CSS scroll-linked animations handle the reveal natively
 
     // Ambient glow crossfade: two layers, toggle opacity
     const feedGlow = document.getElementById('feed-glow');

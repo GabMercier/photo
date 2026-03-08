@@ -68,6 +68,15 @@ const translations: Record<string, Record<Locale, string>> = {
 
   // Feed
   'feed.viewFull': { en: 'View full image', fr: 'Voir l\'image complète' },
+
+  // EXIF
+  'exif.camera': { en: 'Camera', fr: 'Appareil' },
+  'exif.lens': { en: 'Lens', fr: 'Objectif' },
+  'exif.focalLength': { en: 'Focal Length', fr: 'Focale' },
+  'exif.aperture': { en: 'Aperture', fr: 'Ouverture' },
+  'exif.shutterSpeed': { en: 'Shutter Speed', fr: 'Vitesse' },
+  'exif.iso': { en: 'ISO', fr: 'ISO' },
+  'exif.dateTaken': { en: 'Date Taken', fr: 'Date de prise' },
 };
 
 // ---------------------------------------------------------------------------

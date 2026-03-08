@@ -39,7 +39,6 @@ collections:
     summary: "{{date}} — {{title.fr}}"
     sortable_fields: ["date", "title.fr"]
     thumbnail: "coverImage.src"
-
     view_filters:
       - label: "Carrousel d'accueil"
         field: "homepageCarousel"
@@ -61,6 +60,7 @@ collections:
         widget: "object"
         required: false
         collapsed: true
+        preview: false
         summary: "{{fields.fr}}"
         hint: "Optionnel - si non fourni, la publication s'affiche sans titre"
         fields:
@@ -109,12 +109,25 @@ collections:
               - label: "Droite"
                 value: "right"
 
-      # --- Couleur secondaire (à côté de l'image pour faciliter le choix) ---
-      - label: "Couleur d'accent secondaire"
-        name: "secondaryColor"
+      # --- Couleur de lueur (extraite automatiquement, modifiable) ---
+      - label: "Couleur de lueur"
+        name: "glowColor"
         widget: "color"
         required: false
-        hint: "Couleur d'accent optionnelle pour effets de lueur bicolore. Choisissez depuis votre image ou manuellement."
+        preview: false
+        hint: "Extrait de l'image. Modifier au besoin."
+
+      # --- Couleurs secondaires (à côté de l'image pour faciliter le choix) ---
+      - label: "Couleurs secondaires"
+        name: "secondaryColors"
+        widget: "list"
+        required: false
+        preview: false
+        hint: "Couleurs d'accent pour effets de lueur et filtrage. Ajoutez autant que nécessaire."
+        field:
+          label: "Couleur"
+          name: "color"
+          widget: "color"
 
       # --- Description ---
       - label: "Description"
@@ -122,6 +135,7 @@ collections:
         widget: "object"
         required: false
         collapsed: true
+        preview: false
         fields:
           - label: "Français"
             name: "fr"
@@ -139,6 +153,177 @@ collections:
         date_format: "YYYY-MM-DD"
         time_format: false
         required: false
+        preview: false
+
+      - label: "Date de prise (EXIF)"
+        name: "dateTaken"
+        widget: "datetime"
+        date_format: "YYYY-MM-DD"
+        time_format: false
+        required: false
+        preview: false
+        hint: "Rempli automatiquement depuis les données EXIF de la photo. Comparer avec la date de publication."
+
+      # --- Classification ---
+      - label: "Étiquettes"
+        name: "tags"
+        widget: "relation"
+        preview: false
+        collection: "tags"
+        search_fields: ["en", "fr"]
+        value_field: "{{slug}}"
+        display_fields: ["fr"]
+        multiple: true
+        required: false
+
+      - label: "Type de publication"
+        name: "postType"
+        widget: "select"
+        preview: false
+        options:
+          - label: "Image unique"
+            value: "single"
+          - label: "Série"
+            value: "series"
+        default: "single"
+
+      - label: "Taille galerie"
+        name: "gallerySize"
+        widget: "select"
+        preview: false
+        hint: "Contrôle la taille dans la grille galerie (bureau seulement)"
+        options:
+          - label: "Auto (détecter du ratio)"
+            value: "auto"
+          - label: "Petit (1×1)"
+            value: "small"
+          - label: "Portrait (1×2 haut)"
+            value: "portrait"
+          - label: "Portrait grand (1×3 très haut)"
+            value: "portrait-tall"
+          - label: "Paysage (2×1 large)"
+            value: "landscape"
+          - label: "Vedette (2×2 grand)"
+            value: "featured"
+        default: "auto"
+
+      # --- Visibilité ---
+      - label: "Brouillon"
+        name: "draft"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Non publié"
+
+      - label: "Privé"
+        name: "private"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Accès protégé"
+
+      - label: "En vedette"
+        name: "featured"
+        widget: "boolean"
+        default: false
+        preview: false
+
+      # --- Page d'accueil ---
+      - label: "Afficher dans le carrousel"
+        name: "homepageCarousel"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Afficher sur la page d'accueil"
+
+      - label: "Diapositive par défaut"
+        name: "homepageDefault"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Commencer le carrousel ici"
+
+      - label: "Effet de profondeur 3D"
+        name: "depth3d"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Activer l'effet de parallaxe sur la page du post"
+
+      - label: "Résumé EXIF (auto)"
+        name: "exifSummary"
+        widget: "string"
+        required: false
+        preview: false
+        hint: "Généré depuis les données EXIF de la photo. Ne pas modifier manuellement."
+
+      - label: "Afficher les données EXIF"
+        name: "showExif"
+        widget: "boolean"
+        default: false
+        preview: false
+        hint: "Afficher les infos de l'appareil sur la page du post"
+
+      - label: "Champs EXIF"
+        name: "exifFields"
+        widget: "select"
+        multiple: true
+        required: false
+        preview: false
+        default: ["camera", "lens", "focalLength", "aperture", "shutterSpeed", "iso"]
+        hint: "Quels champs EXIF afficher (tous par défaut)"
+        options:
+          - label: "Appareil"
+            value: "camera"
+          - label: "Objectif"
+            value: "lens"
+          - label: "Focale"
+            value: "focalLength"
+          - label: "Ouverture"
+            value: "aperture"
+          - label: "Vitesse"
+            value: "shutterSpeed"
+          - label: "ISO"
+            value: "iso"
+          - label: "Date de prise"
+            value: "dateTaken"
+
+      - label: "Remplacements EXIF"
+        name: "exifOverrides"
+        widget: "object"
+        required: false
+        collapsed: true
+        preview: false
+        hint: "Remplacements manuels pour EXIF manquant (ex: objectifs manuels/vintage)"
+        fields:
+          - label: "Appareil"
+            name: "camera"
+            widget: "string"
+            required: false
+          - label: "Objectif"
+            name: "lens"
+            widget: "string"
+            required: false
+            hint: "ex: Nikkor 50mm f/1.4 AI-S"
+          - label: "Focale"
+            name: "focalLength"
+            widget: "string"
+            required: false
+            hint: "ex: 50mm"
+          - label: "Ouverture"
+            name: "aperture"
+            widget: "string"
+            required: false
+            hint: "ex: f/2.8"
+          - label: "Vitesse"
+            name: "shutterSpeed"
+            widget: "string"
+            required: false
+            hint: "ex: 1/500"
+          - label: "ISO"
+            name: "iso"
+            widget: "string"
+            required: false
 
       # --- Images supplémentaires ---
       - label: "Images supplémentaires"
@@ -146,6 +331,7 @@ collections:
         widget: "list"
         required: false
         collapsed: true
+        preview: false
         label_singular: "Image"
         summary: "Image"
         fields:
@@ -174,94 +360,33 @@ collections:
             name: "lens"
             widget: "string"
             required: false
-          - label: "Paramètres"
-            name: "settings"
+            hint: "ex: Nikkor 50mm f/1.4 AI-S"
+          - label: "Focale"
+            name: "focalLength"
             widget: "string"
             required: false
-            hint: "ex: f/2.8 · 1/500s · ISO 100"
-
-      # --- Classification ---
-      - label: "Étiquettes"
-        name: "tags"
-        widget: "relation"
-        collection: "tags"
-        search_fields: ["en", "fr"]
-        value_field: "{{slug}}"
-        display_fields: ["fr"]
-        multiple: true
-        required: false
-
-      - label: "Type de publication"
-        name: "postType"
-        widget: "select"
-        options:
-          - label: "Image unique"
-            value: "single"
-          - label: "Série"
-            value: "series"
-        default: "single"
-
-      - label: "Taille galerie"
-        name: "gallerySize"
-        widget: "select"
-        hint: "Contrôle la taille dans la grille galerie (bureau seulement)"
-        options:
-          - label: "Auto (détecter du ratio)"
-            value: "auto"
-          - label: "Petit (1×1)"
-            value: "small"
-          - label: "Portrait (1×2 haut)"
-            value: "portrait"
-          - label: "Portrait grand (1×3 très haut)"
-            value: "portrait-tall"
-          - label: "Paysage (2×1 large)"
-            value: "landscape"
-          - label: "Vedette (2×2 grand)"
-            value: "featured"
-        default: "auto"
-
-      # --- Visibilité ---
-      - label: "Brouillon"
-        name: "draft"
-        widget: "boolean"
-        default: false
-        hint: "Non publié"
-
-      - label: "Privé"
-        name: "private"
-        widget: "boolean"
-        default: false
-        hint: "Accès protégé"
-
-      - label: "En vedette"
-        name: "featured"
-        widget: "boolean"
-        default: false
-
-      # --- Page d'accueil ---
-      - label: "Afficher dans le carrousel"
-        name: "homepageCarousel"
-        widget: "boolean"
-        default: false
-        hint: "Afficher sur la page d'accueil"
-
-      - label: "Diapositive par défaut"
-        name: "homepageDefault"
-        widget: "boolean"
-        default: false
-        hint: "Commencer le carrousel ici"
-
-      - label: "Effet de profondeur 3D"
-        name: "depth3d"
-        widget: "boolean"
-        default: false
-        hint: "Activer l'effet de parallaxe sur la page du post"
+            hint: "ex: 50mm"
+          - label: "Ouverture"
+            name: "aperture"
+            widget: "string"
+            required: false
+            hint: "ex: f/2.8"
+          - label: "Vitesse"
+            name: "shutterSpeed"
+            widget: "string"
+            required: false
+            hint: "ex: 1/500"
+          - label: "ISO"
+            name: "iso"
+            widget: "string"
+            required: false
 
       # --- Contenu (optionnel) ---
       - label: "Contenu"
         name: "body"
         widget: "markdown"
         required: false
+        preview: false
 
   # ==========================================================================
   # Étiquettes

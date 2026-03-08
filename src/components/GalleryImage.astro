@@ -24,8 +24,8 @@ interface Props {
   focalPoint?: 'left' | 'center' | 'right';
   /** Color family for filtering (red, orange, yellow, green, blue, purple, neutral) */
   colorFamily?: ColorFamily;
-  /** Secondary color family for multi-color filtering (shows in both filters) */
-  secondaryColorFamily?: ColorFamily;
+  /** Secondary color families for multi-color filtering */
+  secondaryColorFamilies?: ColorFamily[];
   /** Color mood for filtering (light, dark, balanced) */
   mood?: ColorMood;
   /** Image orientation for masonry grid (portrait spans 2 rows, landscape spans 2 cols) */
@@ -45,7 +45,7 @@ const {
   index = 0,
   focalPoint = 'center',
   colorFamily = 'neutral',
-  secondaryColorFamily,
+  secondaryColorFamilies = [],
   mood = 'balanced',
   orientation = 'square',
   depthSrc,
@@ -74,7 +74,7 @@ const objectPosition = focalPointMap[focalPoint] || 'center center';
   data-post-url={postUrl}
   data-post-title={postTitle}
   data-color-family={colorFamily}
-  data-secondary-color-family={secondaryColorFamily || ''}
+  data-secondary-color-families={secondaryColorFamilies.join(',')}
   data-mood={mood}
   data-date={date || ''}
 >
@@ -148,6 +148,38 @@ const objectPosition = focalPointMap[focalPoint] || 'center center';
 
   @keyframes fadeInUp {
     to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  /* Native scroll-linked animation (Chrome/Firefox — replaces page-load stagger) */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .gallery-image.animate-in {
+        animation: galleryReveal linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 20%;
+        animation-delay: 0s; /* Override staggered delays */
+      }
+    }
+  }
+
+  @keyframes galleryReveal {
+    from {
+      opacity: 0;
+      translate: 0 12px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-in {
+      animation: none;
       opacity: 1;
       translate: 0 0;
     }

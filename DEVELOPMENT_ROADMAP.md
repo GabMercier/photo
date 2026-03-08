@@ -1,12 +1,12 @@
 # Photography Portfolio Development Roadmap
 
-**Last Updated:** March 6, 2026
+**Last Updated:** March 7, 2026
 **Project:** gphoto.pages.dev  
 **Purpose:** Personal portfolio → Template business foundation
 
 ---
 
-## 🎯 Project Vision
+## Project Vision
 
 **Personal Goal:** Build a fast, beautiful photography portfolio with data sovereignty  
 **Business Goal:** Template product for photographers ($799 one-time, no subscriptions)  
@@ -14,7 +14,7 @@
 
 ---
 
-## 📋 Phase 1: Performance & Core UX (CURRENT)
+## Phase 1: Performance & Core UX (CURRENT)
 
 ### Image Optimization (HIGH PRIORITY)
 
@@ -64,7 +64,7 @@ import { Image } from 'astro:assets';
 - Sub-1s LCP on mobile
 - Perfect Lighthouse scores
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** OptimizedImage.astro component with AVIF/WebP/JPEG srcset, optimize-images.ts build script
 **Effort:** 4-6 hours
 **Priority:** P0 (Critical)
@@ -173,7 +173,7 @@ description:
 
 **Expected Score:** 90-100/100
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** Built into Base.astro with full OG/Twitter Card support, bilingual, dynamic accent colors
 **Effort:** 2-3 hours
 **Priority:** P0 (Critical)
@@ -192,7 +192,7 @@ description:
   Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';
 ```
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** Full headers in public/_headers with CSP, frame-src for video embeds, CMS exception
 **Effort:** 15 minutes
 **Priority:** P1 (High)
@@ -201,7 +201,7 @@ description:
 
 ### Astro Version Upgrade
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** Already at Astro 5.17.3 — no upgrade needed
 **Effort:** N/A
 **Priority:** P1 (High)
@@ -227,7 +227,7 @@ const observer = new IntersectionObserver((entries) => {
 }, { rootMargin: '200px' });
 ```
 
-**Status:** ⚠️ Partially Complete
+**Status:** Partially Complete
 **Completed:** HomepageCarousel preloads adjacent slides; OptimizedImage uses eager loading + fetchpriority for above-fold; `<link rel="preload">` for hero AVIF on post pages (EN + FR)
 **Remaining:** No IntersectionObserver preloading in gallery
 **Effort:** 1 hour remaining
@@ -235,7 +235,7 @@ const observer = new IntersectionObserver((entries) => {
 
 ---
 
-## 📋 Phase 2: Distribution & Discovery
+## Phase 2: Distribution & Discovery
 
 ### RSS Feed
 
@@ -263,7 +263,7 @@ export async function GET(context) {
 }
 ```
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** src/pages/rss.xml.ts with filtering, enclosures, customData
 **Effort:** 30 minutes
 **Priority:** P1 (High)
@@ -289,7 +289,7 @@ export async function GET(context) {
 - Markdown emails
 - Export subscribers anytime
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** src/components/NewsletterSignup.astro with bilingual support, responsive styling
 **Effort:** 1 hour
 **Priority:** P1 (High)
@@ -322,31 +322,30 @@ export async function GET(context) {
 
 **Purpose:** AI search discovery (Perplexity, ChatGPT, Google AI)
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** WebSite schema on all pages, Article + Photograph on posts, CollectionPage + ImageGallery on gallery, ProfilePage on homepage
 **Effort:** 1 hour
 **Priority:** P1 (High)
 
 ---
 
-### Download with Attribution
+### Image Sharing & Canonical Source
 
-**Feature:**
-```javascript
-async function downloadWithAttribution(imageUrl, title) {
-  // Add "© Gabriel Mercier | gphoto.pages.dev" watermark
-  // OR inject EXIF copyright data
-  // Copy URL to clipboard for tracking
-  
-  navigator.clipboard.writeText(`${window.location.href}?ref=download`);
-}
-```
+**Vision:** The site is the single source of truth for all images. Never upload to other platforms — hotlink from your own domain everywhere (Reddit, Discord, forums, blogs). Every view goes through your Cloudflare analytics, EXIF copyright stays intact, and you control the quality. Unlimited bandwidth on Cloudflare Pages makes this free.
 
-**Purpose:** Let people share your work with attribution baked in
+**Features:**
+1. **Copy Image URL button** on each post page — one tap to get the optimized full-res URL
+2. **Size picker** — full res (2400px), preview (1200px), thumbnail (800px) options
+3. **Copy with attribution** — copies image URL + credit line (e.g. `Photo by Gabriel Mercier — gphoto.pages.dev/posts/blue`)
+4. **Download button** — download the image with EXIF copyright metadata baked in
 
-**Status:** ⏳ Not Started  
-**Effort:** 2-3 hours  
-**Priority:** P2 (Medium)
+**UI:** Expandable panel or dropdown near the existing share button in `post__image-info`. Matches glass design language.
+
+**Purpose:** Data sovereignty — own your content, control distribution, track views via Cloudflare analytics. No re-compression by third-party platforms.
+
+**Status:** Not Started
+**Effort:** 3-4 hours
+**Priority:** P1 (High - core to data sovereignty vision)
 
 ---
 
@@ -414,7 +413,7 @@ const thumbnail = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
 
 **Recommendation:** 1 video per 10 photos - keep photography focus
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 6-10 hours  
 **Priority:** P2 (Medium - add after core features)
 
@@ -441,7 +440,7 @@ const thumbnail = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
 
 **Purpose:** Decentralized social interactions (indie web)
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 1-2 hours  
 **Priority:** P3 (Low)
 
@@ -526,9 +525,9 @@ colorData:
   <!-- Mood filter -->
   <div class="mood-filter">
     <button data-mood="all" class="active">All Moods</button>
-    <button data-mood="light">☀️ Light</button>
-    <button data-mood="balanced">🌤️ Balanced</button>
-    <button data-mood="dark">🌙 Dark</button>
+    <button data-mood="light">Light</button>
+    <button data-mood="balanced">Balanced</button>
+    <button data-mood="dark">Dark</button>
   </div>
 </div>
 
@@ -613,7 +612,7 @@ colorData:
 - Great for photographers organizing shoots
 - Useful for clients looking for specific aesthetics
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** extractColors.ts extended with colorFamily/mood, FilterBar with color pills, GalleryImage with data attributes
 **Effort:** 4-6 hours (color extraction + UI)
 **Priority:** P2 (Medium - high UX value, not critical path)
@@ -643,7 +642,7 @@ colorData:
 2. **Auto-extract secondary color** at build time instead of manual CMS picker
 3. **Use both colors in glow effects** — dual-tone glow in PostCard, feed, and Base layout background
 
-**Status:** ⚠️ Partially Complete
+**Status:** Partially Complete
 **Completed:** Schema field, CMS integration, filtering support, basic palette extraction, dual-tone glow in PostCard/feed/post pages
 **Remaining:** Better extraction algorithm (k-means), auto-extract secondary color at build time
 **Effort:** 2-3 hours remaining
@@ -651,11 +650,11 @@ colorData:
 
 ---
 
-## 📋 Phase 2.5: Mobile CMS & Offline Support
+## Phase 2.5: Mobile CMS & Offline Support
 
 ### Mobile-Optimized Sveltia CMS
 
-**Status:** ✅ Partially Complete - Sveltia CMS has built-in mobile support
+**Status:** Partially Complete - Sveltia CMS has built-in mobile support
 
 **Problem:**
 - Too many fields for quick posting from phone
@@ -668,15 +667,15 @@ colorData:
 # Minimal fields for fast mobile posting
 collections:
   - name: "quick-posts"
-    label: "📱 Quick Post"
+    label: "Quick Post"
     editor:
       preview: false  # Saves screen space
     fields:
-      - {label: "📷 Photo", name: "coverImage", widget: "image"}
-      - {label: "✏️ Title", name: "title", widget: "string"}
-      - {label: "📝 Caption", name: "caption", widget: "text", required: false}
-      - {label: "📍 Location", name: "location", widget: "string", required: false}
-      - {label: "🏷️ Tags", name: "tags", widget: "list"}
+      - {label: "Photo", name: "coverImage", widget: "image"}
+      - {label: "Title", name: "title", widget: "string"}
+      - {label: "Caption", name: "caption", widget: "text", required: false}
+      - {label: "Location", name: "location", widget: "string", required: false}
+      - {label: "Tags", name: "tags", widget: "list"}
       - {label: "Date", name: "date", widget: "datetime", default: "{{now}}"}
 ```
 
@@ -736,7 +735,7 @@ collections:
         - {label: "Show in Menu", name: "enabled", widget: "boolean"}
 ```
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 4-6 hours  
 **Priority:** P1 (High - enables mobile workflow)
 
@@ -744,7 +743,7 @@ collections:
 
 ### Local Development & Offline Support
 
-**Status:** ✅ Complete - Sveltia CMS uses File System Access API
+**Status:** Complete - Sveltia CMS uses File System Access API
 
 **Sveltia CMS Local Workflow:**
 1. Run `npm run dev` (Astro dev server)
@@ -814,7 +813,7 @@ const enabledItems = navigation.mainMenu.filter(item => item.enabled);
 </nav>
 ```
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 2-3 hours  
 **Priority:** P1 (High)
 
@@ -859,7 +858,7 @@ const transformed = {
 }
 ```
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 2 hours  
 **Priority:** P2 (Medium)
 
@@ -902,7 +901,7 @@ media_library:
         - quality: auto
 ```
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 1-2 hours  
 **Priority:** P2 (Medium)
 
@@ -911,10 +910,10 @@ media_library:
 ### Mobile Workflow Testing Checklist
 
 **Completed:**
-- ✅ Access https://gphoto.pages.dev/admin/ on phone
-- ✅ Login with GitHub OAuth
-- ✅ Create post with photo from camera roll
-- ✅ Publish and verify auto-deploy via GitHub Actions
+- Access https://gphoto.pages.dev/admin/ on phone
+- Login with GitHub OAuth
+- Create post with photo from camera roll
+- Publish and verify auto-deploy via GitHub Actions
 
 **Sveltia Mobile Features:**
 - Native mobile-optimized UI
@@ -922,12 +921,12 @@ media_library:
 - Camera roll access for uploads
 
 **Local Development:**
-- ✅ "Work with Local Repository" in Chrome/Edge
-- ✅ Direct file editing without server
+- "Work with Local Repository" in Chrome/Edge
+- Direct file editing without server
 
 ---
 
-## 📋 Phase 2.75: Modern CSS Upgrades
+## Phase 2.75: Modern CSS Upgrades
 
 **Goal:** Replace outdated CSS patterns with modern, native solutions. Better performance, cleaner code, no JavaScript required for many animations.
 
@@ -1079,7 +1078,7 @@ h1, h2, .post-title {
 
 ---
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** All quick wins implemented - text-wrap: balance, independent transforms, aspect-ratio, object-fit, dvh, inset
 **Effort:** 2-3 hours
 **Priority:** P1 (High - easy wins, immediate impact)
@@ -1200,7 +1199,8 @@ No JavaScript required - pure CSS scroll animations:
 
 ---
 
-**Status:** ⏳ Not Started
+**Status:** Complete
+**Completed:** OKLCH colors in colors.css/Base.astro/Header.astro, color-mix for overlays, scroll-linked animations in PostCard.astro/FeedPage.astro
 **Effort:** 3-4 hours
 **Priority:** P1 (High - significant UX improvement)
 
@@ -1269,7 +1269,7 @@ Smooth page transitions without JavaScript:
 
 ---
 
-**Status:** ⏳ Not Started
+**Status:** Not Started
 **Effort:** 3-4 hours
 **Priority:** P2 (Medium - polish features)
 
@@ -1311,9 +1311,9 @@ Tooltips with proper speech bubble arrows:
 
 **Medium Priority:**
 ```
-- [ ] Upgrade color extraction to OKLCH
-- [ ] Implement color-mix for dynamic overlays
-- [ ] Add scroll-linked animations to gallery
+- [x] Upgrade color extraction to OKLCH (colors.css, Base.astro, Header.astro)
+- [x] Implement color-mix for dynamic overlays (colors.css)
+- [x] Add scroll-linked animations to gallery (PostCard.astro, FeedPage.astro)
 ```
 
 **Advanced:**
@@ -1333,7 +1333,7 @@ Tooltips with proper speech bubble arrows:
 
 ---
 
-## 📋 Phase 3: Visual Enhancements
+## Phase 3: Visual Enhancements
 
 ### 3D Depth Parallax Effect
 
@@ -1356,7 +1356,7 @@ Tooltips with proper speech bubble arrows:
 - **Deployment:** Depth maps committed to git (needed for Cloudflare). Generation is local-only.
 - **Workflow:** Toggle depth3d in CMS → pull locally → build (runs generation) → commit → push
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** Full implementation with proximity-based activation, WebGL shader, cover-crop UV mapping, lazy init, crossfade
 **Effort:** 8-10 hours
 **Priority:** P2 (Medium - differentiator feature)
@@ -1391,7 +1391,7 @@ Tooltips with proper speech bubble arrows:
 - `src/pages/feed.astro` — glow div, JS crossfade logic, CSS for two layers
 - `src/components/PostCard.astro` — per-card glow removed in feed mode
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** Full two-layer crossfade with IntersectionObserver tracking, `mix-blend-mode: screen`, `filter: blur(80px)`
 **Effort:** 2 hours
 **Priority:** P1 (High - major visual improvement)
@@ -1414,7 +1414,7 @@ Tooltips with proper speech bubble arrows:
 - `src/components/GalleryImage.astro` — `data-date`, `data-tags`, `data-color-family` attributes
 - `src/pages/gallery.astro` / `src/pages/fr/gallery.astro` — pass tags + labels to FilterBar
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Effort:** 6-8 hours (across multiple sessions)
 **Priority:** P1 (High - core UX feature)
 
@@ -1437,7 +1437,7 @@ Tooltips with proper speech bubble arrows:
 - FR gallery had hardcoded `'fr-CA'` date locale → now conditional
 - EN homepage missing accent colors, FR missing Schema.org → both included
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** March 6, 2026
 **Priority:** P1 (High - maintainability)
 
@@ -1452,7 +1452,7 @@ Tooltips with proper speech bubble arrows:
 - `openSlideshow()` updates image BEFORE showing overlay
 - `closeSlideshow()` clears images array, caption, View Post button
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** March 6, 2026
 
 ---
@@ -1466,7 +1466,7 @@ Tooltips with proper speech bubble arrows:
 - PostPage reads sessionStorage and adapts back button text/href
 - `document.referrer` unreliable with View Transitions → sessionStorage is robust
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** March 6, 2026
 
 ---
@@ -1477,7 +1477,7 @@ Tooltips with proper speech bubble arrows:
 
 **Solution:** `position: fixed` with `top: calc(var(--header-height) / 2); transform: translateY(-50%)` — centered in header bar.
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** March 6, 2026
 
 ---
@@ -1492,26 +1492,8 @@ Tooltips with proper speech bubble arrows:
 - Desktop: hidden, fades in on image hover. Mobile: always visible
 - JS positioning with `getVisibleImageRect()` to handle `object-fit: contain` letterboxing on 16:9 images
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** March 6, 2026
-
----
-
-## Next Session Tasks
-
-### Priority Tasks
-1. **About page content** — Add bio text, social links, contact info
-2. **Download with attribution** — Download button on post/slideshow with EXIF/credit metadata
-3. **Video post support** — MP4/WebM in posts with autoplay/loop options
-
-### Polish & UX
-4. **Feed scroll position restore** — When returning from a post, scroll back to where you were
-5. **LQIP blur placeholders** — Low-quality image placeholders for progressive loading
-6. **Preloading strategy** — Prefetch next feed images for instant scroll
-
-### Business / Template
-7. **Template abstraction** — Extract site-specific content, make configurable via settings
-8. **Documentation** — Setup guide, CMS usage, deployment instructions
 
 ---
 
@@ -1676,15 +1658,15 @@ For true distortion/refraction effect like Apple's implementation:
 
 | Feature | Chrome | Firefox | Safari | Edge |
 |---------|--------|---------|--------|------|
-| backdrop-filter | ✅ | ✅ v103+ | ✅ | ✅ |
-| SVG feDisplacementMap | ✅ | ⚠️ Limited | ❌ | ✅ |
-| feTurbulence | ✅ | ✅ | ✅ | ✅ |
+| backdrop-filter | Yes | Yes (v103+) | Yes | Yes |
+| SVG feDisplacementMap | Yes | Limited | No | Yes |
+| feTurbulence | Yes | Yes | Yes | Yes |
 
 **Recommendation:** Use Approach 1 (pure CSS) for production. Add SVG filter as progressive enhancement for Chromium users.
 
 ---
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** Liquid glass styling applied - backdrop-filter blur+saturate, layered box-shadows, ::before shimmer gradient, ::after illumination layer, max-width constraint, compact typography
 **Effort:** 1-2 hours
 **Priority:** P1 (High - polish for recently added feature)
@@ -1739,7 +1721,7 @@ For true distortion/refraction effect like Apple's implementation:
 
 **Research Note:** Liquid glass SVG documented at https://kube.io/blog/liquid-glass-css-svg/ (Chrome-only, skip for now)
 
-**Status:** ✅ Complete
+**Status:** Complete
 **Completed:** Glass effect applied to Header (full liquid glass with shimmer, illumination, glass-dot logo), Feed timeline sidebar, HomepageCarousel controls, ShareButton
 **Effort:** 3-4 hours
 **Priority:** P2 (Medium)
@@ -1750,18 +1732,18 @@ For true distortion/refraction effect like Apple's implementation:
 
 **Goal:** Preview and optionally adjust extracted colors directly in Sveltia CMS, without needing to build locally.
 
-**Current State:**
-- Colors are auto-extracted at build time from cover images (extractColors.ts)
-- `glowColor` (RGB) and `secondaryColor` (hex) stored in frontmatter
-- No visual feedback in CMS — you only see the result after deploying
+**Completed:**
+1. Prebuild script (`scripts/extract-glow-colors.ts`) auto-extracts dominant color → writes hex to frontmatter
+2. `glowColor` schema simplified from `{r,g,b,hex}` object to hex string
+3. `glowColor` color picker added to all 3 CMS configs (main, EN, FR)
+4. CMS preview pane shows only cover image (for eyedropping colors)
+5. Field reorder: Cover Image first, colors next, rarely-used fields at bottom
+6. Mtime-based caching with manifest (`src/data/glow-manifest.json`)
+7. Manual CMS overrides preserved (script skips if image unchanged and glowColor exists)
 
-**Planned:**
-1. Add a CMS preview widget or custom field showing the extracted glow color as a swatch
-2. Allow manual override of `glowColor` RGB values via color picker
-3. Show how the color will look as a glow effect (small preview)
-
-**Status:** ⏳ Not Started
-**Effort:** 3-4 hours
+**Status:** Complete
+**Completed:** March 7, 2026
+**Effort:** 4-5 hours
 **Priority:** P2 (Medium - quality of life for content editing)
 
 ---
@@ -1780,9 +1762,67 @@ For true distortion/refraction effect like Apple's implementation:
 3. Feed crossfade and post page glow respect the position values
 4. Default falls back to current positions if not specified
 
-**Status:** ⏳ Not Started
+**Status:** Not Started
 **Effort:** 2-3 hours
 **Priority:** P3 (Low - fine-tuning, not critical)
+
+---
+
+### Gallery Aspect Ratio & Sizing Overhaul
+
+**Goal:** Expand gallery size options with proper aspect ratios and two prominence levels per ratio. Fix `auto` to use the image's native aspect ratio instead of bucketing into 3 categories.
+
+**Current State:**
+- `gallerySize`: `auto`, `small` (1×1), `portrait` (1×2), `portrait-tall` (1×3), `landscape` (2×1), `featured` (2×2)
+- `auto` detection is too coarse: < 0.85 → portrait, > 1.2 → landscape, else → square
+- All images forced into `aspect-ratio: 3/4` container with `object-fit: cover` — crops everything
+- No 1:1, 4:5, 3:2, 16:9 options
+
+**New Options (each ratio has regular + prominent):**
+
+| Ratio | Regular (1 col) | Prominent (multi-span) |
+|-------|-----------------|----------------------|
+| 1:1 | `square` (1×1) | `square-lg` (2×2) |
+| 4:5 | `portrait-4x5` (1×1, 4:5 ratio) | `portrait-4x5-lg` (1×2 span) |
+| 3:4 | `portrait-3x4` (1×1, 3:4 ratio) | `portrait-3x4-lg` (1×2 span) |
+| 2:3 | `portrait-2x3` (1×1, 2:3 ratio) | `portrait-2x3-lg` (1×3 span) |
+| 3:2 | `landscape-3x2` (1×1, 3:2 ratio) | `landscape-3x2-lg` (2×1 span) |
+| 16:9 | `landscape-16x9` (1×1, 16:9 ratio) | `landscape-16x9-lg` (2×1 span) |
+| Auto | Use native aspect ratio, 1 col | — |
+
+**Key Changes:**
+1. Each cell has its own CSS `aspect-ratio` matching the chosen ratio — no more forced 3:4 for everything
+2. "Prominent" variants span extra grid cells for visual emphasis
+3. `auto` fallback: use the actual image dimensions from `getOptimizedImage()` to set `aspect-ratio` dynamically — no cropping
+4. Update schema, CMS configs (all 3), and GalleryImage/GalleryPage components
+5. Mobile: all images use their chosen ratio in a single column (no spanning)
+
+**Status:** Not Started
+**Effort:** 4-6 hours
+**Priority:** P2 (Medium - important for gallery presentation)
+
+---
+
+### Color Wheel Discovery ("Spin to Discover")
+
+**Goal:** A playful discovery feature — spin a hue-based color wheel/ring, watch it animate to a random landing, and get redirected to a random image matching that color family.
+
+**Concept:**
+- Visual color wheel using a conic gradient mapped to the 360° hue spectrum
+- Segments correspond to color families (red, orange, yellow, green, teal, blue, purple, pink)
+- User taps "spin" → wheel animates with deceleration easing → lands on a color
+- Redirects to a random gallery image matching that color family
+- Could live as a standalone page (`/discover`) or a modal triggered from gallery
+
+**Technical Approach:**
+1. Conic gradient ring via CSS `conic-gradient()` with segments matching `getColorFamily()` boundaries
+2. CSS rotation animation with cubic-bezier easing for realistic deceleration
+3. JS picks random target angle, maps to color family, selects random image from that family
+4. View Transition or crossfade animation to the selected image's post page
+
+**Status:** Not Started
+**Effort:** 4-6 hours
+**Priority:** P3 (Low - fun discovery feature, not critical)
 
 ---
 
@@ -1801,13 +1841,13 @@ For true distortion/refraction effect like Apple's implementation:
 3. Optional: featured images get special sizing (e.g., always landscape-span or hero-size)
 4. Drag-and-drop ordering in CMS if Sveltia supports it
 
-**Status:** ⏳ Not Started
+**Status:** Not Started
 **Effort:** 4-6 hours
 **Priority:** P2 (Medium - important for first impressions)
 
 ---
 
-## 📋 Phase 4: Business Architecture
+## Phase 4: Business Architecture
 
 ### Multi-Template System
 
@@ -1834,7 +1874,7 @@ For true distortion/refraction effect like Apple's implementation:
   └── config.yaml     # Branding, colors, fonts
 ```
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 1-2 weeks  
 **Priority:** P3 (Low - after validation)
 
@@ -1860,7 +1900,7 @@ fs.writeFileSync('analytics-export.csv', generateCSV(analytics));
 - Template as npm package or submodule
 - Can fork/modify/leave anytime
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 1 week  
 **Priority:** P3 (Low - after validation)
 
@@ -1885,7 +1925,7 @@ npx create-photo-portfolio
 # - Documentation
 ```
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 2-3 weeks  
 **Priority:** P3 (Low - after validation)
 
@@ -1893,7 +1933,7 @@ npx create-photo-portfolio
 
 ### CMS for Non-Technical Users
 
-**Status:** ✅ Complete - Sveltia CMS deployed with GitHub OAuth
+**Status:** Complete - Sveltia CMS deployed with GitHub OAuth
 
 **Current Configuration:**
 - Backend: GitHub OAuth via Cloudflare Pages Functions
@@ -1911,7 +1951,7 @@ npx create-photo-portfolio
 
 ---
 
-## 📋 Phase 5: Commerce Layer (Optional)
+## Phase 5: Commerce Layer (Optional)
 
 **Architecture:**
 ```
@@ -1928,79 +1968,13 @@ Commerce API (hosted service, optional $49/mo)
 - Portfolio: $799 one-time (own forever)
 - Commerce: $49/month (only when selling)
 
-**Status:** ⏳ Not Started  
+**Status:** Not Started  
 **Effort:** 3-6 months  
 **Priority:** P4 (Future - needs validation first)
 
 ---
 
-## 🎯 Success Metrics
-
-### Personal Site (Current Month)
-- [ ] LCP < 1s on mobile
-- [ ] 100/100 Lighthouse performance
-- [ ] OpenGraph score: 90+/100
-- [ ] RSS subscribers: 10
-- [ ] Email subscribers: 25
-- [ ] 5 webmentions from other sites
-
-### Business Validation (Month 2)
-- [ ] 50+ landing page signups
-- [ ] 10 beta testers committed
-- [ ] 5 completed beta sites
-- [ ] $2,000 in beta revenue
-- [ ] 3 testimonials/case studies
-
-### Business Launch (Month 6)
-- [ ] 25 paying customers ($799 setup)
-- [ ] 10 managed hosting ($20/mo)
-- [ ] 5 commerce tier ($49/mo)
-- [ ] $20K+ revenue
-- [ ] 4.5+ star reviews
-
----
-
-## 📅 This Week's Sprint (Feb 25 - Mar 3)
-
-**Phase 1 Status - Core Performance (COMPLETE):**
-1. ✅ Image optimization (OptimizedImage.astro + build script)
-2. ✅ Open Graph meta tags (built into Base.astro)
-3. ✅ Security headers (public/_headers)
-4. ✅ RSS feed (src/pages/rss.xml.ts)
-5. ✅ Email newsletter signup (NewsletterSignup.astro)
-6. ✅ View transitions (Base.astro)
-7. ✅ Color extraction (extractColors utility)
-
-**Current Priority - Schema.org & Modern CSS:**
-1. ⏳ Structured data (Schema.org) for posts - 1hr
-2. ⏳ Add text-wrap: balance to headings - 15min
-3. ⏳ Independent transforms for hover effects - 30min
-4. ⏳ OKLCH color upgrade for extraction - 2hrs
-5. ⏳ Scroll-linked animations for gallery - 1hr
-
-**Phase 2.5 - Mobile CMS (Pending):**
-6. ⏳ Quick-posts collection in CMS config - 1hr
-7. ⏳ Settings JSON files (features, homepage, nav) - 1hr
-8. ⏳ PWA manifest for installable CMS - 30min
-
-**Stretch Goals:**
-- Container queries for responsive gallery
-- Color-mix for dynamic overlays
-- Preloading strategy
-
-**Total Remaining Effort:** ~8-10 hours
-
-**Achieved Outcomes:**
-- ✅ Modern image formats (AVIF/WebP)
-- ✅ Full OG/Twitter Card support
-- ✅ RSS + Newsletter ready
-- ✅ View transitions working
-- ✅ Dynamic color theming
-- ✅ Color-based gallery filtering (by color family)
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 **Current:**
 - Astro 5 (static generation)
@@ -2018,7 +1992,7 @@ Commerce API (hosted service, optional $49/mo)
 
 ---
 
-## 📚 Resources
+## Resources
 
 **Development:**
 - Astro Docs: https://docs.astro.build
@@ -2037,7 +2011,7 @@ Commerce API (hosted service, optional $49/mo)
 
 ---
 
-## 🔄 Document Updates
+## Document Updates
 
 **How to Update This Plan:**
 
@@ -2079,10 +2053,118 @@ When we discuss new features/changes:
 - 2026-03-04: Added Gallery Mosaic Curation task (Phase 3)
 - 2026-03-04: Enhanced Liquid Glass header — scroll-reactive blur (12→24px), dynamic shimmer animation, prismatic edge refraction, edge dissolution fade zone
 - 2026-03-04: Applied liquid glass styling to FilterBar — glass pills with backdrop-blur, inset highlights, color-tinted glass for color swatches, glass search input, glass tag sidebar
+- 2026-03-07: Completed CMS Color Preview & Adjustment — prebuild extraction script, glowColor schema simplified to hex, color picker in all CMS configs, preview pane shows only cover image
+- 2026-03-07: Completed bilingual page consolidation (HomePage, FeedPage, GalleryPage, AboutPage, PostPage)
+- 2026-03-07: Added Upcoming Features section: Bulk Import Script (+ platform importers), AI Auto-Tagging, Private Gallery, Comment Section
+- 2026-03-08: Added Image Sharing & Canonical Source (P1 — site as single image source, copy URL, size picker, download with copyright)
+- 2026-03-08: Added Gallery Aspect Ratio & Sizing Overhaul (P2 — proper ratios with regular + prominent levels, fix auto to use native ratio)
+- 2026-03-08: Marked Color-Based Filtering as Complete (was already implemented)
+- 2026-03-08: Added EXIF display, overrides, exifSummary CMS field, dateTaken CMS field
 
 ---
 
-## 💡 Ideas Parking Lot
+## Upcoming Features
+
+### Bulk Import Script
+
+**Goal:** CLI script to import a folder of images into the site in one command, enabling quick site setup with a different image base (template reuse).
+
+**Workflow:**
+1. Drop images into a folder
+2. Run import script → copies to `public/images/uploads/`, generates `.md` posts with minimal frontmatter
+3. `npm run prebuild` auto-populates colors, optimized images, depth maps
+4. Review/adjust in CMS
+
+**Platform Importers:**
+- **WordPress** (WXR/XML export) — parse posts, dates, tags/categories, featured images, body content
+- **Squarespace** (XML export) — similar structure
+- **Smugmug/Flickr** (API) — download media, extract metadata
+
+**Key Challenges:**
+- Download media, rewrite image URLs to local paths
+- HTML → Markdown conversion (via `turndown`)
+- Map source categories/tags to site's tag vocabulary
+
+**Status:** Not Started
+**Effort:** 8-12 hours (basic), 20+ hours (with platform importers)
+**Priority:** P2 (Medium - enables template product)
+
+---
+
+### AI Auto-Tagging
+
+**Goal:** Vision API classifies images against the site's tag vocabulary for automated tagging.
+
+**Approach:**
+- Use Claude or OpenAI Vision API — send image + list of existing tags → get suggested tags
+- Runs during bulk import or as standalone prebuild step
+- Maps AI output to existing tags in `src/data/tags/` for consistency
+
+**Use Cases:**
+- Great for niche portfolios (wildlife: species, habitat; street: urban, night, etc.)
+- Bulk import of hundreds of images without manual tagging
+- User reviews/adjusts in CMS after — AI provides first pass, human refines
+
+**Status:** Not Started
+**Effort:** 4-6 hours
+**Priority:** P2 (Medium - high value for bulk import workflow)
+
+---
+
+### Private Gallery
+
+#### Phase 1 — Quick win (no code)
+- Protect `/gallery/private` route using **Cloudflare Access**
+  - Options: email OTP, shared passcode, or Google login
+  - Free tier, zero Astro changes needed
+
+#### Phase 2 — Optional: in-page password prompt
+- Enable Astro **hybrid/SSR output** for protected routes
+- Add middleware to check cookie, gate the page
+- Show password form → set cookie on success
+
+**Status:** Not Started
+**Effort:** Phase 1: 30 min, Phase 2: 4-6 hours
+**Priority:** P3 (Low - future feature)
+
+---
+
+### Comment Section
+
+#### Phase 1 — Giscus (ship fast)
+- Install Giscus on post pages
+  - Powered by GitHub Discussions
+  - Drop-in `<script>` tag, works with static Astro
+  - Free, no ads, spam-resistant (requires GitHub account)
+
+#### Phase 2 — Cloudflare D1 + Pages Functions (anonymous comments)
+- Create **D1 database** with `comments` table
+  - Columns: `id`, `post_slug`, `author_name`, `message`, `timestamp`, `approved`
+- Write **Pages Function** endpoints
+  - `POST /api/comments` — submit a comment
+  - `GET /api/comments?slug=...` — fetch approved comments for a post
+- Add **Cloudflare Turnstile** on the comment form (free, invisible CAPTCHA)
+- Add **honeypot field** to the form (hidden input, reject if filled)
+- Implement **IP rate limiting** via Cloudflare KV
+  - Store `ip → count` with TTL, reject above threshold
+- Sanitize all input server-side before writing to D1
+- Escape all comment output (never render raw HTML)
+
+#### Phase 3 — Moderation
+- Comments default to `approved = false`
+- Build small admin route to approve/reject comments
+- Protect admin route with **Cloudflare Access**
+- Set up **new comment notifications** via Resend or Mailchannels
+
+**Note:** Phase 2 stack is **100% free** (D1, KV, Functions, Turnstile all on CF free tier)
+
+**Status:** Not Started
+**Effort:** Phase 1: 30 min, Phase 2: 8-12 hours, Phase 3: 4-6 hours
+**Priority:** P3 (Low - future feature)
+
+---
+
+## Ideas Parking Lot
 
 **Future Considerations (Not Prioritized Yet):**
 

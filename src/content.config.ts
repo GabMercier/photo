@@ -31,18 +31,18 @@ const about = defineCollection({
     tagline: z.object({
       en: z.string().optional().default(''),
       fr: z.string().optional().default(''),
-    }).optional(),
+    }).nullable().optional().transform(val => val ?? undefined),
     // Contact/social links (optional)
     contact: z.object({
       email: z.string().optional(),
       instagram: z.string().optional(),
       twitter: z.string().optional(),
-    }).optional(),
+    }).nullable().optional().transform(val => val ?? undefined),
     // Bio content (optional, bilingual)
     bio: z.object({
       en: z.string().optional().default(''),
       fr: z.string().optional().default(''),
-    }).optional(),
+    }).nullable().optional().transform(val => val ?? undefined),
   }),
 });
 
@@ -66,6 +66,7 @@ const posts = defineCollection({
 
     // --- Dates & status ---
     date: z.coerce.date().nullable().optional().transform(val => val ?? new Date()),
+    dateTaken: z.coerce.date().nullable().optional(), // EXIF capture date (auto-filled by extract-exif script)
     updatedDate: z.coerce.date().nullable().optional(),
     draft: z.boolean().nullable().optional().transform(val => val ?? false),
     private: z.boolean().nullable().optional().transform(val => val ?? false), // Protected content (Cloudflare Access)
@@ -83,17 +84,17 @@ const posts = defineCollection({
       focalPoint: z.enum(['left', 'center', 'right']).nullable().optional().default('center'),
     }),
     // Ambient glow color (YouTube-style effect)
-    // Extracted from image or manually specified
-    glowColor: z.object({
-      r: z.number().min(0).max(255),
-      g: z.number().min(0).max(255),
-      b: z.number().min(0).max(255),
-      hex: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
-    }).optional(),
-    // Secondary accent color for dual-tone effects
-    // Manually picked in CMS or extracted from image palette
-    secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional()
+    // Auto-extracted by prebuild script, editable in CMS
+    glowColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional()
       .or(z.literal('').transform(() => null)),
+    // Secondary accent colors for dual-tone effects and color filtering
+    // Manually picked in CMS — supports multiple colors per image
+    secondaryColors: z.array(
+      z.string().regex(/^#[0-9A-Fa-f]{6}$/)
+    ).nullable().optional().transform(val => val ?? [])
+      // Legacy: handle single secondaryColor string migrated to array
+      .or(z.string().regex(/^#[0-9A-Fa-f]{6}$/).transform(val => [val]))
+      .or(z.literal('').transform(() => [])),
     // Additional images for series posts
     images: z.array(
       z.object({
@@ -102,9 +103,14 @@ const posts = defineCollection({
           en: z.string().optional().default(''),
           fr: z.string().optional().default(''),
         }).nullable().optional().transform(val => val ?? { en: '', fr: '' }),
-        // Optional EXIF-style metadata (for future use)
+        // Manual EXIF overrides (fills gaps in auto-extracted data, same as cover)
         camera: z.string().nullable().optional(),
         lens: z.string().nullable().optional(),
+        focalLength: z.string().nullable().optional(),
+        aperture: z.string().nullable().optional(),
+        shutterSpeed: z.string().nullable().optional(),
+        iso: z.string().nullable().optional(),
+        // Legacy field (kept for backwards compatibility)
         settings: z.string().nullable().optional(),
       })
     ).nullable().optional(),
@@ -129,6 +135,23 @@ const posts = defineCollection({
     homepageDefault: z.boolean().nullable().optional().transform(val => val ?? false),
     // Enable 3D depth parallax effect on post detail page
     depth3d: z.boolean().nullable().optional().transform(val => val ?? false),
+    // Auto-extracted EXIF summary (written by extract-exif script, visible in CMS)
+    exifSummary: z.string().nullable().optional(),
+    // Show EXIF metadata on post page (camera, lens, settings)
+    showExif: z.boolean().nullable().optional().transform(val => val ?? false),
+    // Which EXIF fields to display (default: all except dateTaken)
+    exifFields: z.array(
+      z.enum(['camera', 'lens', 'focalLength', 'aperture', 'shutterSpeed', 'iso', 'dateTaken'])
+    ).nullable().optional().transform(val => val ?? ['camera', 'lens', 'focalLength', 'aperture', 'shutterSpeed', 'iso']),
+    // Manual EXIF overrides for cover image (fills gaps from legacy/manual lenses)
+    exifOverrides: z.object({
+      camera: z.string().nullable().optional(),
+      lens: z.string().nullable().optional(),
+      focalLength: z.string().nullable().optional(),
+      aperture: z.string().nullable().optional(),
+      shutterSpeed: z.string().nullable().optional(),
+      iso: z.string().nullable().optional(),
+    }).nullable().optional(),
   }),
 });
 

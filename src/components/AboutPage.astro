@@ -9,6 +9,7 @@ import Base from '@layouts/Base.astro';
 import { getCollection } from 'astro:content';
 import { getLocaleFromUrl, localized, t } from '@utils/i18n';
 import OptimizedImage from '@components/OptimizedImage.astro';
+import { getOgImageData } from '@utils/optimizedImage';
 
 const locale = getLocaleFromUrl(Astro.url);
 
@@ -20,9 +21,19 @@ if (!about) {
 }
 
 const { profileImage } = about.data;
+
+// OG image: use profile image
+const ogData = profileImage ? await getOgImageData(profileImage.src) : null;
+const ogImageAlt = profileImage ? (localized(profileImage.alt, locale) || '') : '';
 ---
 
-<Base title={t('nav.about', locale)}>
+<Base
+  title={t('nav.about', locale)}
+  ogImage={ogData?.ogImage}
+  ogImageAlt={ogImageAlt}
+  ogImageWidth={ogData?.ogImageWidth}
+  ogImageHeight={ogData?.ogImageHeight}
+>
   <section class="about container">
     {profileImage && (
       <div class="about__image-wrap">
