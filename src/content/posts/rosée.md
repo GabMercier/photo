@@ -19,5 +19,5 @@ private: false
 featured: false
 homepageCarousel: false
 homepageDefault: false
-exifSummary: NIKON D600  ·  0.0 mm f/0.0  ·  1/160  ·  ISO 800
+exifSummary: 'NIKON D600  ·  0.0 mm f/0.0  ·  1/160  ·  ISO 800'
 ---
