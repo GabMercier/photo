@@ -1,6 +1,6 @@
 # Photography Portfolio Development Roadmap
 
-**Last Updated:** March 7, 2026
+**Last Updated:** October 25, 2026
 **Project:** gphoto.pages.dev  
 **Purpose:** Personal portfolio → Template business foundation
 
@@ -202,8 +202,8 @@ description:
 ### Astro Version Upgrade
 
 **Status:** Complete
-**Completed:** Already at Astro 5.17.3 — no upgrade needed
-**Effort:** N/A
+**Completed:** 2026-10-25 — upgraded 5.17 → 7.4. Collections moved to the Content Layer glob loader (legacy `type: 'content'` was removed in Astro 6), `<ViewTransitions />` → `<ClientRouter />`, `z` imported from `astro/zod` (Zod 4), post slugs now `entry.id`, date sorts made deterministic (newest id first within a day), `compressHTML: true` keeps the HTML-aware whitespace handling (Astro 7 defaults to 'jsx'). **Gotcha fixed:** Vite 8 minifies CSS with LightningCSS, and because Astro builds with target `esnext` it receives no browser targets, so it folded `animation-timeline: view()` into the `animation` shorthand (invalid in browsers) — the feed cards stayed at opacity 0 and the gallery lost its scroll-driven reveal. `vite.build.cssTarget` now lists Vite's baseline browsers (parcel-bundler/lightningcss#1369); side effect: `-webkit-backdrop-filter` prefixes are emitted for older Safari. Node 22.23+ required (`.nvmrc`, `engines`). Also: sharp 0.35, MDX 8, marked 18; CI on Node 22 with checkout/setup-node v7 and wrangler-action v4. Build output verified identical to the 5.17 build apart from same-day post ordering.
+**Effort:** 2 hours
 **Priority:** P1 (High)
 
 ---
@@ -1977,7 +1977,7 @@ Commerce API (hosted service, optional $49/mo)
 ## Tech Stack
 
 **Current:**
-- Astro 5 (static generation)
+- Astro 7 (static generation)
 - Sveltia CMS (Git-based editing via GitHub OAuth)
 - Sharp (image processing)
 - Cloudflare Pages (hosting + OAuth Functions)
@@ -2060,6 +2060,8 @@ When we discuss new features/changes:
 - 2026-03-08: Added Gallery Aspect Ratio & Sizing Overhaul (P2 — proper ratios with regular + prominent levels, fix auto to use native ratio)
 - 2026-03-08: Marked Color-Based Filtering as Complete (was already implemented)
 - 2026-03-08: Added EXIF display, overrides, exifSummary CMS field, dateTaken CMS field
+- 2026-10-25: Upgraded Astro 5.17 → 7.4 (Content Layer collections, ClientRouter, Zod 4, Node 22.23+); CI on Node 22 with checkout/setup-node v7 and wrangler-action v4; added `.nvmrc`; sorts deterministic
+- 2026-10-25: Fixed LightningCSS folding `animation-timeline` into the `animation` shorthand under Vite 8 by setting `vite.build.cssTarget` (feed cards were invisible otherwise)
 
 ---
 

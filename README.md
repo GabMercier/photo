@@ -18,12 +18,14 @@ A bilingual photography portfolio built with Astro. Features dynamic color themi
 
 ## Tech Stack
 
-- **Astro 5** — Static site generation
+- **Astro 7** — Static site generation
 - **Sveltia CMS** — Git-based visual editor
 - **Sharp** — Image processing & color extraction
 - **View Transitions API** — Smooth navigation
 
 ## Development
+
+Requires Node 22.23 or newer (see `.nvmrc`; with nvm, run `nvm use` in the project folder).
 
 ```bash
 npm install
