@@ -8,7 +8,7 @@
 import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import Slideshow from '@components/Slideshow.astro';
-import { ViewTransitions } from 'astro:transitions';
+import { ClientRouter } from 'astro:transitions';
 import { getLocaleFromUrl, t } from '@utils/i18n';
 import '@styles/global.css';
 
@@ -151,7 +151,7 @@ const websiteSchema = {
     <slot name="head" />
 
     <!-- View Transitions for smooth navigation -->
-    <ViewTransitions />
+    <ClientRouter />
   </head>
 
   <body style={accentStyle}>

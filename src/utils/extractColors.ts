@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 import { join } from 'path';
 
 export interface DominantColor {
@@ -216,7 +216,7 @@ export async function extractDominantColor(imagePath: string): Promise<DominantC
   const cached = dominantColorCache.get(imagePath);
   if (cached) return cached;
   try {
-    let sharpInstance: sharp.Sharp;
+    let sharpInstance: Sharp;
 
     // Check if it's a remote URL
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
@@ -340,7 +340,7 @@ export async function extractColorMetadata(imagePath: string): Promise<ColorMeta
  */
 async function isImageGrayscale(imagePath: string): Promise<boolean> {
   try {
-    let sharpInstance: sharp.Sharp;
+    let sharpInstance: Sharp;
 
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       const response = await fetch(imagePath);

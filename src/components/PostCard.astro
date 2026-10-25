@@ -52,7 +52,7 @@ const glow = glowColor ? hexToRgb(glowColor) : { r: 58, g: 68, b: 71 };
 const glow2 = secondaryColors.length > 0 ? hexToRgb(secondaryColors[0]) : { r: glow.r, g: glow.g, b: glow.b };
 
 // Remove .md extension from post ID
-const slug = post.slug || post.id.replace(/\.md$/, '');
+const slug = post.id;
 const postUrl = localePath(`/posts/${slug}`, locale);
 const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
   year: 'numeric',

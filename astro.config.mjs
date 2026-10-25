@@ -45,5 +45,5 @@ export default defineConfig({
   ],
 
   // Enable View Transitions for smooth page navigation
-  // (Applied in the Base layout via <ViewTransitions />)
+  // (Applied in the Base layout via <ClientRouter />)
 });

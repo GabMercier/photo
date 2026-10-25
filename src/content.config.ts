@@ -8,7 +8,9 @@
  * Think of it like one Dataverse table with different views.
  */
 
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
+import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
 
 /**
  * About Collection
@@ -17,7 +19,7 @@ import { defineCollection, z } from 'astro:content';
  * Profile image + bilingual bio content in markdown body.
  */
 const about = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.md', base: './src/content/about' }),
   schema: z.object({
     // Profile image (displayed as circular) - optional
     profileImage: z.object({
@@ -47,7 +49,7 @@ const about = defineCollection({
 });
 
 const posts = defineCollection({
-  type: 'content', // Markdown/MDX files with frontmatter
+  loader: glob({ pattern: '**/*.md', base: './src/content/posts' }), // Markdown files with frontmatter
   schema: z.object({
     // --- CMS identifier (auto-generated UUID, not displayed) ---
     id: z.string().optional(),

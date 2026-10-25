@@ -16,7 +16,7 @@ const locale = getLocaleFromUrl(Astro.url);
 
 const allPosts = (await getCollection('posts', ({ data }) => {
   return !data.draft && !data.private;
-})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf() || b.id.localeCompare(a.id));
 
 // Build timeline data: group posts by year and month
 interface TimelineEntry {

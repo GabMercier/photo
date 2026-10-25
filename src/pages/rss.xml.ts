@@ -24,7 +24,7 @@ export async function GET(context: APIContext) {
     description: 'Latest photography work by Gabriel Mercier',
     site: context.site || 'https://gmbpho.to',
     items: sortedPosts.map(post => {
-      const slug = post.slug || post.id.replace(/\.md$/, '');
+      const slug = post.id;
       return {
         title: post.data.title?.en || post.data.title?.fr || 'Untitled',
         pubDate: post.data.date,

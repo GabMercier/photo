@@ -10,7 +10,7 @@
  * Or via: npm run optimize-images
  */
 
-import sharp from 'sharp';
+import sharp, { type Metadata } from 'sharp';
 import { readdir, mkdir, writeFile, readFile, stat } from 'fs/promises';
 import { join, parse, extname } from 'path';
 import { existsSync } from 'fs';
@@ -119,7 +119,7 @@ async function getImageFiles(dir: string): Promise<string[]> {
 async function processImage(
   inputPath: string,
   outputDir: string
-): Promise<{ variants: ImageVariant[]; metadata: sharp.Metadata }> {
+): Promise<{ variants: ImageVariant[]; metadata: Metadata }> {
   const variants: ImageVariant[] = [];
   const { name: rawName } = parse(inputPath);
   const name = rawName.toLowerCase();

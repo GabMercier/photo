@@ -29,7 +29,7 @@ export async function getStaticPaths() {
   );
 
   return postsWithColors.map(post => ({
-    params: { slug: post.slug || post.id.replace(/\.md$/, '') },
+    params: { slug: post.id },
     props: { post },
   }));
 }

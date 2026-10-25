@@ -36,7 +36,7 @@ const locale = getLocaleFromUrl(Astro.url);
 
 const posts = (await getCollection('posts', ({ data }) => {
   return !data.draft && !data.private;
-})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf() || b.id.localeCompare(a.id));
 
 // Extract all unique tags across all posts
 const allTags = [...new Set(posts.flatMap(p => p.data.tags))].sort();
@@ -65,7 +65,7 @@ const colorFamiliesSet = new Set<ColorFamily>();
 
 // Extract colors from images at build time
 for (const post of posts) {
-  const slug = post.slug || post.id.replace(/\.md$/, '');
+  const slug = post.id;
   const postUrl = localePath(`/posts/${slug}`, locale);
   const postTitle = localized(post.data.title, locale) || t('slideshow.viewPost', locale);
   const tags = post.data.tags;

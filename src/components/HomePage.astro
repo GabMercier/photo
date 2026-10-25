@@ -18,11 +18,11 @@ const locale = getLocaleFromUrl(Astro.url);
 // Fetch posts marked for carousel (glowColor populated by prebuild script)
 const carouselPosts = (await getCollection('posts', ({ data }) => {
   return data.homepageCarousel && !data.draft && !data.private;
-})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+})).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf() || b.id.localeCompare(a.id));
 
 // Find default post
 const defaultPost = carouselPosts.find(p => p.data.homepageDefault);
-const defaultSlug = defaultPost?.slug;
+const defaultSlug = defaultPost?.id;
 
 // Get initial accent from default post or first post
 const initialPost = defaultPost || carouselPosts[0];
@@ -33,7 +33,7 @@ const initialAccent = deriveAccentFromGlow(initialGlow.r, initialGlow.g, initial
 
 // OG image: use featured post, fallback to carousel default, fallback to latest
 const allPostsForOg = (await getCollection('posts', ({ data }) => !data.draft && !data.private))
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf() || b.id.localeCompare(a.id));
 const featuredPost = allPostsForOg.find(p => p.data.featured);
 const ogPost = featuredPost || initialPost || allPostsForOg[0];
 

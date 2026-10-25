@@ -14,7 +14,7 @@ import { getOgImageData } from '@utils/optimizedImage';
 const locale = getLocaleFromUrl(Astro.url);
 
 const aboutEntries = await getCollection('about');
-const about = aboutEntries.find(entry => entry.id === 'about.md') || aboutEntries[0];
+const about = aboutEntries.find(entry => entry.id === 'about') || aboutEntries[0];
 
 if (!about) {
   throw new Error('No about content found. Create src/content/about/about.md');

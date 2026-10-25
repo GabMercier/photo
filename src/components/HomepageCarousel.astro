@@ -25,7 +25,7 @@ interface Props {
 }
 
 const { carouselPosts, defaultPostSlug, locale } = Astro.props;
-const defaultIndex = carouselPosts.findIndex(p => p.slug === defaultPostSlug);
+const defaultIndex = carouselPosts.findIndex(p => p.id === defaultPostSlug);
 const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
 ---
 
@@ -45,7 +45,7 @@ const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
       const { title, coverImage, glowColor } = post.data;
       const glow = glowColor ? hexToRgb(glowColor) : { r: 58, g: 68, b: 71 };
       const accent = deriveAccentFromGlow(glow.r, glow.g, glow.b);
-      const slug = post.slug || post.id.replace(/\.md$/, '');
+      const slug = post.id;
       const postUrl = localePath(`/posts/${slug}`, locale);
       const isInitial = index === initialIndex;
 
