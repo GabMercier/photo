@@ -49,6 +49,31 @@ coverImage:
     fr: "Description en français"
 ```
 
+Where a photo was made and which body of work it belongs to:
+
+```yaml
+location:
+  name: "Quai de Baie-Saint-Paul"   # spot, as written
+  city: "Baie-Saint-Paul"
+  region: "Québec"
+  country: CA                       # ISO code, translated at build time
+project: charlevoix-2025            # src/content/projects/charlevoix-2025.md
+```
+
+Projects group posts across time (a trip, a place, a series) and get their own
+pages at `/projects`. Posts with several images are a different thing
+(`postType: series`).
+
+## Importing a folder of photos
+
+```bash
+npm run import -- ~/Pictures/export/charlevoix --project charlevoix-2025 --dry-run
+```
+
+Reads Lightroom's title, caption, keywords, location and alt text from the
+JPEGs, resizes them to 2400 px, writes the posts and runs the prebuild. See
+[docs/IMPORT.md](docs/IMPORT.md).
+
 ## License
 
 MIT

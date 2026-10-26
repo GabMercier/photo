@@ -12,6 +12,48 @@ import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 
+// ---------------------------------------------------------------------------
+// Shared field helpers
+// ---------------------------------------------------------------------------
+
+/** Bilingual text: { en, fr }, missing sides default to '' */
+const bilingual = () => z.object({
+  en: z.string().optional().default(''),
+  fr: z.string().optional().default(''),
+}).nullable().optional().transform(val => val ?? { en: '', fr: '' });
+
+/** Empty strings and nulls from the CMS become undefined */
+const optionalText = () => z.string().nullable().optional()
+  .transform(val => (val === null || val === undefined || val.trim() === '' ? undefined : val.trim()));
+
+/** Optional coordinate; '' / null from the CMS become undefined */
+const coordinate = (limit: number) => z.preprocess(
+  val => (val === '' || val === null ? undefined : val),
+  z.coerce.number().min(-limit).max(limit).optional()
+);
+
+/**
+ * Location — where a photo or a project was made.
+ *
+ * Mirrors the IPTC location fields Lightroom writes (sublocation, city,
+ * state/province, country, GPS). Place names are stored once, as written;
+ * the country is an ISO 3166-1 alpha-2 code (CA, FR, IS) that the site
+ * translates at build time (see src/utils/location.ts). A plain country
+ * name is accepted too and shown as-is.
+ */
+const locationSchema = () => z.object({
+  name: optionalText(),     // spot / sublocation: "Vieux-Québec"
+  city: optionalText(),
+  region: optionalText(),   // province / state
+  country: optionalText(),  // ISO code preferred
+  lat: coordinate(90),
+  lng: coordinate(180),
+}).nullable().optional().transform(val => {
+  if (!val) return undefined;
+  const hasAny = Object.values(val).some(v => v !== undefined);
+  return hasAny ? val : undefined;
+});
+
 /**
  * About Collection
  *
@@ -72,6 +114,14 @@ const posts = defineCollection({
     updatedDate: z.coerce.date().nullable().optional(),
     draft: z.boolean().nullable().optional().transform(val => val ?? false),
     private: z.boolean().nullable().optional().transform(val => val ?? false), // Protected content (Cloudflare Access)
+
+    // --- Where & which body of work ---
+    // Filled by scripts/import-photos.ts from Lightroom metadata, editable in the CMS
+    location: locationSchema(),
+    // Slug of a `projects` entry (src/content/projects/<slug>.md): a trip, a
+    // place or a series of work. Not the same as postType 'series', which is
+    // one post holding several images.
+    project: optionalText(),
 
     // --- Images ---
     // Cover image displayed in feed cards and as hero
@@ -157,7 +207,34 @@ const posts = defineCollection({
   }),
 });
 
+/**
+ * Projects Collection
+ *
+ * A project groups posts across time: a trip (Iceland 2026), a place worked
+ * repeatedly (rue Saint-Jean through the seasons), a body of work. Posts
+ * point at a project with `project: <slug>`; the project page lists them.
+ * Cover, dates and counts are derived from the posts when not set here.
+ */
+const projects = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/projects' }),
+  schema: z.object({
+    title: bilingual(),
+    description: bilingual(),
+    // Flavour of project, shown as a small badge; 'other' shows nothing
+    kind: z.enum(['travel', 'local', 'astro', 'other']).nullable().optional().transform(val => val ?? 'other'),
+    location: locationSchema(),
+    // Optional explicit cover; defaults to the newest post's cover image
+    coverImage: z.object({
+      src: z.string(),
+      alt: bilingual(),
+    }).nullable().optional().transform(val => val ?? undefined),
+    featured: z.boolean().nullable().optional().transform(val => val ?? false),
+    draft: z.boolean().nullable().optional().transform(val => val ?? false),
+  }),
+});
+
 export const collections = {
   posts,
   about,
+  projects,
 };

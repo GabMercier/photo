@@ -1,0 +1,296 @@
+---
+/**
+ * ProjectPage Component
+ *
+ * Shared project page used by the EN and FR routes: cover, title,
+ * location, date range, intro text, then every post of the project as a
+ * grid of cards.
+ */
+import Base from '@layouts/Base.astro';
+import PostCard from '@components/PostCard.astro';
+import OptimizedImage from '@components/OptimizedImage.astro';
+import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import { getLocaleFromUrl, t, localized, localePath } from '@utils/i18n';
+import { formatLocation, hasLocation, locationToPlace } from '@utils/location';
+import { getOgImageData } from '@utils/optimizedImage';
+import { deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
+import { summarizeProject, formatDateRange } from '@utils/projects';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+}
+
+const { project } = Astro.props;
+const locale = getLocaleFromUrl(Astro.url);
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.private);
+const summary = summarizeProject(project, allPosts);
+const { posts, cover } = summary;
+
+const title = localized(project.data.title, locale) || project.id;
+const description = localized(project.data.description, locale);
+const locationText = hasLocation(project.data.location) ? formatLocation(project.data.location, locale) : '';
+const place = hasLocation(project.data.location) ? locationToPlace(project.data.location, locale) : undefined;
+const dateRange = formatDateRange(summary.oldest, summary.newest, locale);
+const count = `${posts.length} ${t(posts.length === 1 ? 'project.photo' : 'project.photos', locale)}`;
+const meta = [locationText, dateRange, count].filter(Boolean);
+
+// Theme the page after the cover's glow color, like a post page
+const glow = summary.glowColor ? hexToRgb(summary.glowColor) : { r: 58, g: 68, b: 71 };
+const accent = deriveAccentFromGlow(glow.r, glow.g, glow.b);
+
+const { Content } = await render(project);
+const hasBody = Boolean(project.body && project.body.trim());
+
+const ogData = cover ? await getOgImageData(cover.src) : null;
+
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const pageUrl = new URL(Astro.url.pathname, siteUrl).href;
+const projectSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: title,
+  description: description || undefined,
+  url: pageUrl,
+  author: { '@type': 'Person', name: 'Gabriel Mercier', url: siteUrl },
+  ...(place && { contentLocation: place }),
+  mainEntity: {
+    '@type': 'ImageGallery',
+    name: title,
+    numberOfItems: posts.length,
+  },
+};
+---
+
+<Base
+  title={title}
+  description={description}
+  ogImage={ogData?.ogImage}
+  ogImageAlt={cover ? (localized(cover.alt, locale) || title) : title}
+  ogImageWidth={ogData?.ogImageWidth}
+  ogImageHeight={ogData?.ogImageHeight}
+  accentHue={accent.hue}
+  accentChroma={accent.chroma}
+  accentLightness={accent.lightness}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(projectSchema)} />
+  </Fragment>
+
+  <article
+    class="project"
+    style={{ '--glow-r': glow.r, '--glow-g': glow.g, '--glow-b': glow.b }}
+  >
+    <a href={localePath('/projects', locale)} class="project__back">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+      <span>{t('misc.backToProjects', locale)}</span>
+    </a>
+
+    {cover && (
+      <div class="project__hero">
+        <OptimizedImage
+          src={cover.src}
+          alt={localized(cover.alt, locale) || title}
+          class="project__hero-image"
+          loading="eager"
+          decoding="sync"
+          fetchpriority="high"
+          sizes="100vw"
+        />
+      </div>
+    )}
+
+    <div class="project__content container container--narrow">
+      <header class="project__header animate-in">
+        {project.data.kind !== 'other' && (
+          <span class="project__kind">{t(`project.kind.${project.data.kind}`, locale)}</span>
+        )}
+        <h1 class="project__title">{title}</h1>
+        {meta.length > 0 && (
+          <p class="project__meta">
+            {meta.map(part => <span>{part}</span>)}
+          </p>
+        )}
+        {description && <p class="project__description">{description}</p>}
+      </header>
+
+      {hasBody && (
+        <div class="project__body prose">
+          <Content />
+        </div>
+      )}
+    </div>
+
+    {posts.length > 0 ? (
+      <div class="project__grid container">
+        {posts.map((post, i) => (
+          <PostCard post={post} index={i} variant="auto" layout="grid" />
+        ))}
+      </div>
+    ) : (
+      <p class="project__empty container">{t('gallery.noResults', locale)}</p>
+    )}
+  </article>
+</Base>
+
+<style>
+  .project {
+    position: relative;
+  }
+
+  /* Page-wide ambient glow in the cover's color */
+  .project::before {
+    content: '';
+    position: fixed;
+    inset: -250px;
+    z-index: -1;
+    background: radial-gradient(
+      ellipse 110% 90% at 40% 30%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.14) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.08) 25%,
+      transparent 70%
+    );
+    filter: blur(60px);
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+  /* Back button — fixed glass pill, same as the post page */
+  .project__back {
+    position: fixed;
+    top: calc(var(--header-height) / 2);
+    transform: translateY(-50%);
+    left: var(--space-md);
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+  }
+
+  .project__back:hover {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: white;
+  }
+
+  .project__hero {
+    position: relative;
+    height: min(60vh, 640px);
+    overflow: hidden;
+  }
+
+  .project__hero :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .project__hero :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Fade the hero into the page */
+  .project__hero::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 40%;
+    background: linear-gradient(transparent, var(--color-bg));
+    pointer-events: none;
+  }
+
+  .project__content {
+    position: relative;
+    z-index: 2;
+    padding-top: var(--space-2xl);
+    padding-bottom: var(--space-xl);
+  }
+
+  .project__header {
+    margin-bottom: var(--space-xl);
+  }
+
+  .project__kind {
+    display: inline-block;
+    margin-bottom: var(--space-sm);
+    padding: 2px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 2px;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-subtle);
+  }
+
+  .project__title {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-sm);
+  }
+
+  .project__meta {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg);
+  }
+
+  .project__meta span:not(:last-child)::after {
+    content: '·';
+    margin: 0 var(--space-sm);
+    color: var(--color-text-subtle);
+  }
+
+  .project__description {
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--color-text-muted);
+  }
+
+  .prose {
+    font-size: var(--text-lg);
+    line-height: 1.75;
+    color: var(--color-text-muted);
+  }
+
+  .prose :global(p) {
+    margin-bottom: var(--space-lg);
+  }
+
+  /* Cards in natural ratio, flowing in columns */
+  .project__grid {
+    columns: 3 280px;
+    column-gap: var(--space-lg);
+    padding-top: var(--space-lg);
+    padding-bottom: var(--space-3xl);
+  }
+
+  .project__empty {
+    color: var(--color-text-muted);
+    padding-bottom: var(--space-3xl);
+  }
+
+  @media (min-width: 1024px) {
+    .project__title {
+      font-size: var(--text-5xl);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .project__hero {
+      height: 42vh;
+    }
+  }
+</style>

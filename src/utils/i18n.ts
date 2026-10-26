@@ -22,6 +22,7 @@ const translations: Record<string, Record<Locale, string>> = {
   'nav.home': { en: 'Home', fr: 'Accueil' },
   'nav.feed': { en: 'Feed', fr: 'Fil' },
   'nav.gallery': { en: 'Gallery', fr: 'Galerie' },
+  'nav.projects': { en: 'Projects', fr: 'Projets' },
   'nav.about': { en: 'About', fr: 'À propos' },
 
   // Gallery / Filters
@@ -36,6 +37,17 @@ const translations: Record<string, Record<Locale, string>> = {
   'post.single': { en: 'Photo', fr: 'Photo' },
   'post.series': { en: 'Series', fr: 'Série' },
   'post.readMore': { en: 'View', fr: 'Voir' },
+
+  // Location & projects
+  'location.label': { en: 'Location', fr: 'Lieu' },
+  'project.label': { en: 'Project', fr: 'Projet' },
+  'project.photo': { en: 'photo', fr: 'photo' },
+  'project.photos': { en: 'photos', fr: 'photos' },
+  'project.empty': { en: 'No projects yet.', fr: 'Aucun projet pour le moment.' },
+  'project.kind.travel': { en: 'Travel', fr: 'Voyage' },
+  'project.kind.local': { en: 'Hyperlocal', fr: 'Hyperlocal' },
+  'project.kind.astro': { en: 'Astro', fr: 'Astro' },
+  'misc.backToProjects': { en: 'Back to projects', fr: 'Retour aux projets' },
 
   // Footer
   'footer.rights': { en: 'All rights reserved.', fr: 'Tous droits réservés.' },

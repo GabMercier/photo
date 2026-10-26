@@ -152,6 +152,63 @@ collections:
         preview: false
         hint: "Auto-filled from photo EXIF data. Use to compare against publication date."
 
+      # --- Location (where the photo was made) ---
+      - label: "Location"
+        name: "location"
+        widget: "object"
+        required: false
+        collapsed: true
+        preview: false
+        summary: "{{fields.name}} {{fields.city}} {{fields.region}} {{fields.country}}"
+        hint: "Where the photo was made. The import script fills this from Lightroom's location fields. Country as a 2-letter ISO code (CA, US, FR, IS…) so it is translated on both sites."
+        fields:
+          - label: "Place / Spot"
+            name: "name"
+            widget: "string"
+            required: false
+            hint: "Sublocation: Vieux-Québec, Quai de Baie-Saint-Paul…"
+          - label: "City"
+            name: "city"
+            widget: "string"
+            required: false
+          - label: "Region / Province"
+            name: "region"
+            widget: "string"
+            required: false
+          - label: "Country (ISO code)"
+            name: "country"
+            widget: "string"
+            required: false
+            hint: "CA, US, FR, IS…"
+          - label: "Latitude"
+            name: "lat"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -90
+            max: 90
+            step: 0.0001
+          - label: "Longitude"
+            name: "lng"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -180
+            max: 180
+            step: 0.0001
+
+      # --- Project (trip, place or body of work) ---
+      - label: "Project"
+        name: "project"
+        widget: "relation"
+        collection: "projects"
+        search_fields: ["title.en", "title.fr"]
+        value_field: "{{slug}}"
+        display_fields: ["title.en"]
+        required: false
+        preview: false
+        hint: "Groups this post with others from the same trip, place or body of work (see the Projects collection). A multi-image post is a different thing: see Post Type."
+
       - label: "Tags"
         name: "tags"
         widget: "relation"
@@ -383,6 +440,163 @@ collections:
       - label: "Français"
         name: "fr"
         widget: "string"
+
+  # ==========================================================================
+  # Projects
+  # ==========================================================================
+  - name: "projects"
+    label: "Projects"
+    label_singular: "Project"
+    folder: "src/content/projects"
+    create: true
+    slug: "{{title.en}}"
+    extension: "md"
+    summary: "{{title.en}} / {{title.fr}}"
+    sortable_fields: ["title.en", "kind"]
+    thumbnail: "coverImage.src"
+    view_filters:
+      - label: "Travel"
+        field: "kind"
+        pattern: "travel"
+      - label: "Hyperlocal"
+        field: "kind"
+        pattern: "local"
+      - label: "Astro"
+        field: "kind"
+        pattern: "astro"
+      - label: "Featured"
+        field: "featured"
+        pattern: true
+    fields:
+      - label: "Title"
+        name: "title"
+        widget: "object"
+        summary: "{{fields.en}}"
+        hint: "The English title also gives the URL slug (projects/charlevoix-2025)."
+        fields:
+          - label: "English"
+            name: "en"
+            widget: "string"
+          - label: "Français"
+            name: "fr"
+            widget: "string"
+
+      - label: "Description"
+        name: "description"
+        widget: "object"
+        required: false
+        collapsed: true
+        hint: "Short intro shown under the title. Use the Body for a longer text."
+        fields:
+          - label: "English"
+            name: "en"
+            widget: "text"
+            required: false
+          - label: "Français"
+            name: "fr"
+            widget: "text"
+            required: false
+
+      - label: "Kind"
+        name: "kind"
+        widget: "select"
+        default: "other"
+        hint: "Shown as a small badge. Other shows nothing."
+        options:
+          - label: "Travel"
+            value: "travel"
+          - label: "Hyperlocal"
+            value: "local"
+          - label: "Astro"
+            value: "astro"
+          - label: "Other"
+            value: "other"
+
+      # --- Location (where the photo was made) ---
+      - label: "Location"
+        name: "location"
+        widget: "object"
+        required: false
+        collapsed: true
+        preview: false
+        summary: "{{fields.name}} {{fields.city}} {{fields.region}} {{fields.country}}"
+        hint: "Where the photo was made. The import script fills this from Lightroom's location fields. Country as a 2-letter ISO code (CA, US, FR, IS…) so it is translated on both sites."
+        fields:
+          - label: "Place / Spot"
+            name: "name"
+            widget: "string"
+            required: false
+            hint: "Sublocation: Vieux-Québec, Quai de Baie-Saint-Paul…"
+          - label: "City"
+            name: "city"
+            widget: "string"
+            required: false
+          - label: "Region / Province"
+            name: "region"
+            widget: "string"
+            required: false
+          - label: "Country (ISO code)"
+            name: "country"
+            widget: "string"
+            required: false
+            hint: "CA, US, FR, IS…"
+          - label: "Latitude"
+            name: "lat"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -90
+            max: 90
+            step: 0.0001
+          - label: "Longitude"
+            name: "lng"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -180
+            max: 180
+            step: 0.0001
+
+      - label: "Cover Image"
+        name: "coverImage"
+        widget: "object"
+        required: false
+        collapsed: true
+        hint: "Optional. Without it, the featured or newest post of the project is used."
+        fields:
+          - label: "Image"
+            name: "src"
+            widget: "image"
+          - label: "Alt Text"
+            name: "alt"
+            widget: "object"
+            required: false
+            fields:
+              - label: "English"
+                name: "en"
+                widget: "string"
+                required: false
+              - label: "Français"
+                name: "fr"
+                widget: "string"
+                required: false
+
+      - label: "Featured"
+        name: "featured"
+        widget: "boolean"
+        default: false
+        hint: "Listed first on the Projects page."
+
+      - label: "Draft"
+        name: "draft"
+        widget: "boolean"
+        default: false
+
+      - label: "Body"
+        name: "body"
+        widget: "markdown"
+        required: false
+        hint: "Longer introduction shown on the project page, above the photos."
 
   # ==========================================================================
   # About

@@ -34,6 +34,8 @@ interface Props {
   depthSrc?: string;
   /** Formatted date string for search matching */
   date?: string;
+  /** Lowercased location string for search matching */
+  location?: string;
 }
 
 const {
@@ -50,6 +52,7 @@ const {
   orientation = 'square',
   depthSrc,
   date,
+  location,
 } = Astro.props;
 
 // Build class list for masonry layout
@@ -77,6 +80,7 @@ const objectPosition = focalPointMap[focalPoint] || 'center center';
   data-secondary-color-families={secondaryColorFamilies.join(',')}
   data-mood={mood}
   data-date={date || ''}
+  data-location={location || ''}
 >
   <button class="gallery-image__button" type="button" aria-label={`View ${alt || postTitle}`}>
     <div class="gallery-image__wrap">

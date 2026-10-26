@@ -1,0 +1,242 @@
+---
+/**
+ * ProjectsPage Component
+ *
+ * Shared index of projects (trips, places worked repeatedly, bodies of
+ * work), used by the EN and FR routes. Each card is derived from the
+ * project's posts: cover, date range and photo count.
+ */
+import Base from '@layouts/Base.astro';
+import OptimizedImage from '@components/OptimizedImage.astro';
+import { getCollection } from 'astro:content';
+import { getLocaleFromUrl, t, localized, localePath } from '@utils/i18n';
+import { formatLocation, hasLocation } from '@utils/location';
+import { getOgImageData, imageSizes } from '@utils/optimizedImage';
+import { hexToRgb } from '@utils/extractColors';
+import { summarizeProject, formatDateRange, compareProjects } from '@utils/projects';
+
+const locale = getLocaleFromUrl(Astro.url);
+
+const projects = await getCollection('projects', ({ data }) => !data.draft);
+const posts = await getCollection('posts', ({ data }) => !data.draft && !data.private);
+
+const items = projects
+  .map(project => summarizeProject(project, posts))
+  .sort(compareProjects);
+
+// OG image: cover of the first project
+const ogData = items[0]?.cover ? await getOgImageData(items[0].cover.src) : null;
+
+const siteUrl = import.meta.env.SITE || Astro.url.origin;
+const pageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: t('nav.projects', locale),
+  url: new URL(Astro.url.pathname, siteUrl).href,
+  author: { '@type': 'Person', name: 'Gabriel Mercier', url: siteUrl },
+  mainEntity: {
+    '@type': 'ItemList',
+    numberOfItems: items.length,
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: localized(item.project.data.title, locale) || item.project.id,
+      url: new URL(localePath(`/projects/${item.project.id}`, locale), siteUrl).href,
+    })),
+  },
+};
+---
+
+<Base
+  title={t('nav.projects', locale)}
+  ogImage={ogData?.ogImage}
+  ogImageWidth={ogData?.ogImageWidth}
+  ogImageHeight={ogData?.ogImageHeight}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(pageSchema)} />
+  </Fragment>
+
+  <section class="projects container">
+    <header class="projects__header">
+      <h1 class="projects__title">{t('nav.projects', locale)}</h1>
+    </header>
+
+    {items.length === 0 ? (
+      <p class="projects__empty">{t('project.empty', locale)}</p>
+    ) : (
+      <div class="projects__grid">
+        {items.map((item, i) => {
+          const { project, cover, posts: projectPosts } = item;
+          const title = localized(project.data.title, locale) || project.id;
+          const glow = item.glowColor ? hexToRgb(item.glowColor) : { r: 58, g: 68, b: 71 };
+          const meta = [
+            hasLocation(project.data.location) ? formatLocation(project.data.location, locale, 'short') : '',
+            formatDateRange(item.oldest, item.newest, locale),
+            `${projectPosts.length} ${t(projectPosts.length === 1 ? 'project.photo' : 'project.photos', locale)}`,
+          ].filter(Boolean);
+          return (
+            <a
+              href={localePath(`/projects/${project.id}`, locale)}
+              class="project-card animate-in"
+              style={{
+                animationDelay: `${i * 60}ms`,
+                '--glow-r': glow.r,
+                '--glow-g': glow.g,
+                '--glow-b': glow.b,
+              }}
+            >
+              <div class="project-card__image-wrap">
+                {cover ? (
+                  <OptimizedImage
+                    src={cover.src}
+                    alt={localized(cover.alt, locale) || title}
+                    class="project-card__image"
+                    loading={i < 4 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    sizes={imageSizes.card}
+                  />
+                ) : (
+                  <div class="project-card__placeholder" aria-hidden="true"></div>
+                )}
+              </div>
+              <div class="project-card__body">
+                <div class="project-card__heading">
+                  <h2 class="project-card__title">{title}</h2>
+                  {project.data.kind !== 'other' && (
+                    <span class="project-card__kind">{t(`project.kind.${project.data.kind}`, locale)}</span>
+                  )}
+                </div>
+                {meta.length > 0 && (
+                  <p class="project-card__meta">
+                    {meta.map(part => <span>{part}</span>)}
+                  </p>
+                )}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </section>
+</Base>
+
+<style>
+  .projects {
+    padding-top: var(--space-2xl);
+    padding-bottom: var(--space-3xl);
+  }
+
+  .projects__header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .projects__title {
+    font-size: var(--text-4xl);
+  }
+
+  .projects__empty {
+    color: var(--color-text-muted);
+  }
+
+  .projects__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: var(--space-xl) var(--space-lg);
+  }
+
+  .project-card {
+    position: relative;
+    display: block;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .project-card__image-wrap {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--border-radius);
+    background-color: var(--color-surface);
+    isolation: isolate;
+  }
+
+  .project-card__image-wrap :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .project-card__image-wrap :global(img),
+  .project-card__placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-gallery);
+  }
+
+  .project-card:hover .project-card__image-wrap :global(img) {
+    transform: scale(1.03);
+  }
+
+  /* Ambient glow on hover, in the cover's dominant color */
+  .project-card::after {
+    content: '';
+    position: absolute;
+    inset: -30px;
+    z-index: -1;
+    background: radial-gradient(
+      ellipse 80% 70% at 50% 40%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.16) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06) 45%,
+      transparent 75%
+    );
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+  }
+
+  .project-card:hover::after {
+    opacity: 1;
+  }
+
+  .project-card__body {
+    padding-top: var(--space-md);
+  }
+
+  .project-card__heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-sm);
+  }
+
+  .project-card__title {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 400;
+  }
+
+  .project-card__kind {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 2px;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-subtle);
+  }
+
+  .project-card__meta {
+    margin-top: var(--space-xs);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .project-card__meta span:not(:last-child)::after {
+    content: '·';
+    margin: 0 var(--space-sm);
+    color: var(--color-text-subtle);
+  }
+</style>

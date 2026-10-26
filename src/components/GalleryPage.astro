@@ -14,6 +14,7 @@ import { extractColorMetadata, getColorMetadataFromRgb, getColorFamilyFromHex, h
 import { getOptimizedImage, getOgImageData } from '@utils/optimizedImage';
 import { getDepthMap } from '@utils/depthMap';
 import { loadTags } from '@utils/tags';
+import { formatLocation, hasLocation } from '@utils/location';
 
 /**
  * Determine image orientation from gallerySize setting or aspect ratio
@@ -56,6 +57,7 @@ interface GalleryImageData {
   orientation: ImageOrientation;
   depthSrc?: string;
   date: string;
+  location: string;
 }
 
 const allImages: GalleryImageData[] = [];
@@ -69,6 +71,9 @@ for (const post of posts) {
   const postUrl = localePath(`/posts/${slug}`, locale);
   const postTitle = localized(post.data.title, locale) || t('slideshow.viewPost', locale);
   const tags = post.data.tags;
+  const locationText = hasLocation(post.data.location)
+    ? formatLocation(post.data.location, locale).toLowerCase()
+    : '';
   const searchDate = post.data.date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
     year: 'numeric', month: 'long', day: 'numeric',
   }).toLowerCase();
@@ -115,6 +120,7 @@ for (const post of posts) {
     postUrl,
     postTitle,
     tags,
+    location: locationText,
     focalPoint: (post.data.coverImage.focalPoint || 'center') as 'left' | 'center' | 'right',
     colorFamily: colorMeta.colorFamily,
     secondaryColorFamilies,
@@ -136,6 +142,7 @@ for (const post of posts) {
         postUrl,
         postTitle,
         tags,
+        location: locationText,
         focalPoint: (img.focalPoint || 'center') as 'left' | 'center' | 'right',
         colorFamily: colorMeta.colorFamily,
         secondaryColorFamilies,
@@ -224,6 +231,7 @@ const gallerySchema = {
           orientation={img.orientation}
           depthSrc={img.depthSrc}
           date={img.date}
+          location={img.location}
         />
       ))}
     </div>

@@ -15,6 +15,7 @@
     "generate-depth-maps": "test -f scripts/.venv/bin/python && scripts/.venv/bin/python scripts/generate-depth-maps.py || echo 'Skipping depth maps (no Python venv)'",
     "extract-glow-colors": "tsx scripts/extract-glow-colors.ts",
     "extract-exif": "tsx scripts/extract-exif.ts",
+    "import": "tsx scripts/import-photos.ts",
     "prebuild": "npm run optimize-images && npm run extract-glow-colors && npm run extract-exif && npm run generate-depth-maps"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "exif-reader": "^2.0.3",
     "sharp": "^0.35.5",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
   }
 }

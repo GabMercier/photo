@@ -164,6 +164,63 @@ collections:
         preview: false
         hint: "Rempli automatiquement depuis les données EXIF de la photo. Comparer avec la date de publication."
 
+      # --- Lieu (où la photo a été prise) ---
+      - label: "Lieu"
+        name: "location"
+        widget: "object"
+        required: false
+        collapsed: true
+        preview: false
+        summary: "{{fields.name}} {{fields.city}} {{fields.region}} {{fields.country}}"
+        hint: "Où la photo a été prise. Le script d'import remplit ces champs depuis les champs de lieu de Lightroom. Pays en code ISO à 2 lettres (CA, US, FR, IS…) pour qu'il soit traduit sur les deux sites."
+        fields:
+          - label: "Endroit"
+            name: "name"
+            widget: "string"
+            required: false
+            hint: "Sous-lieu : Vieux-Québec, Quai de Baie-Saint-Paul…"
+          - label: "Ville"
+            name: "city"
+            widget: "string"
+            required: false
+          - label: "Région / Province"
+            name: "region"
+            widget: "string"
+            required: false
+          - label: "Pays (code ISO)"
+            name: "country"
+            widget: "string"
+            required: false
+            hint: "CA, US, FR, IS…"
+          - label: "Latitude"
+            name: "lat"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -90
+            max: 90
+            step: 0.0001
+          - label: "Longitude"
+            name: "lng"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -180
+            max: 180
+            step: 0.0001
+
+      # --- Projet (voyage, lieu ou corpus) ---
+      - label: "Projet"
+        name: "project"
+        widget: "relation"
+        collection: "projects"
+        search_fields: ["title.en", "title.fr"]
+        value_field: "{{slug}}"
+        display_fields: ["title.fr"]
+        required: false
+        preview: false
+        hint: "Regroupe cette publication avec celles du même voyage, du même lieu ou du même corpus (voir la collection Projets). Une publication à plusieurs images, c'est autre chose : voir Type de publication."
+
       # --- Classification ---
       - label: "Étiquettes"
         name: "tags"
@@ -407,6 +464,163 @@ collections:
       - label: "Français"
         name: "fr"
         widget: "string"
+
+  # ==========================================================================
+  # Projets
+  # ==========================================================================
+  - name: "projects"
+    label: "Projets"
+    label_singular: "Projet"
+    folder: "src/content/projects"
+    create: true
+    slug: "{{title.en}}"
+    extension: "md"
+    summary: "{{title.fr}} / {{title.en}}"
+    sortable_fields: ["title.fr", "kind"]
+    thumbnail: "coverImage.src"
+    view_filters:
+      - label: "Voyage"
+        field: "kind"
+        pattern: "travel"
+      - label: "Hyperlocal"
+        field: "kind"
+        pattern: "local"
+      - label: "Astro"
+        field: "kind"
+        pattern: "astro"
+      - label: "En vedette"
+        field: "featured"
+        pattern: true
+    fields:
+      - label: "Titre"
+        name: "title"
+        widget: "object"
+        summary: "{{fields.fr}}"
+        hint: "Le titre anglais sert aussi d'adresse (projects/charlevoix-2025)."
+        fields:
+          - label: "Français"
+            name: "fr"
+            widget: "string"
+          - label: "English"
+            name: "en"
+            widget: "string"
+
+      - label: "Description"
+        name: "description"
+        widget: "object"
+        required: false
+        collapsed: true
+        hint: "Courte introduction affichée sous le titre. Le Contenu sert pour un texte plus long."
+        fields:
+          - label: "Français"
+            name: "fr"
+            widget: "text"
+            required: false
+          - label: "English"
+            name: "en"
+            widget: "text"
+            required: false
+
+      - label: "Genre"
+        name: "kind"
+        widget: "select"
+        default: "other"
+        hint: "Affiché comme petite étiquette. Autre n'affiche rien."
+        options:
+          - label: "Voyage"
+            value: "travel"
+          - label: "Hyperlocal"
+            value: "local"
+          - label: "Astro"
+            value: "astro"
+          - label: "Autre"
+            value: "other"
+
+      # --- Lieu (où la photo a été prise) ---
+      - label: "Lieu"
+        name: "location"
+        widget: "object"
+        required: false
+        collapsed: true
+        preview: false
+        summary: "{{fields.name}} {{fields.city}} {{fields.region}} {{fields.country}}"
+        hint: "Où la photo a été prise. Le script d'import remplit ces champs depuis les champs de lieu de Lightroom. Pays en code ISO à 2 lettres (CA, US, FR, IS…) pour qu'il soit traduit sur les deux sites."
+        fields:
+          - label: "Endroit"
+            name: "name"
+            widget: "string"
+            required: false
+            hint: "Sous-lieu : Vieux-Québec, Quai de Baie-Saint-Paul…"
+          - label: "Ville"
+            name: "city"
+            widget: "string"
+            required: false
+          - label: "Région / Province"
+            name: "region"
+            widget: "string"
+            required: false
+          - label: "Pays (code ISO)"
+            name: "country"
+            widget: "string"
+            required: false
+            hint: "CA, US, FR, IS…"
+          - label: "Latitude"
+            name: "lat"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -90
+            max: 90
+            step: 0.0001
+          - label: "Longitude"
+            name: "lng"
+            widget: "number"
+            value_type: "float"
+            required: false
+            min: -180
+            max: 180
+            step: 0.0001
+
+      - label: "Image de couverture"
+        name: "coverImage"
+        widget: "object"
+        required: false
+        collapsed: true
+        hint: "Optionnelle. Sans elle, la publication en vedette ou la plus récente du projet est utilisée."
+        fields:
+          - label: "Image"
+            name: "src"
+            widget: "image"
+          - label: "Texte alternatif"
+            name: "alt"
+            widget: "object"
+            required: false
+            fields:
+              - label: "Français"
+                name: "fr"
+                widget: "string"
+                required: false
+              - label: "English"
+                name: "en"
+                widget: "string"
+                required: false
+
+      - label: "En vedette"
+        name: "featured"
+        widget: "boolean"
+        default: false
+        hint: "Affiché en premier sur la page Projets."
+
+      - label: "Brouillon"
+        name: "draft"
+        widget: "boolean"
+        default: false
+
+      - label: "Contenu"
+        name: "body"
+        widget: "markdown"
+        required: false
+        hint: "Introduction plus longue affichée sur la page du projet, au-dessus des photos."
 
   # ==========================================================================
   # Page À propos
