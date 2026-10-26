@@ -12,6 +12,7 @@ import type { CollectionEntry } from 'astro:content';
 import OptimizedImage from '@components/OptimizedImage.astro';
 import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
 import { hexToRgb } from '@utils/extractColors';
+import { formatLocation, hasLocation } from '@utils/location';
 
 interface Props {
   post: CollectionEntry<'posts'>;
@@ -27,10 +28,14 @@ interface Props {
 
 const locale = getLocaleFromUrl(Astro.url);
 const { post, index = 0, variant = 'auto', layout = 'grid', hasContent = false } = Astro.props;
-const { title, coverImage, tags, date, postType, glowColor, secondaryColors } = post.data;
+const { title, coverImage, tags, date, postType, glowColor, secondaryColors, location } = post.data;
 
 // Get localized title, or empty string if no title provided
 const displayTitle = localized(title, locale);
+
+// Location: short form for the overlay, full form for search matching
+const locationText = hasLocation(location) ? formatLocation(location, locale, 'short') : '';
+const locationSearch = hasLocation(location) ? formatLocation(location, locale).toLowerCase() : '';
 
 // Get image data to determine orientation
 const imageData = await getOptimizedImage(coverImage.src);
@@ -81,6 +86,7 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   }}
   data-tags={tags.join(',')}
   data-date={formattedDate.toLowerCase()}
+  data-location={locationSearch || undefined}
   data-slideshow-src={layout === 'feed' ? coverImage.src : undefined}
   data-slideshow-alt={layout === 'feed' ? (localized(coverImage.alt, locale) || '') : undefined}
   data-post-url={layout === 'feed' ? postUrl : undefined}
@@ -106,6 +112,9 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
             {displayTitle && <h3 class="post-card__title">{displayTitle}</h3>}
             <div class="post-card__meta">
               <time datetime={date.toISOString()}>{formattedDate}</time>
+              {locationText && (
+                <span class="post-card__location">{locationText}</span>
+              )}
               {postType === 'series' && (
                 <span class="post-card__badge">{t('post.series', locale)}</span>
               )}
@@ -154,11 +163,6 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     display: block;
     text-decoration: none;
     color: inherit;
-  }
-
-  /* Feed mode: no link cursor */
-  .post-card--feed .post-card__link {
-    cursor: default;
   }
 
   /* Image */
@@ -309,6 +313,11 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     letter-spacing: 0.05em;
   }
 
+  .post-card__location::before {
+    content: '·';
+    margin-right: var(--space-sm);
+  }
+
   .post-card__tags {
     display: flex;
     gap: var(--space-xs);
@@ -346,10 +355,13 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     overflow: visible; /* Allow glow to extend beyond */
     margin-bottom: 0; /* Remove base margin for proper snap */
 
-    /* Visible area height (viewport minus header) */
-    min-height: calc(100vh - var(--header-height));
-    height: calc(100vh - var(--header-height));
-    padding: 0;
+    /* One full screen per post, with the header strip as the card's own top
+       padding: when a post is snapped, the glass header sits over this card
+       and the previous post is entirely off-screen. dvh follows mobile
+       browser toolbars, which vh does not. */
+    min-height: 100dvh;
+    height: 100dvh;
+    padding: var(--header-height) 0 0;
     box-sizing: border-box;
 
     /* Scroll snap - snap to start for predictable behavior */
@@ -486,7 +498,6 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(12px) saturate(150%);
-    -webkit-backdrop-filter: blur(12px) saturate(150%);
     color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     box-shadow:
@@ -563,9 +574,9 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   /* Mobile landscape: natural image display */
   @media (max-width: 900px) and (orientation: landscape) {
     .post-card--feed {
-      min-height: calc(100vh - var(--header-height));
+      min-height: 100dvh;
       height: auto;
-      padding: var(--space-lg) 0;
+      padding: calc(var(--header-height) + var(--space-lg)) 0 var(--space-lg);
     }
 
     .post-card--feed .post-card__image-wrap {
@@ -589,19 +600,12 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   function getSlideshowImage(card) {
     const src = card.dataset.slideshowSrc;
     const alt = card.dataset.slideshowAlt || '';
-    const hasContent = card.dataset.hasContent === 'true';
-    const postUrl = hasContent ? card.dataset.postUrl : undefined;
-    const postTitle = hasContent ? card.dataset.postTitle : undefined;
+    // Always hand the post link to the lightbox, like the gallery does —
+    // the post page carries the EXIF/location/date story even for
+    // single-image posts.
+    const postUrl = card.dataset.postUrl;
+    const postTitle = card.dataset.postTitle;
     return { src, alt, postUrl, postTitle };
-  }
-
-  // Feed cards: block link navigation, image is not clickable
-  function initFeedSlideshow() {
-    document.querySelectorAll('.post-card--feed .post-card__link').forEach((link) => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-      });
-    });
   }
 
   // Position expand buttons relative to the actual rendered image
@@ -680,7 +684,6 @@ const formattedDate = date.toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA
   }
 
   function initPostCard() {
-    initFeedSlideshow();
     initExpandPosition();
     initExpandButtons();
   }

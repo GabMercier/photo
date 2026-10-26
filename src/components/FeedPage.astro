@@ -9,7 +9,7 @@ import Base from '@layouts/Base.astro';
 import PostCard from '@components/PostCard.astro';
 import { getCollection } from 'astro:content';
 import { getLocaleFromUrl, t, localePath, localized } from '@utils/i18n';
-import { extractColorMetadata, hexToRgb } from '@utils/extractColors';
+import { extractColorMetadata, hexToRgb, deriveAccentFromGlow } from '@utils/extractColors';
 import { getOgImageData } from '@utils/optimizedImage';
 
 const locale = getLocaleFromUrl(Astro.url);
@@ -121,12 +121,20 @@ const ogImageAlt = ogPost
     </nav>
 
     <div class="feed__content" id="feed-content">
-      {posts.map((post, index) => (
+      {posts.map((post, index) => {
+        // Per-post accent (same derivation the carousel uses per slide):
+        // the current post tints the header glass and glass text with it.
+        const glowRgb = hexToRgb(post.data.glowColor || '#5A5A5A');
+        const accent = deriveAccentFromGlow(glowRgb.r, glowRgb.g, glowRgb.b);
+        return (
         <div
           class="feed__post-wrap"
           data-index={index}
           data-year={post.data.date.getFullYear()}
           data-month={post.data.date.getMonth()}
+          data-accent-hue={accent.hue}
+          data-accent-chroma={accent.chroma}
+          data-accent-lightness={accent.lightness}
         >
           <PostCard
             post={post}
@@ -137,7 +145,8 @@ const ogImageAlt = ogPost
             }
           />
         </div>
-      ))}
+        );
+      })}
     </div>
 
     {posts.length === 0 && (
@@ -207,6 +216,19 @@ const ogImageAlt = ogPost
 
     function updateFeedGlow(wrap: HTMLElement) {
       if (!feedGlow) return;
+
+      // Body accent follows the current post (same pattern as the carousel),
+      // so the header glass and glass text tint with the photo in view.
+      const hue = wrap.getAttribute('data-accent-hue');
+      const chroma = wrap.getAttribute('data-accent-chroma');
+      const light = wrap.getAttribute('data-accent-lightness');
+      if (hue && chroma && light) {
+        document.body.style.setProperty('--color-accent-hue', hue);
+        document.body.style.setProperty('--color-accent-chroma', chroma);
+        document.body.style.setProperty('--color-accent-lightness', light);
+        document.body.style.setProperty('--chroma-raw', chroma);
+      }
+
       const colors = getGlowColors(wrap);
       if (!colors) return;
 
@@ -310,8 +332,8 @@ const ogImageAlt = ogPost
     scroll-snap-type: y mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    /* Account for header in snap positioning */
-    scroll-padding-top: var(--header-height);
+    /* No scroll-padding: each feed card is a full screen that reserves the
+       header strip itself, so cards snap flush to the top. */
   }
 
   /* Timeline sidebar - fixed on right side */
@@ -333,7 +355,6 @@ const ogImageAlt = ogPost
     /* Liquid glass base */
     background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 16px;
 
@@ -526,8 +547,6 @@ const ogImageAlt = ogPost
     width: 100%;
     display: flex;
     flex-direction: column;
-    /* Push first image down so it's visually centered below the header */
-    padding-top: calc(var(--header-height) + var(--space-3xl));
   }
 
   .feed__post-wrap {
@@ -537,7 +556,7 @@ const ogImageAlt = ogPost
   .feed__empty {
     text-align: center;
     color: var(--color-text-muted);
-    padding: var(--space-4xl) 0;
+    padding: calc(var(--header-height) + var(--space-4xl)) 0 var(--space-4xl);
   }
 
   /* Hide timeline on mobile - not enough space */

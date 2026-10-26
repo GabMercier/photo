@@ -10,10 +10,11 @@ import Base from '@layouts/Base.astro';
 import ShareButton from '@components/ShareButton.astro';
 import OptimizedImage from '@components/OptimizedImage.astro';
 import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
-import { render } from 'astro:content';
+import { render, getEntry } from 'astro:content';
 import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
 import { deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
 import { getExifData, formatExifSummary, mergeExifWithOverrides, type ExifFieldKey } from '@utils/exifData';
+import { formatLocation, hasLocation, locationToPlace } from '@utils/location';
 
 interface Props {
   post: any;
@@ -21,10 +22,17 @@ interface Props {
 
 const { post } = Astro.props;
 const locale = getLocaleFromUrl(Astro.url);
-const { title, coverImage, images, tags, date, postType, description, glowColor, secondaryColors, showExif, exifFields, exifOverrides } = post.data;
+const { title, coverImage, images, tags, date, postType, description, glowColor, secondaryColors, showExif, exifFields, exifOverrides, location, project: projectSlug } = post.data;
 
 // Get display title (may be empty if no title provided)
 const displayTitle = localized(title, locale);
+
+// Where the photo was made and which project it belongs to
+const locationText = hasLocation(location) ? formatLocation(location, locale) : '';
+const place = hasLocation(location) ? locationToPlace(location, locale) : undefined;
+const project = projectSlug ? await getEntry('projects', projectSlug) : undefined;
+const projectTitle = project ? (localized(project.data.title, locale) || project.id) : '';
+const projectUrl = project ? localePath(`/projects/${project.id}`, locale) : '';
 
 // Fallback to cool blue-gray if no color extracted
 const glow = glowColor ? hexToRgb(glowColor) : { r: 58, g: 68, b: 71 };
@@ -97,6 +105,7 @@ const postSchema = {
     url: siteUrl,
   },
   ...(tags.length > 0 && { keywords: tags.join(', ') }),
+  ...(place && { contentLocation: place }),
   mainEntityOfPage: {
     '@type': 'WebPage',
     '@id': postUrl,
@@ -109,6 +118,7 @@ const photographSchema = {
   name: displayTitle || localized(coverImage.alt, locale) || undefined,
   image: imageUrl,
   dateCreated: date.toISOString(),
+  ...(place && { contentLocation: place }),
   creator: {
     '@type': 'Person',
     name: 'Gabriel Mercier',
@@ -261,6 +271,25 @@ const imageObjectSchema = coverExif && (coverExif.cameraModel || coverExif.lens)
       <header class="post__header animate-in">
         {displayTitle && (
           <h1 class="post__title">{displayTitle}</h1>
+        )}
+        {(locationText || project) && (
+          <p class="post__context">
+            {locationText && (
+              <span class="post__location">
+                <svg class="post__context-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>{locationText}</span>
+              </span>
+            )}
+            {project && (
+              <a href={projectUrl} class="post__project">
+                <span class="post__context-label">{t('project.label', locale)}</span>
+                <span>{projectTitle}</span>
+              </a>
+            )}
+          </p>
         )}
         {(tags.length > 0 || postType === 'series') && (
           <div class="post__meta">
@@ -585,7 +614,6 @@ const imageObjectSchema = coverExif && (coverExif.cameraModel || coverExif.lens)
     text-decoration: none;
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(12px) saturate(150%);
-    -webkit-backdrop-filter: blur(12px) saturate(150%);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 20px;
     box-shadow:
@@ -600,6 +628,50 @@ const imageObjectSchema = coverExif && (coverExif.cameraModel || coverExif.lens)
     background: rgba(0, 0, 0, 0.5);
     border-color: rgba(255, 255, 255, 0.25);
     color: white;
+  }
+
+  /* Location + project line under the title */
+  .post__context {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-lg);
+    margin-bottom: var(--space-md);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .post__location {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .post__context-icon {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .post__project {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+  }
+
+  .post__project:hover {
+    color: var(--color-text);
+    border-bottom-color: currentColor;
+  }
+
+  .post__context-label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-subtle);
   }
 
   /* Tags + badge row */

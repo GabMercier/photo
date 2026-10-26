@@ -147,6 +147,9 @@ const showColorFilters = colorFamilies.length > 1;
     let activeTags: Set<string> = new Set(); // Multi-select tags
     let activeColors: Set<string> = new Set(); // Multi-select colors
 
+    // Accent-insensitive lowercase form, so "quebec" finds "Québec"
+    const fold = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
     // Build tag slug → localized label map for search matching
     const tagLabelMap = new Map<string, string>();
     tagButtons.forEach(btn => {
@@ -266,7 +269,7 @@ const showColorFilters = colorFamilies.length > 1;
      * Apply current filters to all gallery items.
      */
     function applyFilters() {
-      const searchText = searchInput.value.toLowerCase().trim();
+      const searchText = fold(searchInput.value).trim();
       const postCards = document.querySelectorAll<HTMLElement>('.post-card');
       const galleryImages = document.querySelectorAll<HTMLElement>('.gallery-image');
 
@@ -278,7 +281,7 @@ const showColorFilters = colorFamilies.length > 1;
         const slugs = tagsStr.split(',');
         return slugs.some(slug => {
           const label = tagLabelMap.get(slug.trim());
-          return label && label.includes(search);
+          return label && fold(label).includes(search);
         });
       }
 
@@ -286,14 +289,16 @@ const showColorFilters = colorFamilies.length > 1;
       postCards.forEach(card => {
         totalCount++;
         const cardTags = (card.dataset.tags || '').toLowerCase();
-        const cardTitle = card.querySelector('.post-card__title')?.textContent?.toLowerCase() || '';
-        const cardDate = (card.dataset.date || '').toLowerCase();
+        const cardTitle = fold(card.querySelector('.post-card__title')?.textContent || '');
+        const cardDate = fold(card.dataset.date || '');
+        const cardLocation = fold(card.dataset.location || '');
 
         const matchesTag = activeTags.size === 0 || Array.from(activeTags).some(t => cardTags.includes(t));
         const matchesSearch = !searchText ||
           cardTags.includes(searchText) ||
           cardTitle.includes(searchText) ||
           cardDate.includes(searchText) ||
+          cardLocation.includes(searchText) ||
           tagLabelsMatch(cardTags, searchText);
 
         const isVisible = matchesTag && matchesSearch;
@@ -312,8 +317,9 @@ const showColorFilters = colorFamilies.length > 1;
       galleryImages.forEach(item => {
         totalCount++;
         const itemTags = (item.dataset.tags || '').toLowerCase();
-        const itemTitle = (item.dataset.title || '').toLowerCase();
-        const itemDate = (item.dataset.date || '').toLowerCase();
+        const itemTitle = fold(item.dataset.title || '');
+        const itemDate = fold(item.dataset.date || '');
+        const itemLocation = fold(item.dataset.location || '');
         const itemColorFamily = item.dataset.colorFamily || '';
         const itemSecondaryFamilies = (item.dataset.secondaryColorFamilies || '').split(',').filter(Boolean);
 
@@ -335,6 +341,7 @@ const showColorFilters = colorFamilies.length > 1;
           itemTags.includes(searchText) ||
           itemTitle.includes(searchText) ||
           itemDate.includes(searchText) ||
+          itemLocation.includes(searchText) ||
           tagLabelsMatch(itemTags, searchText);
 
         const isVisible = matchesTag && matchesColor && matchesSearch;
@@ -493,7 +500,6 @@ const showColorFilters = colorFamilies.length > 1;
     color: var(--color-text);
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(8px) saturate(140%);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--border-radius);
     outline: none;
@@ -538,7 +544,6 @@ const showColorFilters = colorFamilies.length > 1;
     color: var(--color-text-muted);
     background: rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(8px) saturate(140%);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
     cursor: pointer;
@@ -630,7 +635,6 @@ const showColorFilters = colorFamilies.length > 1;
     color: var(--color-text);
     background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(8px) saturate(140%);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 20px;
     cursor: pointer;
@@ -680,7 +684,6 @@ const showColorFilters = colorFamilies.length > 1;
     width: 200px;
     background: rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow:
       4px 0 24px rgba(0, 0, 0, 0.3),

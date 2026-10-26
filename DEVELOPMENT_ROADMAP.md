@@ -1,6 +1,6 @@
 # Photography Portfolio Development Roadmap
 
-**Last Updated:** October 25, 2026
+**Last Updated:** October 25, 2026 (content model + bulk import)
 **Project:** gphoto.pages.dev  
 **Purpose:** Personal portfolio → Template business foundation
 
@@ -1499,6 +1499,21 @@ Tooltips with proper speech bubble arrows:
 
 ## Liquid Glass Implementation Guide
 
+### 2026-10-25 research notes (multi-agent sweep, 77 sources, facts verified against primary sources)
+
+**Platform facts (as of Oct 2026):**
+- `backdrop-filter: url(#svg)` — refracting arbitrary content behind glass — is still **Chromium-only**. WebKit drops the *entire* backdrop-filter value when it contains url() (bug 245510 NEW; fix PR 68614 merging-blocked); Gecko parses it but renders nothing (bug 1961378). `@supports` passes in all three engines, so gate with a JS engine class (userAgentData brands, fallback UA regex) — never @supports.
+- Cross-engine refraction **does** exist for controls over a *known* photo: plain `filter: url()` + feDisplacementMap on an aligned copy of the image passes WPT in Chrome 156 / Firefox 158 / Safari 27 (the "Aave method", aave.com/design/building-glass-for-the-web). WebKit runs it on CPU: keep lenses control-sized, fresh filter id per map update, decode() data: maps before setting href, no live <video>.
+- WebKit + Gecko disable backdrop blur **during every view transition** (WebKit 302256) — i.e. every ClientRouter nav; mitigated here with a `:active-view-transition` tint bump.
+- Scroll-driven animations now cross-engine (Chrome 115+, Safari 26+, Firefox 159 / 2026-10-27) — can later replace the JS `--hs` ramp.
+- `prefers-reduced-transparency` never reaches Safari/iOS CSS; `prefers-contrast: more` (= iOS Increase Contrast) does. Both are live settings — listen for matchMedia change.
+- iOS canvas caps: 8192×8192 per canvas since Safari 18 (not the old 16.7MP myth); snapshot-the-page libs (liquidGL etc.) also need blob: workers our CSP blocks — avoided.
+
+**Best verified references:** kube.io/blog/liquid-glass-css-svg (Snell bezel math, basis of our maps) · aave.com/design/building-glass-for-the-web (cross-engine photo-copy refraction) · joshwcomeau.com/css/backdrop-filter (extended-backdrop header trick) · dev.to Teodor Avadani liquid-glass tab bar (lens = scaled copy, zero-SVG, works on iPhone) · libraries if ever wanted: glass-lens (3KB gz, cross-browser photo lens), hyalite (10.9KB, Chromium backdrop engine), @liquidglassjs/core (Astro adapter).
+
+**Future options surfaced:** (1) iPhone refraction for back/expand/carousel buttons via photo-copy filter; (2) `transition:persist` on the header to avoid the frosted flash while maps re-bake after nav; (3) luminance-under-control measurement to auto-raise tint to WCAG 4.5:1 (covers the invisible iOS Reduce Transparency setting).
+
+
 ### Approach 1: Pure CSS (Recommended - Broad Browser Support)
 
 Apple's liquid glass has 3 visual layers: **highlight**, **shadow**, and **illumination**.
@@ -2062,6 +2077,42 @@ When we discuss new features/changes:
 - 2026-03-08: Added EXIF display, overrides, exifSummary CMS field, dateTaken CMS field
 - 2026-10-25: Upgraded Astro 5.17 → 7.4 (Content Layer collections, ClientRouter, Zod 4, Node 22.23+); CI on Node 22 with checkout/setup-node v7 and wrangler-action v4; added `.nvmrc`; sorts deterministic
 - 2026-10-25: Fixed LightningCSS folding `animation-timeline` into the `animation` shorthand under Vite 8 by setting `vite.build.cssTarget` (feed cards were invisible otherwise)
+- 2026-10-25: Content model: `location` (IPTC-shaped, ISO country localized at build) and `project` (new `projects` collection with pages at /projects) on posts; CMS fields in EN/FR configs; bulk import script `npm run import` reading Lightroom XMP/IPTC/EXIF, resizing to 2400 px, stripping GPS by default, with manifest, `--update`, `--one-post`, `--dry-run` and a report; alt text and description drafts written into the 13 existing posts; `yaml` devDependency
+- 2026-10-25: Fixed the glass regression from the Astro 7 upgrade: LightningCSS 1.33 (Vite 8's CSS minifier) drops an unprefixed `backdrop-filter` when `-webkit-backdrop-filter` follows it in the same rule (parcel-bundler/lightningcss#1327), so 11 rules shipped prefix-only and Chrome/Firefox lost all blur. Removed the 12 `-webkit-backdrop-filter` source lines; `cssTarget` re-adds the prefix for Safari < 18
+- 2026-10-25: Feed scroll-snap now gives each post a full `100dvh` card that reserves the header strip as its own top padding, so the previous photo no longer peeks out under the glass header on short viewports (was up to 30px in landscape); removed `scroll-padding-top` and the feed-content top offset
+- 2026-10-25: Header rebuilt as floating liquid glass (iOS 26 style): pill nav with a sliding selection lens that magnifies the label under it, glass dome logo dot, FR chip, scroll edge fade instead of a full-width bar, pointer-tracking rim light. Chromium gets true SVG displacement refraction (Snell-based bezel maps baked to data: PNGs, per-channel chromatic fringing) through `backdrop-filter: var(--lg)`; the gate is a UA engine class because `@supports` false-positives on `backdrop-filter: url()` in every engine (WebKit 245510, Mozilla 1961378 both still open). Safari/Firefox get the frosted tier; `prefers-contrast: more` / `prefers-reduced-transparency: reduce` get near-opaque surfaces; reduced motion stills the lens. OKLCH accent glass text, hamburger and mobile overlay menu unchanged
+- 2026-10-25: Header glass now tints with the photo in view: feed posts carry `data-accent-*` (derived at build from `glowColor` via `deriveAccentFromGlow`, the carousel's pattern) and the glow crossfade also updates the body accent vars; glass surfaces, rim light and edge fade carry an OKLCH accent wash scaled by `--chroma-raw`, so B&W posts keep the bar neutral
+- 2026-10-25: Header quieted and given interior life after review: dimmer fill/shadow/saturation tiers, rim ring thinned to 0.75px at lower alpha, a lit-side interior sheen that follows the pointer plus a bottom shade and an 11s light sweep (reduced-motion gated), and nav items gained inline line-art icons (15px, stroke 2) that share the glass text's accent stroke and glow; the lens auto-sizes around icon + label
+- 2026-10-25: Nav items restacked tab-bar style (16px icon above a --text-xs label, 46px items, lens flattened to a thin edge bend so the stack stays readable under magnification). Feed photos now navigate to their post on click (the old preventDefault blocker and cursor:default removed) and the lightbox's View Post button appears for every feed post, not just ones with extra content — matching the gallery
+- 2026-10-25: Header rescaled to the logo: pill 56→44px (items 36px, 14px icons, 10px labels, lens 36px), dome dot 32→40px so the two read as one family; the language switcher dropped its glass chip for a quiet `EN / FR` text toggle (tinted text, the inactive side is the link; mobile keeps the overlay button)
+- 2026-10-25: One nav at every width (Reddit-style): removed the hamburger and full-screen overlay menu entirely; pill segments have a fixed width (86px, labels 9px) so the lens sizes exactly to one segment and never crowds short labels like FIL; below 600px labels drop and the pill becomes 48px icon tabs (aria-labels keep the names for assistive tech); the EN / FR toggle now shows at all widths
+
+---
+
+### Content Model: Location & Projects (COMPLETE)
+
+**Problem:** Hyperlocal and travel work needs to say *where* a photo was made and *which body of work* it belongs to. Posts had neither, and the only grouping was tags.
+
+**Decisions (2026-10-25):**
+- `location` object on posts and projects mirrors the IPTC fields Lightroom writes: `name` (sublocation), `city`, `region`, `country`, `lat`, `lng`. Place names are stored once, as written; only the country is localized, from its ISO 3166-1 alpha-2 code through `Intl.DisplayNames` (`src/utils/location.ts`). No bilingual duplication of proper nouns.
+- `project` is a slug pointing at a new `projects` content collection (`src/content/projects/*.md`: bilingual title/description, `kind` travel|local|astro|other, optional location and cover, featured, draft). Named *project*, not *series*, because `postType: series` already means a multi-image post.
+- Rendering: location + project line under the post title; `contentLocation` (Place with address and geo) in the Article and Photograph schemas; location text in the gallery/feed search (accent-insensitive); project cards and pages at `/projects` and `/projects/[slug]` (EN/FR, shared `ProjectsPage`/`ProjectPage` components); nav link appears once a project exists (memoized per build in `src/utils/projects.ts`).
+- CMS: location object, project relation and a Projects collection in both `public/admin/en/config.yml` and `public/admin/fr/config.yml`.
+
+**Status:** Complete
+**Completed:** 2026-10-25
+
+---
+
+### Bulk Import Script (COMPLETE)
+
+**Goal:** One command turns a Lightroom export folder into posts, filling the content model from embedded metadata.
+
+**Built (2026-10-25):** `npm run import -- <folder> [options]` → `scripts/import-photos.ts` + `scripts/import/metadata.ts` + `scripts/import/keyword-map.json`. Reads EXIF (sharp + exif-reader), XMP (dc:title, dc:description, dc:subject, lr:hierarchicalSubject, IPTC Core/Ext location, AltTextAccessibility) and IPTC-IIM as fallback; resizes to the 2400 px ceiling (mozjpeg q90, EXIF/ICC/XMP kept, GPS block rebuilt out by default); writes posts with the CMS field layout plus `location`/`project`; maps keywords to the tag vocabulary (slug, EN/FR labels, synonyms map); `||` convention for bilingual texts; creates project files; content-hash manifest (`src/data/import-manifest.json`) makes re-runs no-ops; `--update` fills empty fields of existing posts; `--one-post` builds a series post; `--dry-run`; Markdown report with a *Needs attention* list; runs the prebuild. Full guide: `docs/IMPORT.md`.
+
+**Tested:** six fixtures carrying synthetic Lightroom XMP (bilingual title/caption/alt, keywords with synonyms and unknowns, project keyword, IPTC Core and Ext location forms, iPhone GPS, manual lens) in a scratch copy of the repo: create → re-run (all skipped) → `--update` (nothing to fill) → `astro build` with project pages rendering. Added `yaml` as a devDependency.
+
+**Not done / later:** platform importers (WordPress, Squarespace, Flickr) and AI auto-tagging from the original plan; a reverse-geocoder for GPS-only files; downsizing the 22 pre-existing full-resolution uploads (169 MB) to the ceiling.
 
 ---
 
@@ -2087,7 +2138,7 @@ When we discuss new features/changes:
 - HTML → Markdown conversion (via `turndown`)
 - Map source categories/tags to site's tag vocabulary
 
-**Status:** Not Started
+**Status:** Complete for the local-folder workflow (see *Bulk Import Script (COMPLETE)* above); platform importers not started
 **Effort:** 8-12 hours (basic), 20+ hours (with platform importers)
 **Priority:** P2 (Medium - enables template product)
 

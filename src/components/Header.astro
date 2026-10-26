@@ -1,23 +1,37 @@
 ---
 /**
  * Header Component
- * 
- * Minimal, fixed navigation bar.
- * - Logo/site name on the left
- * - Nav links + language switcher + theme switcher on the right
- * - Hamburger menu on mobile
- * - Hides on scroll down, shows on scroll up (via JS)
+ *
+ * Floating liquid-glass navigation (iOS 26 style):
+ * - Glass dot logo on the left
+ * - Floating pill nav + language chip on the right
+ * - A "lens" that slides between nav items and magnifies the one under it
+ * - Scroll edge fade instead of a full-width bar
+ * - One nav at every width (Reddit-style): equal-width segments,
+ *   labels drop below 600px leaving icon tabs; no hamburger/overlay
+ *
+ * Material tiers (gated by a JS engine class, not @supports — every engine
+ * claims to parse backdrop-filter: url() but only Chromium renders it):
+ * - Chromium: SVG displacement refraction via backdrop-filter: var(--lg)
+ * - Safari/Firefox: frosted glass (blur + saturate), same geometry
+ * - prefers-contrast / prefers-reduced-transparency: near-opaque surfaces
  */
 import { getLocaleFromUrl, t, localePath, alternateLocalePath } from '@utils/i18n';
+import { hasPublishedProjects } from '@utils/projects';
 
 const locale = getLocaleFromUrl(Astro.url);
 const currentPath = Astro.url.pathname;
 
-// Navigation links
+// Projects appear in the nav once at least one published project exists
+const hasProjects = await hasPublishedProjects();
+
+// Navigation links — icons are inline line-art (24 viewBox, stroke 2) in the
+// same stroke language as the glass text
 const navLinks = [
-  { key: 'nav.feed', path: '/feed' },
-  { key: 'nav.gallery', path: '/gallery' },
-  { key: 'nav.about', path: '/about' },
+  { key: 'nav.feed', path: '/feed', icon: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 20h10"/>' },
+  { key: 'nav.gallery', path: '/gallery', icon: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>' },
+  ...(hasProjects ? [{ key: 'nav.projects', path: '/projects', icon: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>' }] : []),
+  { key: 'nav.about', path: '/about', icon: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11.5v4.5"/><path d="M12 8h.01"/>' },
 ];
 
 /**
@@ -26,177 +40,346 @@ const navLinks = [
  */
 function isActive(linkPath: string): boolean {
   const localized = localePath(linkPath, locale);
-  return currentPath === localized || currentPath === localized + '/';
+  return currentPath === localized || currentPath === localized + '/' || currentPath.startsWith(localized + '/');
 }
 ---
 
 <header class="header" id="site-header">
+  <!-- Scroll edge fade — content dissolves toward the top of the viewport -->
+  <div class="header__edge" aria-hidden="true"></div>
+
   <div class="header__inner container">
-    <!-- Logo / Site name - collapses to dot on scroll -->
+    <!-- Logo — glass dome dot -->
     <a href={localePath('/', locale)} class="header__logo" aria-label="Home">
-      <span class="logo__dot" aria-hidden="true"></span>
+      <span class="logo__dot" data-lg="dome" aria-hidden="true"></span>
     </a>
 
-    <!-- Desktop navigation -->
-    <nav class="header__nav" aria-label="Main navigation">
-      {navLinks.map(link => (
-        <a
-          href={localePath(link.path, locale)}
-          class:list={['header__link', { 'header__link--active': isActive(link.path) }]}
-        >
-          {t(link.key, locale)}
-        </a>
-      ))}
+    <!-- Desktop navigation: floating glass pill.
+         The lens is a SIBLING of the nav, not a child: an element with
+         backdrop-filter is a backdrop root, so a lens nested inside the
+         pill would only see the pill's own (mostly transparent) pixels. -->
+    <div class="header__navwrap">
+      <nav class="header__pill glassy" data-lg="pill" aria-label="Main navigation">
+        {navLinks.map(link => (
+          <a
+            href={localePath(link.path, locale)}
+            class:list={['header__link', { 'header__link--active': isActive(link.path) }]}
+            aria-label={t(link.key, locale)}
+          >
+            <svg class="header__icon" viewBox="0 0 24 24" aria-hidden="true" set:html={link.icon} />
+            <span class="header__label">{t(link.key, locale)}</span>
+          </a>
+        ))}
+      </nav>
+      <span class="header__lens glassy" data-lg="lens" aria-hidden="true"></span>
+    </div>
 
-      <!-- Language switcher -->
-      <a href={alternateLocalePath(Astro.url)} class="header__lang" aria-label="Switch language">
+    <!-- Language switcher — quiet text toggle, no glass -->
+    <nav class="header__lang" aria-label="Language">
+      <span class="header__lang-current">{locale.toUpperCase()}</span>
+      <span class="header__lang-sep" aria-hidden="true">/</span>
+      <a href={alternateLocalePath(Astro.url)} class="header__lang-alt" aria-label="Switch language">
         {t('lang.switch', locale)}
       </a>
     </nav>
 
-    <!-- Mobile hamburger -->
-    <button
-      class="header__hamburger"
-      id="mobile-menu-toggle"
-      aria-label="Toggle menu"
-      aria-expanded="false"
-    >
-      <span class="header__hamburger-line"></span>
-      <span class="header__hamburger-line"></span>
-    </button>
   </div>
 
-  <!-- Glass edge fade — dissolves content at the header boundary -->
-  <div class="header__edge-fade" aria-hidden="true"></div>
-
-  <!-- Mobile menu overlay (full-screen) -->
-  <div class="header__mobile-menu" id="mobile-menu" inert>
-    <nav class="header__mobile-nav">
-      {navLinks.map((link, index) => (
-        <a
-          href={localePath(link.path, locale)}
-          class:list={['header__mobile-link', { 'header__mobile-link--active': isActive(link.path) }]}
-          style={`--link-index: ${index}`}
-        >
-          {t(link.key, locale)}
-        </a>
-      ))}
-      <div class="header__mobile-controls" style="--link-index: 3">
-        <a href={alternateLocalePath(Astro.url)} class="header__mobile-lang">
-          {t('lang.switch', locale)}
-        </a>
-      </div>
-    </nav>
-  </div>
+  <!-- Displacement filters are generated into these defs at runtime (Chromium only) -->
+  <svg width="0" height="0" class="header__defs" aria-hidden="true"><defs id="lg-defs"></defs></svg>
 </header>
 
-<!-- Client-side scripts for mobile menu and scroll behavior -->
+<!-- Client-side scripts for mobile menu, scroll ramp, lens, and refraction -->
 <script>
   /**
-   * Mobile menu toggle
+   * Scroll ramp: --hs goes 0 → 1 over the first 300px of scroll.
+   * CSS derives edge opacity and glass background alpha from it; the blur
+   * radius itself stays fixed (animating opacity is cheap, blur is not).
    */
-  function initMobileMenu() {
-    const toggle = document.getElementById('mobile-menu-toggle');
-    const menu = document.getElementById('mobile-menu');
-    const header = document.getElementById('site-header');
-    if (!toggle || !menu || !header) return;
-
-    toggle.addEventListener('click', () => {
-      const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', String(!isOpen));
-      menu.inert = isOpen; // inert when closed
-      menu.classList.toggle('header__mobile-menu--open');
-      toggle.classList.toggle('header__hamburger--open');
-      header.classList.toggle('header--menu-open');
-
-      // Prevent body scroll when menu is open
-      document.body.style.overflow = isOpen ? '' : 'hidden';
-    });
-
-    // Close menu on link click
-    menu.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        toggle.setAttribute('aria-expanded', 'false');
-        menu.inert = true;
-        menu.classList.remove('header__mobile-menu--open');
-        toggle.classList.remove('header__hamburger--open');
-        header.classList.remove('header--menu-open');
-        document.body.style.overflow = '';
-      });
-    });
-  }
-
-  /**
-   * Logo scroll behavior - collapse to dot on scroll or inactivity
-   * Expands again on page load/navigation only
-   */
-  function initScrollBehavior() {
+  function initScrollRamp(signal: AbortSignal) {
     const header = document.getElementById('site-header');
     if (!header) return;
 
-    const SCROLL_THRESHOLD = 50;
-    const INACTIVITY_DELAY = 3000; // 3 seconds
-
-    let inactivityTimeout: ReturnType<typeof setTimeout> | null = null;
-    let inactivityCollapsed = false; // Track if collapsed by inactivity
-
-    function collapse() {
-      header.classList.add('header--scrolled');
+    function update() {
+      if (!header) return;
+      const hs = Math.min(window.scrollY / 300, 1);
+      header.style.setProperty('--hs', hs.toFixed(3));
+      header.classList.toggle('header--scrolled', window.scrollY > 50);
     }
 
-    function expand() {
-      // Don't expand if already collapsed by inactivity
-      if (inactivityCollapsed) return;
-      header.classList.remove('header--scrolled');
-    }
+    update();
+    window.addEventListener('scroll', update, { passive: true, signal });
+  }
 
-    function updateHeaderState() {
-      if (window.scrollY > SCROLL_THRESHOLD) {
-        collapse();
-      } else {
-        expand();
+  /**
+   * Rim light: the conic highlight on each glass surface leans toward the
+   * pointer. On touch screens it drifts slowly with scroll instead.
+   */
+  function initRimLight(signal: AbortSignal) {
+    const header = document.getElementById('site-header');
+    if (!header) return;
+    const surfaces = Array.from(header.querySelectorAll<HTMLElement>('.glassy, .logo__dot'));
+    if (surfaces.length === 0) return;
+
+    let px = window.innerWidth * 0.2;
+    let py = -240;
+    let raf = 0;
+
+    function apply() {
+      raf = 0;
+      for (const el of surfaces) {
+        const b = el.getBoundingClientRect();
+        if (b.width === 0) continue;
+        const angle = Math.atan2(px - (b.left + b.width / 2), -(py - (b.top + b.height / 2)));
+        el.style.setProperty('--light', `${(angle * 180 / Math.PI).toFixed(1)}deg`);
       }
-
-      // Scroll-reactive glass: ramp blur 12→24 and bg alpha 0.04→0.08 over first 300px
-      const scrollProgress = Math.min(window.scrollY / 300, 1);
-      const blur = 12 + scrollProgress * 12;
-      const bgAlpha = 0.04 + scrollProgress * 0.04;
-      const refractionOpacity = 0.6 + scrollProgress * 0.4;
-      header.style.setProperty('--header-blur', blur.toString());
-      header.style.setProperty('--header-bg-alpha', bgAlpha.toFixed(3));
-      header.style.setProperty('--refraction-opacity', refractionOpacity.toFixed(2));
     }
 
-    // Initial check
-    updateHeaderState();
+    window.addEventListener('pointermove', (e) => {
+      px = e.clientX; py = e.clientY;
+      if (!raf) raf = requestAnimationFrame(apply);
+    }, { passive: true, signal });
 
-    // Start inactivity timer (only runs once per page load)
-    inactivityTimeout = setTimeout(() => {
-      // Only collapse if not already scrolled down
-      if (window.scrollY <= SCROLL_THRESHOLD) {
-        inactivityCollapsed = true;
-        collapse();
+    window.addEventListener('scroll', () => {
+      if (!window.matchMedia('(hover: hover)').matches) {
+        px = window.innerWidth * (0.5 + 0.5 * Math.sin(window.scrollY / 500));
+        py = -240;
       }
-    }, INACTIVITY_DELAY);
+      if (!raf) raf = requestAnimationFrame(apply);
+    }, { passive: true, signal });
 
-    // Listen for scroll - scrolling up at top expands, scrolling down collapses
-    window.addEventListener('scroll', updateHeaderState, { passive: true });
+    apply();
+  }
 
-    // Cleanup on navigation
-    document.addEventListener('astro:before-swap', () => {
-      if (inactivityTimeout) clearTimeout(inactivityTimeout);
-    }, { once: true });
+  /**
+   * Selection lens: slides between nav items (iOS 26 tab bar behavior),
+   * stretches slightly while moving, and snaps back to the active page's
+   * link when the pointer leaves the pill.
+   */
+  function initLens(signal: AbortSignal) {
+    const nav = document.querySelector<HTMLElement>('.header__pill');
+    const lens = document.querySelector<HTMLElement>('.header__lens');
+    if (!nav || !lens) return;
+    const items = Array.from(nav.querySelectorAll<HTMLAnchorElement>('.header__link'));
+    if (items.length === 0) return;
+
+    const active = nav.querySelector<HTMLAnchorElement>('.header__link--active');
+    let moveTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function moveTo(a: HTMLAnchorElement, animate: boolean) {
+      if (!lens) return;
+      if (animate) {
+        lens.classList.add('header__lens--moving');
+        if (moveTimer) clearTimeout(moveTimer);
+        moveTimer = setTimeout(() => lens.classList.remove('header__lens--moving'), 220);
+      }
+      lens.style.width = `${a.offsetWidth}px`;
+      lens.style.setProperty('--lens-x', `${a.offsetLeft}px`);
+      lens.style.opacity = '1';
+    }
+
+    // Initial position: the active page's link, placed without animation.
+    lens.classList.add('header__lens--still');
+    if (active) {
+      moveTo(active, false);
+    } else {
+      lens.style.opacity = '0';
+      if (items[0]) {
+        lens.style.width = `${items[0].offsetWidth}px`;
+        lens.style.setProperty('--lens-x', `${items[0].offsetLeft}px`);
+      }
+    }
+    requestAnimationFrame(() => lens.classList.remove('header__lens--still'));
+
+    items.forEach(a => {
+      a.addEventListener('pointerenter', () => moveTo(a, true), { signal });
+      a.addEventListener('focus', () => moveTo(a, true), { signal });
+    });
+    nav.addEventListener('pointerleave', () => {
+      if (active) moveTo(active, true);
+      else if (lens) lens.style.opacity = '0';
+    }, { signal });
+  }
+
+  /**
+   * Liquid glass refraction (Chromium only).
+   *
+   * Each glass surface is treated as a rounded slab whose bezel follows a
+   * convex squircle profile. A vertical ray bends at the curved surface
+   * (Snell, n = 1.5) and lands displaced toward the centre; that vector
+   * field is baked into an R/G displacement map (a data: PNG, allowed by
+   * img-src data:) feeding feDisplacementMap. R and B are displaced by
+   * slightly different amounts for chromatic fringing.
+   *
+   * Safari drops the whole backdrop-filter when the value contains url()
+   * (WebKit 245510) and Firefox silently ignores it (Mozilla 1961378), and
+   * @supports reports true in all three engines, so the gate is a UA check
+   * that adds .lg-refract to <html>; CSS falls back to frosted blur.
+   */
+  let lgObserver: ResizeObserver | null = null;
+
+  function initRefraction() {
+    // Chromium gate: userAgentData brands where available (a Blink-only API,
+    // so its mere presence is a strong signal), else the UA string. iOS
+    // shells (CriOS/FxiOS/EdgiOS) are WebKit underneath.
+    const brands = (navigator as any).userAgentData?.brands as { brand: string }[] | undefined;
+    const ua = navigator.userAgent;
+    const chromium = brands
+      ? brands.some(b => b.brand === 'Chromium')
+      : /(Chrome|Chromium)\/\d+/.test(ua) && !/\b(CriOS|FxiOS|EdgiOS)\//.test(ua);
+    const reduced = window.matchMedia('(prefers-reduced-transparency: reduce)').matches
+      || window.matchMedia('(prefers-contrast: more)').matches;
+    const enabled = chromium && !reduced;
+    document.documentElement.classList.toggle('lg-refract', enabled);
+
+    // Drop observers from a previous init (navigation or a11y toggle),
+    // so detached headers don't accumulate.
+    if (lgObserver) {
+      lgObserver.disconnect();
+      lgObserver = null;
+    }
+    if (!enabled) return;
+
+    const header = document.getElementById('site-header');
+    const defs = document.getElementById('lg-defs');
+    if (!header || !defs) return;
+
+    type Preset = { bezel: number; depth: number; zoom?: number; blur: number; sat: number; ab: number };
+    const PRESETS: Record<string, Preset> = {
+      pill: { bezel: 18, depth: 1.05, blur: 1.5, sat: 1.4, ab: 0.06 },
+      /* Lens is flat in the middle (thin edge bend) so the stacked
+         icon + label stay readable; a full dome smears them at the rim. */
+      lens: { bezel: 10, depth: 0.8, zoom: 1.05, blur: 0, sat: 1.1, ab: 0.02 },
+      dome: { bezel: 1e9, depth: 0.7, blur: 2, sat: 1.25, ab: 0.1 },
+      chip: { bezel: 12, depth: 1.0, blur: 1.5, sat: 1.35, ab: 0.05 },
+    };
+
+    const N = 1.5;
+    const profile = (t: number) => Math.pow(1 - Math.pow(1 - t, 4), 0.25);
+    const slope = (t: number) => {
+      const a = Math.max(0, t - 1e-3), b = Math.min(1, t + 1e-3);
+      return (profile(b) - profile(a)) / (b - a);
+    };
+
+    /** Bake displacement + rim maps for a w×h slab with corner radius r. */
+    function bake(w: number, h: number, r: number, o: Preset) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = Math.round(w * dpr), H = Math.round(h * dpr);
+      const bezel = Math.min(o.bezel, r);
+      const disp = new ImageData(W, H);
+      const rim = new ImageData(W, H);
+      const field = new Float32Array(W * H * 2);
+      let max = 0;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const cx = (x + 0.5) / dpr - w / 2, cy = (y + 0.5) / dpr - h / 2;
+        const qx = Math.abs(cx) - (w / 2 - r), qy = Math.abs(cy) - (h / 2 - r);
+        const din = -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r);
+        if (din <= 0) continue;
+        let nx = 0, ny = 0;
+        if (qx > 0 && qy > 0) { const l = Math.hypot(qx, qy) || 1; nx = Math.sign(cx) * qx / l; ny = Math.sign(cy) * qy / l; }
+        else if (qx > qy) nx = Math.sign(cx); else ny = Math.sign(cy);
+        let fx = 0, fy = 0;
+        if (din < bezel) {
+          const t = din / bezel;
+          const th1 = Math.atan(slope(t));
+          const th2 = Math.asin(Math.sin(th1) / N);
+          const mag = o.depth * profile(t) * bezel * Math.tan(th1 - th2);
+          fx -= nx * mag; fy -= ny * mag;
+          const i = (y * W + x) * 4;
+          const edge = Math.pow(1 - t, 4);
+          rim.data[i] = rim.data[i + 1] = rim.data[i + 2] = 255;
+          rim.data[i + 3] = Math.round(255 * edge);
+        }
+        if (o.zoom) { fx -= cx * (1 - 1 / o.zoom); fy -= cy * (1 - 1 / o.zoom); }
+        field[(y * W + x) * 2] = fx;
+        field[(y * W + x) * 2 + 1] = fy;
+        max = Math.max(max, Math.abs(fx), Math.abs(fy));
+      }
+      for (let k = 0; k < W * H; k++) {
+        const i = k * 4;
+        disp.data[i] = 128 + 127 * (max ? field[k * 2] / max : 0);
+        disp.data[i + 1] = 128 + 127 * (max ? field[k * 2 + 1] / max : 0);
+        disp.data[i + 2] = 128;
+        disp.data[i + 3] = 255;
+      }
+      const toUrl = (img: ImageData) => {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const ctx = c.getContext('2d');
+        if (!ctx) return '';
+        ctx.putImageData(img, 0, 0);
+        return c.toDataURL();
+      };
+      return { disp: toUrl(disp), rim: toUrl(rim), max };
+    }
+
+    type Maps = { disp: string; rim: string; max: number };
+    function filterMarkup(id: string, w: number, h: number, m: Maps, o: Preset) {
+      const S = 2 * m.max; // feDisplacementMap offset = scale * (C - 0.5)
+      const ch = (k: number, keep: 'r' | 'g' | 'b') => `
+        <feDisplacementMap in="soft" in2="map" scale="${(S * k).toFixed(2)}" xChannelSelector="R" yChannelSelector="G" result="d${keep}"/>
+        <feColorMatrix in="d${keep}" type="matrix" values="${keep === 'r' ? 1 : 0} 0 0 0 0  0 ${keep === 'g' ? 1 : 0} 0 0 0  0 0 ${keep === 'b' ? 1 : 0} 0 0  0 0 0 1 0" result="c${keep}"/>`;
+      return `
+      <filter id="${id}" x="0" y="0" width="${w}" height="${h}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="${o.blur}" result="soft"/>
+        <feImage href="${m.disp}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="map"/>
+        ${ch(1 + o.ab, 'r')}${ch(1, 'g')}${ch(1 - o.ab, 'b')}
+        <feComposite in="cr" in2="cg" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="rg"/>
+        <feComposite in="rg" in2="cb" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="rgb"/>
+        <feColorMatrix in="rgb" type="saturate" values="${o.sat}" result="sat"/>
+        <feImage href="${m.rim}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="rim"/>
+        <feComponentTransfer in="rim" result="rimA"><feFuncA type="linear" slope="0.22" intercept="0"/></feComponentTransfer>
+        <feBlend in="rimA" in2="sat" mode="screen"/>
+      </filter>`;
+    }
+
+    let seq = 0;
+    function build(el: HTMLElement) {
+      if (!defs) return;
+      const kind = el.dataset.lg || 'chip';
+      const o = PRESETS[kind];
+      const w = el.offsetWidth, h = el.offsetHeight;
+      if (!o || w === 0 || h === 0) return;
+      const br = getComputedStyle(el).borderTopLeftRadius;
+      const r = Math.min(br.endsWith('%') ? Math.min(w, h) / 2 : parseFloat(br) || 0, w / 2, h / 2);
+      const m = bake(w, h, r, o);
+      if (!m.disp) return;
+      const id = el.dataset.lgId || (el.dataset.lgId = `lgh-${kind}-${++seq}`);
+      const old = defs.querySelector(`#${id}`);
+      if (old) old.remove();
+      defs.insertAdjacentHTML('beforeend', filterMarkup(id, w, h, m, o));
+      el.style.setProperty('--lg', `url(#${id})`);
+    }
+
+    const targets = Array.from(header.querySelectorAll<HTMLElement>('[data-lg]'));
+    lgObserver = new ResizeObserver(entries => {
+      for (const entry of entries) build(entry.target as HTMLElement);
+    });
+    targets.forEach(el => lgObserver && lgObserver.observe(el));
+  }
+
+  let abort: AbortController | null = null;
+
+  function initHeader() {
+    if (abort) abort.abort();
+    abort = new AbortController();
+    initScrollRamp(abort.signal);
+    initRimLight(abort.signal);
+    initLens(abort.signal);
+    initRefraction();
   }
 
   // Initialize on first load
-  initMobileMenu();
-  initScrollBehavior();
+  initHeader();
 
-  // Re-initialize after Astro View Transitions swap
-  document.addEventListener('astro:after-swap', () => {
-    initMobileMenu();
-    initScrollBehavior();
-  });
+  // Re-initialize after Astro View Transitions swap (the header DOM is replaced)
+  document.addEventListener('astro:after-swap', initHeader);
+
+  // Contrast / transparency are live OS settings: re-evaluate the refraction
+  // tier when they flip mid-session (the CSS tiers react on their own).
+  for (const q of ['(prefers-reduced-transparency: reduce)', '(prefers-contrast: more)']) {
+    window.matchMedia(q).addEventListener('change', () => initRefraction());
+  }
 </script>
 
 <style>
@@ -207,144 +390,156 @@ function isActive(linkPath: string): boolean {
     right: 0;
     height: var(--header-height);
     z-index: var(--z-header);
-    overflow: visible;
-
-    /* Subtle bottom edge highlight */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-
-    /* Inset illumination — top highlight, bottom fade */
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.1),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.03),
-      0 2px 16px rgba(0, 0, 0, 0.15);
-
-    /* Scroll-reactive blur: JS sets --header-blur (12-24) and --header-bg-alpha (0.04-0.08) */
-    --header-blur: 12;
-    --header-bg-alpha: 0.04;
-    background: rgba(255, 255, 255, var(--header-bg-alpha));
-    backdrop-filter: blur(calc(var(--header-blur) * 1px)) saturate(180%);
-    -webkit-backdrop-filter: blur(calc(var(--header-blur) * 1px)) saturate(180%);
-
-    transition: box-shadow var(--transition-base);
-  }
-
-  /* Shimmer highlight — slow diagonal light sweep */
-  .header::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      165deg,
-      rgba(255, 255, 255, 0.06) 0%,
-      transparent 30%,
-      transparent 70%,
-      rgba(255, 255, 255, 0.03) 100%
-    );
+    /* The header is floating islands, not a bar: the space between them
+       must not intercept clicks on the content below. */
     pointer-events: none;
-    z-index: 0;
+    --hs: 0;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .header::before {
-      animation: header-shimmer 8s ease-in-out infinite;
-    }
-  }
-
-  @keyframes header-shimmer {
-    0%, 100% {
-      opacity: 1;
-      background-position: 0% 0%;
-    }
-    50% {
-      opacity: 0.5;
-      background-position: 100% 100%;
-    }
-  }
-
-  /* Prismatic edge refraction — rainbow gradient along bottom border */
-  .header::after {
-    content: '';
+  /* ================================== */
+  /* Scroll edge fade                   */
+  /* ================================== */
+  .header__edge {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: -1px;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      oklch(0.67 0.18 25 / 0.2) 10%,
-      oklch(0.67 0.16 60 / 0.25) 20%,
-      oklch(0.67 0.15 100 / 0.2) 30%,
-      oklch(0.62 0.14 145 / 0.2) 40%,
-      oklch(0.67 0.15 240 / 0.25) 55%,
-      oklch(0.67 0.14 300 / 0.2) 70%,
-      oklch(0.67 0.14 340 / 0.2) 85%,
-      transparent 100%
-    );
-    pointer-events: none;
-    z-index: 1;
-    opacity: var(--refraction-opacity, 0.6);
-    transition: opacity 0.3s ease;
-  }
-
-  /* Glass edge fade — content dissolves at the header boundary */
-  .header__edge-fade {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    height: 16px;
+    top: 0;
+    height: calc(100% + 28px);
     pointer-events: none;
     z-index: 0;
-    backdrop-filter: blur(calc(var(--header-blur) * 0.6px)) saturate(140%);
-    -webkit-backdrop-filter: blur(calc(var(--header-blur) * 0.6px)) saturate(140%);
-    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
-    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
-  }
-
-  /* When mobile menu is open, solid background */
-  .header--menu-open {
-    background-color: var(--color-bg);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    box-shadow: none;
-    border-bottom-color: transparent;
-  }
-
-  .header--menu-open::before,
-  .header--menu-open::after,
-  .header--menu-open .header__edge-fade {
-    display: none;
+    backdrop-filter: blur(8px) saturate(150%);
+    /* A whisper of the photo accent bleeds into the edge, over the bg fade */
+    background:
+      linear-gradient(
+        to bottom,
+        oklch(0.6 calc(var(--chroma-raw, 0.02) * 1.1) var(--color-accent-hue) / calc(var(--chroma-raw, 0.02) * 0.3)),
+        transparent 75%
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-bg) 55%, transparent),
+        color-mix(in oklab, var(--color-bg) 18%, transparent) 55%,
+        transparent
+      );
+    mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 100%);
+    /* Fades in with scroll; opacity also fades the filtered backdrop, which
+       is much cheaper than animating the blur radius. */
+    opacity: calc(0.45 + 0.55 * var(--hs));
   }
 
   .header__inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     height: 100%;
-    overflow: visible;
     position: relative;
-    z-index: 2; /* Above mobile menu overlay */
+    z-index: 2;
     max-width: none;
     padding-inline: var(--space-md);
+    gap: var(--space-sm);
+    pointer-events: none;
   }
 
-  /* Logo - glass dot only */
+  .header__inner > * {
+    pointer-events: auto;
+  }
+
+  /* ================================== */
+  /* Glass material (shared surfaces)   */
+  /* ================================== */
+  .glassy {
+    position: relative;
+    border-radius: 999px;
+    /* Accent wash (scaled by --chroma-raw, so B&W pages stay neutral)
+       over the translucent white surface — kept faint and a touch deep
+       so the photo, not the bar, carries the color */
+    background:
+      linear-gradient(
+        oklch(0.65 calc(var(--chroma-raw, 0.02) * 1.1) var(--color-accent-hue) / calc(var(--chroma-raw, 0.02) * 0.35)),
+        oklch(0.65 calc(var(--chroma-raw, 0.02) * 1.1) var(--color-accent-hue) / calc(var(--chroma-raw, 0.02) * 0.35))
+      ),
+      rgb(255 255 255 / calc(0.028 + 0.03 * var(--hs, 0)));
+    box-shadow:
+      0 4px 14px rgb(0 0 0 / 0.16),
+      inset 0 1px 0 rgb(255 255 255 / 0.06);
+    /* Frosted tier — every engine. Chromium swaps in --lg (refraction). */
+    backdrop-filter: blur(14px) saturate(150%);
+  }
+
+  :global(html.lg-refract) .glassy {
+    backdrop-filter: var(--lg, blur(14px) saturate(150%));
+  }
+
+  /* Interior of the glass: a sheen on the lit side (follows --light, like
+     the rim), a soft shade pooling at the bottom for thickness, and a slow
+     periodic light sweep across the surface. Kept dim on purpose. */
+  .glassy::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.05) 50%, transparent 58%) no-repeat -80% 0 / 260% 100%,
+      linear-gradient(var(--light, 315deg), rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.015) 38%, transparent 62%),
+      linear-gradient(to top, rgb(0 0 0 / 0.09), transparent 32%);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .glassy::before {
+      animation: glass-sweep 11s ease-in-out infinite;
+    }
+  }
+
+  @keyframes glass-sweep {
+    0%, 72% {
+      background-position: -80% 0, 0 0, 0 0;
+    }
+    88%, 100% {
+      background-position: 180% 0, 0 0, 0 0;
+    }
+  }
+
+  /* Rim light — follows the pointer via --light (set by JS).
+     Kept thin and quiet: it should read as an edge, not an outline. */
+  .glassy::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 0.75px;
+    pointer-events: none;
+    /* Bright stops pick up the photo accent (neutral when chroma is 0) */
+    background: conic-gradient(
+      from var(--light, 315deg),
+      oklch(0.92 calc(var(--chroma-raw, 0.02) * 1.1) var(--color-accent-hue) / 0.32),
+      oklch(0.88 calc(var(--chroma-raw, 0.02) * 0.9) var(--color-accent-hue) / 0.08) 45deg,
+      rgb(255 255 255 / 0.03) 120deg,
+      oklch(0.9 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.16) 180deg,
+      rgb(255 255 255 / 0.03) 240deg,
+      oklch(0.88 calc(var(--chroma-raw, 0.02) * 0.9) var(--color-accent-hue) / 0.08) 315deg,
+      oklch(0.92 calc(var(--chroma-raw, 0.02) * 1.1) var(--color-accent-hue) / 0.32)
+    );
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity: 0.45;
+  }
+
+  /* ================================== */
+  /* Logo — glass dome dot              */
+  /* Chroma scales with --chroma-raw (0 for B&W images) */
+  /* ================================== */
   .header__logo {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     text-decoration: none;
     padding: var(--space-xs);
-    overflow: visible;
   }
 
-  /* Glass dot — the sole logo mark
-   * Chroma scales with --chroma-raw (0 for B&W images) */
   .logo__dot {
     display: block;
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
     position: relative;
     border-radius: 50%;
@@ -358,17 +553,24 @@ function isActive(linkPath: string): boolean {
       oklch(0.69 calc(var(--chroma-raw, 0.02) * 1.5) var(--color-accent-hue) / 0.12) 100%
     );
 
-    /* Crisp glass rim */
-    border: 1.5px solid oklch(0.78 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.8);
+    /* Crisp glass rim — thin, in step with the pill's rim light */
+    border: 1px solid oklch(0.78 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.65);
 
     /* Subtle glow */
     box-shadow:
       inset 0 0 4px oklch(1.0 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.1),
       0 0 6px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.5) var(--color-accent-hue) / 0.15);
 
+    /* Frosted tier; Chromium swaps in the dome refraction */
+    backdrop-filter: blur(6px) saturate(145%);
+
     transition:
       box-shadow var(--transition-base),
       border-color var(--transition-base);
+  }
+
+  :global(html.lg-refract) .logo__dot {
+    backdrop-filter: var(--lg, blur(6px) saturate(145%));
   }
 
   /* Highlight arc — rotates slowly like light catching glass */
@@ -409,7 +611,7 @@ function isActive(linkPath: string): boolean {
 
   /* Hover — brighter rim + glow */
   .header__logo:hover .logo__dot {
-    border-color: oklch(0.85 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.9);
+    border-color: oklch(0.85 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.8);
     box-shadow:
       inset 0 0 5px oklch(1.0 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.15),
       0 0 10px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.83) var(--color-accent-hue) / 0.25);
@@ -476,29 +678,76 @@ function isActive(linkPath: string): boolean {
     }
   }
 
-  /* Desktop nav */
-  .header__nav {
-    display: none;
+  /* ================================== */
+  /* Floating pill nav + lens           */
+  /* ================================== */
+  .header__navwrap {
+    position: relative;
+    margin-left: auto;
+  }
+
+  .header__pill {
+    display: flex;
     align-items: center;
-    gap: var(--space-xl);
+    gap: 2px;
+    padding: 4px;
   }
 
-  @media (min-width: 640px) {
-    .header__nav {
-      display: flex;
-    }
-    .header__hamburger {
-      display: none !important;
-    }
+  /* Selection lens — slides between items, magnifies the label under it.
+     Sits ABOVE the pill (sibling) so its backdrop is the page, not the pill. */
+  .header__lens {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 36px;
+    translate: var(--lens-x, 0) -50%;
+    z-index: 2;
+    pointer-events: none;
+    background: rgb(255 255 255 / 0.045);
+    box-shadow:
+      0 2px 8px rgb(0 0 0 / 0.12),
+      inset 0 0 0 1px rgb(255 255 255 / 0.10);
+    backdrop-filter: none; /* frosted tier: the pill under it already blurs */
+    transition:
+      translate 0.55s cubic-bezier(0.3, 1.35, 0.45, 1),
+      width 0.35s cubic-bezier(0.3, 1.35, 0.45, 1),
+      scale 0.22s ease,
+      opacity 0.25s ease;
   }
 
+  :global(html.lg-refract) .header__lens {
+    backdrop-filter: var(--lg, none);
+  }
+
+  .header__lens--moving {
+    scale: 1.14 0.92;
+  }
+
+  .header__lens--still {
+    transition: none;
+  }
+
+  .header__lens::after {
+    opacity: 0.5;
+  }
+
+  /* Nav links — icon above glass text (tab-bar stack),
+     chroma scales with --chroma-raw */
   .header__link {
-    font-size: var(--text-sm);
-    letter-spacing: 0.1em;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 36px;
+    width: var(--nav-item-w, 86px); /* equal segments: the lens never crowds short labels */
+    border-radius: 999px;
+    font-size: 0.5625rem; /* tab-bar label size */
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     text-decoration: none;
-    padding-block: var(--space-xs);
-    position: relative;
 
     /* Glass text effect - chroma scales with --chroma-raw */
     color: transparent;
@@ -517,24 +766,31 @@ function isActive(linkPath: string): boolean {
       -0.3px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 3.75) 25 / 0.12),
       0.3px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 3.75) 195 / 0.12);
 
-    transition: all var(--transition-fast);
+    transition: -webkit-text-stroke var(--transition-fast), text-shadow var(--transition-fast);
   }
 
-  .header__link::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      oklch(0.67 calc(var(--chroma-raw, 0.02) * 4.2) 25 / 0.3),
-      oklch(0.81 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.6),
-      oklch(0.67 calc(var(--chroma-raw, 0.02) * 4.2) 195 / 0.3)
-    );
-    transform: scaleX(0);
-    transition: transform var(--transition-base);
+  /* Icons share the glass-text stroke color and brighten in step with it */
+  .header__icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: oklch(0.75 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.75);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 3px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.12));
+    transition: stroke var(--transition-fast), filter var(--transition-fast);
+  }
+
+  .header__link:hover .header__icon {
+    stroke: oklch(0.83 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.9);
+    filter: drop-shadow(0 0 4px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.5) var(--color-accent-hue) / 0.2));
+  }
+
+  .header__link--active .header__icon {
+    stroke: oklch(0.85 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.95);
+    filter: drop-shadow(0 0 5px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.67) var(--color-accent-hue) / 0.25));
   }
 
   .header__link:hover {
@@ -545,10 +801,7 @@ function isActive(linkPath: string): boolean {
       0.4px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 4.2) 195 / 0.16);
   }
 
-  .header__link:hover::after {
-    transform: scaleX(1);
-  }
-
+  /* Active page — the lens marks it; the stroke brightens */
   .header__link--active {
     -webkit-text-stroke: 0.8px oklch(0.85 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.95);
     text-shadow:
@@ -557,275 +810,99 @@ function isActive(linkPath: string): boolean {
       0.5px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 4.6) 195 / 0.18);
   }
 
-  .header__link--active::after {
-    transform: scaleX(1);
+  /* Narrow screens: Reddit-style icon tabs — labels drop, names stay for AT */
+  @media (max-width: 599.98px) {
+    .header__link {
+      --nav-item-w: 48px;
+    }
+    .header__label {
+      display: none;
+    }
+    .header__icon {
+      width: 16px;
+      height: 16px;
+    }
   }
 
-  /* Language switcher - chroma scales with --chroma-raw */
+  /* ================================== */
+  /* Language switcher — quiet toggle   */
+  /* ================================== */
   .header__lang {
-    font-size: var(--text-xs);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--border-radius);
-
-    /* Glass effect */
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    background: linear-gradient(
-      165deg,
-      oklch(0.78 calc(var(--chroma-raw, 0.02) * 0.67) var(--color-accent-hue) / 0.04) 0%,
-      oklch(0.75 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.02) 50%,
-      oklch(0.78 calc(var(--chroma-raw, 0.02) * 0.67) var(--color-accent-hue) / 0.04) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-stroke: 0.6px oklch(0.72 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.65);
-    text-shadow:
-      -0.3px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.3) 25 / 0.1),
-      0.3px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.3) 195 / 0.1);
-
-    border: 1px solid oklch(0.72 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.35);
-    transition: all var(--transition-fast);
-  }
-
-  .header__lang:hover {
-    -webkit-text-stroke: 0.6px oklch(0.81 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.85);
-    border-color: oklch(0.78 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.55);
-    text-shadow:
-      0 0 6px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.15),
-      -0.4px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.75) 25 / 0.14),
-      0.4px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.75) 195 / 0.14);
-  }
-
-  /* Hamburger (mobile) */
-  .header__hamburger {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    align-items: center;
     gap: 6px;
-    width: 28px;
-    height: 28px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .header__hamburger-line {
-    display: block;
-    width: 100%;
-    height: 2px;
-    border-radius: 1px;
-
-    /* Glass effect on lines - chroma scales with --chroma-raw */
-    background: linear-gradient(
-      90deg,
-      oklch(0.69 calc(var(--chroma-raw, 0.02) * 3.75) 25 / 0.25),
-      oklch(0.78 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.8),
-      oklch(0.69 calc(var(--chroma-raw, 0.02) * 3.75) 195 / 0.25)
-    );
-    box-shadow:
-      0 0 4px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.15);
-
-    transition: translate var(--transition-base), rotate var(--transition-base), opacity var(--transition-fast), background var(--transition-fast);
-  }
-
-  .header__hamburger:hover .header__hamburger-line {
-    background: linear-gradient(
-      90deg,
-      oklch(0.69 calc(var(--chroma-raw, 0.02) * 4.2) 25 / 0.35),
-      oklch(0.83 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.9),
-      oklch(0.69 calc(var(--chroma-raw, 0.02) * 4.2) 195 / 0.35)
-    );
-    box-shadow:
-      0 0 6px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.5) var(--color-accent-hue) / 0.22);
-  }
-
-  .header__hamburger--open .header__hamburger-line:first-child {
-    translate: 0 4px;
-    rotate: 45deg;
-  }
-
-  .header__hamburger--open .header__hamburger-line:last-child {
-    translate: 0 -4px;
-    rotate: -45deg;
-  }
-
-  /* ================================== */
-  /* Mobile menu overlay (full-screen) */
-  /* ================================== */
-  .header__mobile-menu {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-bg);
-    z-index: calc(var(--z-header) - 1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition:
-      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      visibility 0.4s;
-  }
-
-  .header__mobile-menu--open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-  }
-
-  .header__mobile-nav {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-xl);
-  }
-
-  .header__mobile-link {
-    font-family: var(--font-body);
-    font-size: clamp(1.5rem, 6vw, 2rem);
-    font-weight: 400;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-decoration: none;
-    position: relative;
-    padding: var(--space-sm) var(--space-md);
-
-    /* Glass text effect - chroma scales with --chroma-raw */
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    background: linear-gradient(
-      165deg,
-      oklch(0.81 calc(var(--chroma-raw, 0.02) * 0.67) var(--color-accent-hue) / 0.06) 0%,
-      oklch(0.77 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.02) 50%,
-      oklch(0.81 calc(var(--chroma-raw, 0.02) * 0.67) var(--color-accent-hue) / 0.06) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-stroke: 1px oklch(0.75 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.7);
-    text-shadow:
-      0 0 6px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.12),
-      -0.4px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 3.75) 25 / 0.12),
-      0.4px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 3.75) 195 / 0.12);
-
-    /* Staggered animation setup */
-    opacity: 0;
-    translate: 0 20px;
-    transition:
-      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      translate 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      -webkit-text-stroke var(--transition-fast),
-      text-shadow var(--transition-fast);
-    transition-delay: calc(var(--link-index, 0) * 0.08s);
-  }
-
-  .header__mobile-menu--open .header__mobile-link {
-    opacity: 1;
-    translate: 0 0;
-  }
-
-  .header__mobile-link::after {
-    content: '';
-    position: absolute;
-    bottom: var(--space-xs);
-    left: var(--space-md);
-    right: var(--space-md);
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      oklch(0.67 calc(var(--chroma-raw, 0.02) * 4.2) 25 / 0.25),
-      oklch(0.81 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.6),
-      oklch(0.67 calc(var(--chroma-raw, 0.02) * 4.2) 195 / 0.25)
-    );
-    transform: scaleX(0);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .header__mobile-link:hover,
-  .header__mobile-link--active {
-    -webkit-text-stroke: 1px oklch(0.85 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.9);
-    text-shadow:
-      0 0 10px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.67) var(--color-accent-hue) / 0.2),
-      -0.5px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 4.2) 25 / 0.16),
-      0.5px 0 0 oklch(0.69 calc(var(--chroma-raw, 0.02) * 4.2) 195 / 0.16);
-  }
-
-  .header__mobile-link:hover::after,
-  .header__mobile-link--active::after {
-    transform: scaleX(1);
-  }
-
-  .header__mobile-controls {
-    margin-top: var(--space-2xl);
-    opacity: 0;
-    translate: 0 20px;
-    transition:
-      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      translate 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transition-delay: calc(var(--link-index, 3) * 0.08s);
-  }
-
-  .header__mobile-menu--open .header__mobile-controls {
-    opacity: 1;
-    translate: 0 0;
-  }
-
-  .header__mobile-lang {
-    font-size: var(--text-sm);
+    font-size: 0.625rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    padding: var(--space-sm) var(--space-lg);
-    border-radius: var(--border-radius);
-
-    /* Glass effect - chroma scales with --chroma-raw */
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    background: linear-gradient(
-      165deg,
-      oklch(0.78 calc(var(--chroma-raw, 0.02) * 0.67) var(--color-accent-hue) / 0.04) 0%,
-      oklch(0.75 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.02) 50%,
-      oklch(0.78 calc(var(--chroma-raw, 0.02) * 0.67) var(--color-accent-hue) / 0.04) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-stroke: 0.8px oklch(0.72 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.65);
-    text-shadow:
-      -0.3px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.3) 25 / 0.1),
-      0.3px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.3) 195 / 0.1);
-
-    border: 1px solid oklch(0.72 calc(var(--chroma-raw, 0.02) * 0.83) var(--color-accent-hue) / 0.35);
-    transition: all var(--transition-fast);
+    padding: var(--space-xs);
   }
 
-  .header__mobile-lang:hover {
-    -webkit-text-stroke: 0.8px oklch(0.81 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.85);
-    border-color: oklch(0.78 calc(var(--chroma-raw, 0.02) * 1) var(--color-accent-hue) / 0.55);
-    text-shadow:
-      0 0 6px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.15),
-      -0.4px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.75) 25 / 0.14),
-      0.4px 0 0 oklch(0.67 calc(var(--chroma-raw, 0.02) * 3.75) 195 / 0.14);
+  .header__lang-current {
+    color: var(--color-text-tinted);
+  }
+
+  .header__lang-sep {
+    color: var(--color-text-subtle-tinted);
+  }
+
+  .header__lang-alt {
+    color: var(--color-text-muted-tinted);
+    text-decoration: none;
+    transition: color var(--transition-fast), text-shadow var(--transition-fast);
+  }
+
+  .header__lang-alt:hover {
+    color: var(--color-text-tinted);
+    text-shadow: 0 0 6px oklch(0.77 calc(var(--chroma-raw, 0.02) * 1.25) var(--color-accent-hue) / 0.2);
+  }
+
+
+  /* During a view transition WebKit and Gecko drop backdrop blur entirely
+     (WebKit 302256), so firm up the tint for that moment. Chromium keeps
+     its blur and is excluded via the engine class. */
+  :global(html:not(.lg-refract):active-view-transition) .glassy {
+    background-color: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  }
+
+  /* ================================== */
+  /* Accessibility: solid surfaces      */
+  /* ================================== */
+  @media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+    .glassy {
+      background: color-mix(in srgb, var(--color-bg) 92%, white 8%);
+      backdrop-filter: none !important;
+    }
+    .header__edge {
+      backdrop-filter: none;
+      background: linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-bg) 96%, transparent),
+        transparent
+      );
+    }
+  }
+
+  /* Forced colors (Windows High Contrast): gradients and shadows compute to
+     none but background alpha survives, which would leave invisible glass —
+     give the surfaces real system colors instead. */
+  @media (forced-colors: active) {
+    .glassy {
+      background: Canvas;
+      border: 1px solid CanvasText;
+      backdrop-filter: none !important;
+    }
+    .header__edge {
+      display: none;
+    }
   }
 
   /* Respect reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    .header__mobile-menu {
-      transition: opacity 0.15s, visibility 0.15s;
+    .header__lens {
+      transition: opacity 0.15s ease;
     }
-    .header__mobile-link,
-    .header__mobile-controls {
-      transition: color 0.15s, opacity 0.15s;
-      translate: none !important;
-      transition-delay: 0s !important;
-    }
-  }
-
-  @media (min-width: 640px) {
-    .header__mobile-menu {
-      display: none;
+    .header__lens--moving {
+      scale: none;
     }
   }
 </style>
