@@ -1854,5 +1854,263 @@
       "jpg": "/images/optimized/_dsc3729-1-400.jpg 400w, /images/optimized/_dsc3729-1-800.jpg 800w, /images/optimized/_dsc3729-1-1200.jpg 1200w, /images/optimized/_dsc3729-1-2400.jpg 2400w"
     },
     "mtime": 1772989920664.5474
+  },
+  "/images/uploads/a-travers-la-brume.jpg": {
+    "original": "/images/uploads/a-travers-la-brume.jpg",
+    "width": 2400,
+    "height": 1602,
+    "aspectRatio": 1.5,
+    "variants": [
+      {
+        "width": 400,
+        "format": "avif",
+        "path": "/images/optimized/a-travers-la-brume-400.avif",
+        "size": 29266
+      },
+      {
+        "width": 400,
+        "format": "webp",
+        "path": "/images/optimized/a-travers-la-brume-400.webp",
+        "size": 25180
+      },
+      {
+        "width": 400,
+        "format": "jpg",
+        "path": "/images/optimized/a-travers-la-brume-400.jpg",
+        "size": 27194
+      },
+      {
+        "width": 800,
+        "format": "avif",
+        "path": "/images/optimized/a-travers-la-brume-800.avif",
+        "size": 110636
+      },
+      {
+        "width": 800,
+        "format": "webp",
+        "path": "/images/optimized/a-travers-la-brume-800.webp",
+        "size": 95868
+      },
+      {
+        "width": 800,
+        "format": "jpg",
+        "path": "/images/optimized/a-travers-la-brume-800.jpg",
+        "size": 102798
+      },
+      {
+        "width": 1200,
+        "format": "avif",
+        "path": "/images/optimized/a-travers-la-brume-1200.avif",
+        "size": 247261
+      },
+      {
+        "width": 1200,
+        "format": "webp",
+        "path": "/images/optimized/a-travers-la-brume-1200.webp",
+        "size": 215554
+      },
+      {
+        "width": 1200,
+        "format": "jpg",
+        "path": "/images/optimized/a-travers-la-brume-1200.jpg",
+        "size": 228946
+      },
+      {
+        "width": 2400,
+        "format": "avif",
+        "path": "/images/optimized/a-travers-la-brume-2400.avif",
+        "size": 834629
+      },
+      {
+        "width": 2400,
+        "format": "webp",
+        "path": "/images/optimized/a-travers-la-brume-2400.webp",
+        "size": 732994
+      },
+      {
+        "width": 2400,
+        "format": "jpg",
+        "path": "/images/optimized/a-travers-la-brume-2400.jpg",
+        "size": 890664
+      }
+    ],
+    "srcset": {
+      "avif": "/images/optimized/a-travers-la-brume-400.avif 400w, /images/optimized/a-travers-la-brume-800.avif 800w, /images/optimized/a-travers-la-brume-1200.avif 1200w, /images/optimized/a-travers-la-brume-2400.avif 2400w",
+      "webp": "/images/optimized/a-travers-la-brume-400.webp 400w, /images/optimized/a-travers-la-brume-800.webp 800w, /images/optimized/a-travers-la-brume-1200.webp 1200w, /images/optimized/a-travers-la-brume-2400.webp 2400w",
+      "jpg": "/images/optimized/a-travers-la-brume-400.jpg 400w, /images/optimized/a-travers-la-brume-800.jpg 800w, /images/optimized/a-travers-la-brume-1200.jpg 1200w, /images/optimized/a-travers-la-brume-2400.jpg 2400w"
+    },
+    "mtime": 1793757474762.3135
+  },
+  "/images/uploads/bell-epoque.jpg": {
+    "original": "/images/uploads/bell-epoque.jpg",
+    "width": 2400,
+    "height": 1563,
+    "aspectRatio": 1.54,
+    "variants": [
+      {
+        "width": 400,
+        "format": "avif",
+        "path": "/images/optimized/bell-epoque-400.avif",
+        "size": 30480
+      },
+      {
+        "width": 400,
+        "format": "webp",
+        "path": "/images/optimized/bell-epoque-400.webp",
+        "size": 27450
+      },
+      {
+        "width": 400,
+        "format": "jpg",
+        "path": "/images/optimized/bell-epoque-400.jpg",
+        "size": 28762
+      },
+      {
+        "width": 800,
+        "format": "avif",
+        "path": "/images/optimized/bell-epoque-800.avif",
+        "size": 119423
+      },
+      {
+        "width": 800,
+        "format": "webp",
+        "path": "/images/optimized/bell-epoque-800.webp",
+        "size": 102400
+      },
+      {
+        "width": 800,
+        "format": "jpg",
+        "path": "/images/optimized/bell-epoque-800.jpg",
+        "size": 108046
+      },
+      {
+        "width": 1200,
+        "format": "avif",
+        "path": "/images/optimized/bell-epoque-1200.avif",
+        "size": 261356
+      },
+      {
+        "width": 1200,
+        "format": "webp",
+        "path": "/images/optimized/bell-epoque-1200.webp",
+        "size": 229366
+      },
+      {
+        "width": 1200,
+        "format": "jpg",
+        "path": "/images/optimized/bell-epoque-1200.jpg",
+        "size": 237430
+      },
+      {
+        "width": 2400,
+        "format": "avif",
+        "path": "/images/optimized/bell-epoque-2400.avif",
+        "size": 816989
+      },
+      {
+        "width": 2400,
+        "format": "webp",
+        "path": "/images/optimized/bell-epoque-2400.webp",
+        "size": 718458
+      },
+      {
+        "width": 2400,
+        "format": "jpg",
+        "path": "/images/optimized/bell-epoque-2400.jpg",
+        "size": 885879
+      }
+    ],
+    "srcset": {
+      "avif": "/images/optimized/bell-epoque-400.avif 400w, /images/optimized/bell-epoque-800.avif 800w, /images/optimized/bell-epoque-1200.avif 1200w, /images/optimized/bell-epoque-2400.avif 2400w",
+      "webp": "/images/optimized/bell-epoque-400.webp 400w, /images/optimized/bell-epoque-800.webp 800w, /images/optimized/bell-epoque-1200.webp 1200w, /images/optimized/bell-epoque-2400.webp 2400w",
+      "jpg": "/images/optimized/bell-epoque-400.jpg 400w, /images/optimized/bell-epoque-800.jpg 800w, /images/optimized/bell-epoque-1200.jpg 1200w, /images/optimized/bell-epoque-2400.jpg 2400w"
+    },
+    "mtime": 1793757475377.2603
+  },
+  "/images/uploads/vitesse-relative.jpg": {
+    "original": "/images/uploads/vitesse-relative.jpg",
+    "width": 2400,
+    "height": 1602,
+    "aspectRatio": 1.5,
+    "variants": [
+      {
+        "width": 400,
+        "format": "avif",
+        "path": "/images/optimized/vitesse-relative-400.avif",
+        "size": 18484
+      },
+      {
+        "width": 400,
+        "format": "webp",
+        "path": "/images/optimized/vitesse-relative-400.webp",
+        "size": 15274
+      },
+      {
+        "width": 400,
+        "format": "jpg",
+        "path": "/images/optimized/vitesse-relative-400.jpg",
+        "size": 20143
+      },
+      {
+        "width": 800,
+        "format": "avif",
+        "path": "/images/optimized/vitesse-relative-800.avif",
+        "size": 68461
+      },
+      {
+        "width": 800,
+        "format": "webp",
+        "path": "/images/optimized/vitesse-relative-800.webp",
+        "size": 52708
+      },
+      {
+        "width": 800,
+        "format": "jpg",
+        "path": "/images/optimized/vitesse-relative-800.jpg",
+        "size": 68910
+      },
+      {
+        "width": 1200,
+        "format": "avif",
+        "path": "/images/optimized/vitesse-relative-1200.avif",
+        "size": 154939
+      },
+      {
+        "width": 1200,
+        "format": "webp",
+        "path": "/images/optimized/vitesse-relative-1200.webp",
+        "size": 123034
+      },
+      {
+        "width": 1200,
+        "format": "jpg",
+        "path": "/images/optimized/vitesse-relative-1200.jpg",
+        "size": 150405
+      },
+      {
+        "width": 2400,
+        "format": "avif",
+        "path": "/images/optimized/vitesse-relative-2400.avif",
+        "size": 507214
+      },
+      {
+        "width": 2400,
+        "format": "webp",
+        "path": "/images/optimized/vitesse-relative-2400.webp",
+        "size": 403132
+      },
+      {
+        "width": 2400,
+        "format": "jpg",
+        "path": "/images/optimized/vitesse-relative-2400.jpg",
+        "size": 580937
+      }
+    ],
+    "srcset": {
+      "avif": "/images/optimized/vitesse-relative-400.avif 400w, /images/optimized/vitesse-relative-800.avif 800w, /images/optimized/vitesse-relative-1200.avif 1200w, /images/optimized/vitesse-relative-2400.avif 2400w",
+      "webp": "/images/optimized/vitesse-relative-400.webp 400w, /images/optimized/vitesse-relative-800.webp 800w, /images/optimized/vitesse-relative-1200.webp 1200w, /images/optimized/vitesse-relative-2400.webp 2400w",
+      "jpg": "/images/optimized/vitesse-relative-400.jpg 400w, /images/optimized/vitesse-relative-800.jpg 800w, /images/optimized/vitesse-relative-1200.jpg 1200w, /images/optimized/vitesse-relative-2400.jpg 2400w"
+    },
+    "mtime": 1793757475856.715
   }
 }

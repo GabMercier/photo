@@ -1,0 +1,28 @@
+---
+title:
+  en: 'Phone booth'
+  fr: 'Phone booth'
+coverImage:
+  src: /images/uploads/bell-epoque.jpg
+  alt:
+    en: 'Teenagers gather around a graffiti-covered Bell phone booth between yellow benches and a stone wall topped with a wrought-iron fence; a passer-by walks off to the left.'
+    fr: 'Des jeunes se rassemblent autour d''une cabine téléphonique Bell couverte de graffitis, entre des bancs jaunes et un muret de pierre surmonté d''une clôture de fer forgé; un passant s''éloigne vers la gauche.'
+  focalPoint: center
+glowColor: '#b6b654'
+secondaryColors: []
+date: 2026-04-12
+dateTaken: 2026-04-12
+tags:
+  - street
+  - urban
+postType: single
+gallerySize: auto
+draft: false
+private: false
+featured: false
+homepageCarousel: false
+homepageDefault: false
+depth3d: false
+showExif: false
+exifSummary: 'NIKON D600  ·  40.0 mm f/2.0  ·  40mm  ·  f/10  ·  1/125  ·  ISO 280'
+---

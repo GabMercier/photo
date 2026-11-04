@@ -1,0 +1,28 @@
+---
+title:
+  en: ''
+  fr: ''
+coverImage:
+  src: /images/uploads/a-travers-la-brume.jpg
+  alt:
+    en: 'Bare trees in a snowy, foggy park; behind them, rows of lit office windows glow through the fog.'
+    fr: 'Arbres dénudés dans un parc enneigé et brumeux; derrière eux, des rangées de fenêtres de bureaux éclairées luisent à travers la brume.'
+  focalPoint: center
+glowColor: '#5c99b9'
+secondaryColors: []
+date: 2026-04-13
+dateTaken: 2026-04-13
+tags:
+  - urban
+  - winter
+postType: single
+gallerySize: auto
+draft: false
+private: false
+featured: false
+homepageCarousel: false
+homepageDefault: false
+depth3d: false
+showExif: false
+exifSummary: 'NIKON D600  ·  40.0 mm f/2.0  ·  40mm  ·  f/8  ·  1/160  ·  ISO 1000'
+---

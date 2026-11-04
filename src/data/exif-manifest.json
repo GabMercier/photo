@@ -253,5 +253,41 @@
     "shutterSpeed": "1/200",
     "iso": 640,
     "dateTaken": "2026-01-31T16:29:24.000Z"
+  },
+  "/images/uploads/a-travers-la-brume.jpg": {
+    "mtime": 1793757474762.3135,
+    "cameraMake": "NIKON CORPORATION",
+    "cameraModel": "NIKON D600",
+    "lens": "40.0 mm f/2.0",
+    "focalLength": 40,
+    "focalLength35mm": 40,
+    "aperture": 8,
+    "shutterSpeed": "1/160",
+    "iso": 1000,
+    "dateTaken": "2026-04-13T19:04:41.000Z"
+  },
+  "/images/uploads/bell-epoque.jpg": {
+    "mtime": 1793757475377.2603,
+    "cameraMake": "NIKON CORPORATION",
+    "cameraModel": "NIKON D600",
+    "lens": "40.0 mm f/2.0",
+    "focalLength": 40,
+    "focalLength35mm": 40,
+    "aperture": 10,
+    "shutterSpeed": "1/125",
+    "iso": 280,
+    "dateTaken": "2026-04-12T16:54:56.000Z"
+  },
+  "/images/uploads/vitesse-relative.jpg": {
+    "mtime": 1793757475856.715,
+    "cameraMake": "NIKON CORPORATION",
+    "cameraModel": "NIKON D600",
+    "lens": "40.0 mm f/2.0",
+    "focalLength": 40,
+    "focalLength35mm": 40,
+    "aperture": 10,
+    "shutterSpeed": "1/125",
+    "iso": 100,
+    "dateTaken": "2026-04-12T17:08:09.000Z"
   }
 }
