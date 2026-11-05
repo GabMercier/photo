@@ -6,6 +6,7 @@
  * Masonry grid with filtering, slideshow, and depth parallax.
  */
 import Base from '@layouts/Base.astro';
+import { personSchema } from '@utils/author';
 import GalleryImage, { type ImageOrientation } from '@components/GalleryImage.astro';
 import FilterBar from '@components/FilterBar.astro';
 import { getCollection } from 'astro:content';
@@ -178,11 +179,7 @@ const gallerySchema = {
     ? 'Galerie photographique de Gabriel Mercier — paysages, nature et moments capturés.'
     : 'Photography gallery by Gabriel Mercier — landscapes, nature, and captured moments.',
   url: new URL(Astro.url.pathname, siteUrl).href,
-  author: {
-    '@type': 'Person',
-    name: 'Gabriel Mercier',
-    url: siteUrl,
-  },
+  author: personSchema(siteUrl),
   mainEntity: {
     '@type': 'ImageGallery',
     name: t('nav.gallery', locale),

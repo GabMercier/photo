@@ -12,6 +12,7 @@ import OptimizedImage from '@components/OptimizedImage.astro';
 import { imageSizes, getOptimizedImage } from '@utils/optimizedImage';
 import { render, getEntry } from 'astro:content';
 import { getLocaleFromUrl, localized, t, localePath } from '@utils/i18n';
+import { personSchema } from '@utils/author';
 import { deriveAccentFromGlow, hexToRgb } from '@utils/extractColors';
 import { getExifData, formatExifSummary, mergeExifWithOverrides, type ExifFieldKey } from '@utils/exifData';
 import { formatLocation, hasLocation, locationToPlace } from '@utils/location';
@@ -94,16 +95,8 @@ const postSchema = {
   datePublished: date.toISOString(),
   ...(post.data.updatedDate && { dateModified: post.data.updatedDate.toISOString() }),
   url: postUrl,
-  author: {
-    '@type': 'Person',
-    name: 'Gabriel Mercier',
-    url: siteUrl,
-  },
-  publisher: {
-    '@type': 'Person',
-    name: 'Gabriel Mercier',
-    url: siteUrl,
-  },
+  author: personSchema(siteUrl),
+  publisher: personSchema(siteUrl),
   ...(tags.length > 0 && { keywords: tags.join(', ') }),
   ...(place && { contentLocation: place }),
   mainEntityOfPage: {
@@ -119,15 +112,8 @@ const photographSchema = {
   image: imageUrl,
   dateCreated: date.toISOString(),
   ...(place && { contentLocation: place }),
-  creator: {
-    '@type': 'Person',
-    name: 'Gabriel Mercier',
-    url: siteUrl,
-  },
-  copyrightHolder: {
-    '@type': 'Person',
-    name: 'Gabriel Mercier',
-  },
+  creator: personSchema(siteUrl),
+  copyrightHolder: personSchema(siteUrl),
 };
 
 const imageObjectSchema = coverExif && (coverExif.cameraModel || coverExif.lens) ? {
@@ -136,8 +122,8 @@ const imageObjectSchema = coverExif && (coverExif.cameraModel || coverExif.lens)
   contentUrl: imageUrl,
   name: displayTitle || localized(coverImage.alt, locale) || undefined,
   ...(coverExif.dateTaken && { dateCreated: coverExif.dateTaken }),
-  creator: { '@type': 'Person', name: 'Gabriel Mercier' },
-  copyrightHolder: { '@type': 'Person', name: 'Gabriel Mercier' },
+  creator: personSchema(siteUrl),
+  copyrightHolder: personSchema(siteUrl),
   exifData: [
     coverExif.cameraMake && { '@type': 'PropertyValue', name: 'cameraMake', value: coverExif.cameraMake },
     coverExif.cameraModel && { '@type': 'PropertyValue', name: 'cameraModel', value: coverExif.cameraModel },

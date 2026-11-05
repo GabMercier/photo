@@ -6,6 +6,7 @@
  * Full-screen carousel showcasing selected photography posts.
  */
 import Base from '@layouts/Base.astro';
+import { personSchema } from '@utils/author';
 import HomepageCarousel from '@components/HomepageCarousel.astro';
 import HomepageHero from '@components/HomepageHero.astro';
 import { getCollection } from 'astro:content';
@@ -48,11 +49,14 @@ const homepageSchema = {
   '@context': 'https://schema.org',
   '@type': 'ProfilePage',
   mainEntity: {
-    '@type': 'Person',
-    name: 'Gabriel Mercier',
-    url: siteUrl,
-    jobTitle: 'Photographer',
-    knowsAbout: ['Photography', 'Landscape Photography', 'Nature Photography'],
+    ...personSchema(siteUrl),
+    knowsAbout: [
+      'Photography',
+      'Street Photography',
+      'Astrophotography',
+      'Landscape Photography',
+      'Travel Photography',
+    ],
   },
 };
 ---

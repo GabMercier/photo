@@ -10,6 +10,7 @@ import Footer from '@components/Footer.astro';
 import Slideshow from '@components/Slideshow.astro';
 import { ClientRouter } from 'astro:transitions';
 import { getLocaleFromUrl, t } from '@utils/i18n';
+import { personSchema } from '@utils/author';
 import '@styles/global.css';
 
 interface Props {
@@ -82,11 +83,7 @@ const websiteSchema = {
   url: siteUrl,
   description: defaultDescription,
   inLanguage: locale === 'fr' ? 'fr-CA' : 'en-CA',
-  author: {
-    '@type': 'Person',
-    name: 'Gabriel Mercier',
-    url: siteUrl,
-  },
+  author: personSchema(siteUrl),
 };
 ---
 
