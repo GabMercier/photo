@@ -4,6 +4,117 @@ Each item below has **steps** (what you do) and a **prompt** (paste into a Claud
 
 ---
 
+# Queue added 2026-11-05
+
+Items 1 and 2b below are done: the glass header, content model and importer landed (dcef1b4, 2195db2), and the first imported batch is live (9e01b50, e7d6968) and approved. One uncommitted change sits in the repo: ~139 lines in `Header.astro` adding press-and-hold lens drag on touch — deal with it in item 6 before any other header work.
+
+## 5. Scheduled publishing test (big batch + daily/weekly cron)
+
+Import a large batch once, future-date the posts, and let the site publish them on its own. All static, no CMS involved: a date filter at build time plus a scheduled rebuild.
+
+**How it works**
+
+1. You pick the batch, fill the Lightroom fields (Title/Caption with `||`, keywords, IPTC location), export, and the importer runs once — images and prebuild outputs are committed up front, as usual.
+2. The posts' `date` frontmatter gets spread across future days (daily cadence) or weeks.
+3. A shared "published" filter (`!draft && !private && date <= now`) replaces the ad-hoc filters in every posts query. There are ~8 call sites today: `FeedPage`, `GalleryPage`, `HomePage` (×2), `ProjectPage`, `ProjectsPage`, `rss.xml.ts`, and **both `[slug]` pages** — without the slug pages, future posts would still be reachable at their direct URL.
+4. A `schedule:` cron goes into the GitHub Actions deploy workflow (e.g. daily 16:00 UTC ≈ 11:00–12:00 in Québec). Each run rebuilds; posts whose date has passed appear.
+
+**Caveats to settle in-session**
+
+- If the GitHub repo is public, the future photos are browsable in the repo before they appear on the site. Check visibility and decide if that matters.
+- Pick one timezone convention for post dates vs the cron hour, or a post can slip a day.
+- Daily cron ≈ 30 builds/month — well within Actions minutes and Cloudflare's 500/month.
+
+**Prompt**
+
+> Do item 5 from NEXT-STEPS.md. I exported the batch to [folder]; cadence [daily|weekly] starting [date]. Dry-run the import and show me the report first. Then add the shared date filter and the workflow cron, and prove with a local build that a future-dated post is absent everywhere (feed, gallery, home, RSS, direct URL) and present once its date passes.
+
+## 6. Header rework: merge the lens logo and the menu, revisit the top blur
+
+Two parts, prototype-first like the original header session.
+
+**Steps**
+
+1. First, review the uncommitted `Header.astro` diff (touch press-and-hold lens drag). Try it on the iPhone; land it or drop it before redesigning on top of it.
+2. Design exploration: the dome logo dot and the pill nav becoming one object — e.g. the logo as the lens's resting home, or the pill growing out of the logo on scroll. Ask for 2–3 throwaway prototypes before touching the real header.
+3. Separately decide the top-of-page blur strip (scroll edge fade): keep, rework, or remove. Judge it over real photos in the feed.
+
+**Prompt**
+
+> Do item 6 from NEXT-STEPS.md. Start with the uncommitted Header.astro touch-drag diff: walk me through it, I'll decide land or drop. Then build 2–3 standalone prototypes of the logo+menu merged into one object, and show the feed with the edge fade kept / reworked / removed so I can compare. No changes to the real header until I pick.
+
+## 7. Feed: the expand button is the only action on an image
+
+Feed images currently click through to their post (deliberate choice on 2026-10-25 — now reversed: accidental clicks while scrolling the snap feed are worse than the shortcut). Only the expand button should act; the lightbox's "View Post" is the route to the post.
+
+**Steps**
+
+1. In the feed context only, remove the `.post-card__link` anchor from around the image (gallery behavior unchanged).
+2. Keep an accessible path to the post on each card — the title/caption stays a link, so keyboard and screen-reader users aren't locked out.
+3. Verify on touch: a swipe or stray tap on the photo does nothing; expand → lightbox → View Post works.
+
+**Prompt**
+
+> Do item 7 from NEXT-STEPS.md: in the feed, images must not link to the post — expand button → lightbox → "View Post" is the only route from the image, with the card title still linking for keyboard/screen-reader access. Show me before/after in the preview, desktop and narrow.
+
+## 8. From the original plan (Feb 2026), still worth doing
+
+Reviewed the old Phase 7 wishlist against what exists now. EXIF display is already done (post pages). Best remaining candidates, in order:
+
+| What | Why now |
+|------|---------|
+| **Map view** | The location model (lat/lng, IPTC import) built in October makes it nearly free — a Leaflet page plotting posts fits the travel/hyperlocal direction. GPS is coarse by default, so no precision worries. |
+| **Before/after slider** | A compare slider (single frame vs stacked/StarNet result) is a natural fit for astro posts and shows the craft. |
+| **Cloudflare Web Analytics** | One toggle + script tag, free, no cookies. Worth doing the day the scheduled uploads start, to see if anyone's watching. |
+| **OG share images** | Per-post social cards generated at build. Nice once content flows. |
+
+Skipped on purpose: search (FilterBar already covers 25 posts), comments, newsletter wiring, print store — revisit when traffic exists.
+
+**Prompt (pick one)**
+
+> Do the map view from item 8 in NEXT-STEPS.md: a /map page (EN/FR) plotting published posts with coarse locations, thumbnail popups linking to posts, matching the site's dark glass style. Plan first, show me the plan before building.
+
+## 9. Rank on Google for the full name — without the name in URLs or page text
+
+Checked 2026-11-05: `site:gphoto.pages.dev` returns nothing (the site isn't indexed yet), and a search for "Gabriel Mercier-Blouin" has zero competing results. So the goal is very reachable, and machine-readable-only signals should be enough. Current state: every page already ships schema.org `Person` JSON-LD, but as **"Gabriel Mercier"**; the `<title>` is "… | Gabriel Mercier Photography"; sharp strips all image metadata; there is no `public/robots.txt`.
+
+**The legitimate invisible channels (in order of impact)**
+
+1. **Get indexed first.** Add `public/robots.txt` with a `Sitemap:` line (the sitemap already builds), verify the site in Google Search Console, submit the sitemap. Nothing ranks until this is done.
+2. **Fix the JSON-LD name.** Change the `Person` in `Base.astro`, `PostPage`, `GalleryPage`, `ProjectPage` to full name `Gabriel Mercier-Blouin` with `alternateName: 'Gabriel Mercier'`, and add `sameAs:` links to public profiles (Instagram/GitHub/etc.). JSON-LD is invisible to visitors and is exactly the channel Google provides for this.
+3. **External links** — the strongest signal and nothing on the site changes: put the site URL on profiles that carry the full name (Instagram bio, GitHub, LinkedIn…). Google associates the entity from the web graph.
+4. **IPTC Creator/Credit in the served JPEGs.** Google Images reads IPTC creator metadata ("image credit"). Needs an exiftool (or equivalent) step in `optimize-images` since sharp currently strips everything. Invisible on the page.
+5. **Optional, decide in-session:** full name in the `meta description` — never visible on the site, but it *would* appear in Google's result snippet. Same question for the `<title>` (browser tab). Stronger signal; Gabriel decides where the line is.
+
+**Not doing:** hidden text (`display:none`, offscreen spans) — against Google's guidelines, can get the site demoted; name-stuffed alt text — alt describes the photo, not the author.
+
+**Honest expectations:** indexing takes days-to-weeks after Search Console submission; the name→site association can take longer. With zero competition on the name, steps 1–3 alone will very likely put the site at #1 eventually. A custom domain (a neutral one, no name needed — e.g. gmbpho.com) would also help general credibility but is optional.
+
+**Prompt**
+
+> Do item 9 from NEXT-STEPS.md: robots.txt + sitemap wiring, fix the Person JSON-LD to my full name with alternateName and sameAs (I'll give you the profile URLs), and add the IPTC creator step to optimize-images. Show me exactly where my full name will and won't appear before committing. Then walk me through the Search Console verification — that part is on my account.
+
+**Status 2026-11-05:** robots.txt + the shared Person JSON-LD (`src/utils/author.ts`: full name, alternateName, stable @id, QC/CA address) shipped. Still open: Search Console verification (Gabriel's account — meta tag to add once he has the token), `sameAs` profile URLs, IPTC creator metadata (deferred: exiftool isn't installed and rewriting every committed optimized image would bloat git history — fold it into the item-5 import session so only new images carry it, backfill later if ever), and the name-in-meta-description decision.
+
+## 10. Rank for topics: "street photography Québec", "astrophotographie", …
+
+Different game from item 9: Google ranks *pages* for topic queries, not sites. A query like "photographie de rue Québec" needs a page whose title, description, heading and copy actually say that — the current gallery/tag pages are thin (generic titles, no copy). What moves the needle, in order:
+
+1. **Landing pages with real copy.** The `projects` collection is the natural vehicle: a "Street photography in Québec City" / « Photographie de rue à Québec » project page with a paragraph of honest FR+EN text, cover, and its posts. One good page per theme (street, astro, travel) beats keywords sprinkled everywhere.
+2. **Per-page titles/descriptions.** Tag and gallery pages currently share near-identical meta; give the important ones specific localized titles ("Astrophotography from Québec — Gabriel Mercier Photography").
+3. **French matters most for Québec queries** — the FR pages are not a translation afterthought here, they're the primary surface. Sitemap already declares hreflang pairs; in-page `<link rel=alternate hreflang>` in Base.astro is a cheap belt-and-braces addition.
+4. **Cadence feeds it.** The scheduled publishing from item 5 is itself an SEO signal (fresh content, growing archive). Do item 5 first.
+
+Honest expectations: unlike the zero-competition name search, these queries have real competitors (working photographers, tourism sites). Months, not weeks — and content quality/volume decides it, not markup.
+
+**Prompt**
+
+> Do item 10 from NEXT-STEPS.md, starting with one landing page: a [street|astro|travel] project with real bilingual copy aimed at "[query]", plus specific meta titles/descriptions for it and the gallery, and in-page hreflang alternates in Base.astro. Draft all copy for my review first.
+
+---
+
+# Original queue (2026-10-25)
+
 ## 1. Land today's work (2026-10-25)
 
 Everything is uncommitted on `main`: the content model + importer (afternoon) and the liquid-glass header + fixes (evening).
